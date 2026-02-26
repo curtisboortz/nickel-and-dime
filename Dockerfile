@@ -1,0 +1,15 @@
+FROM python:3.12-slim
+
+WORKDIR /app
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
+ENV DEMO_MODE=1
+ENV PORT=10000
+
+EXPOSE 10000
+
+CMD ["gunicorn", "wsgi:app", "--bind", "0.0.0.0:10000", "--workers", "2", "--timeout", "120"]

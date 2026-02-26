@@ -1,0 +1,87 @@
+{
+  "contribution": {
+    "amount": 2000,
+    "frequency": "biweekly",
+    "ira_percent": 10,
+    "taxable_percent": 90
+  },
+  "inputs": {
+    "physical_gold_oz": 0,
+    "physical_silver_oz": 0,
+    "crypto_cap_percent": 15,
+    "physical_gold_threshold": 500,
+    "physical_silver_threshold": 250,
+    "next_contribution_date": "2026-02-15"
+  },
+  "api_keys": {
+    "goldapi_io": "",
+    "coinbase_key_name": "",
+    "coinbase_private_key": ""
+  },
+  "accounts": [],
+  "holdings": [],
+  "blended_accounts": [],
+  "crypto_holdings": [],
+  "targets": {
+    "tactical": {
+      "Cash": { "target": 15, "min": 10, "max": 20 },
+      "Equities": { "target": 38, "min": 32, "max": 45 },
+      "Gold": { "target": 18, "min": 15, "max": 22 },
+      "Silver": { "target": 6, "min": 4, "max": 9 },
+      "Crypto": { "target": 12, "min": 8, "max": 15 },
+      "RealAssets": { "target": 12, "min": 8, "max": 18 },
+      "Art": { "target": 3, "min": 0, "max": 5 }
+    },
+    "catchup": {
+      "Cash": { "target": 15, "min": 10, "max": 20 },
+      "Equities": { "target": 35, "min": 28, "max": 42 },
+      "Gold": { "target": 20, "min": 16, "max": 24 },
+      "Silver": { "target": 6, "min": 4, "max": 9 },
+      "Crypto": { "target": 12, "min": 8, "max": 15 },
+      "RealAssets": { "target": 12, "min": 8, "max": 18 },
+      "Art": { "target": 3, "min": 0, "max": 5 }
+    }
+  },
+  "contribution_plan": {
+    "tactical_weeks": 12,
+    "tactical_split": {
+      "gold_etf": 300,
+      "gold_phys_save": 150,
+      "silver_etf": 180,
+      "silver_phys_save": 120,
+      "crypto": 360,
+      "equities": 390,
+      "real_assets": 180,
+      "cash": 300
+    },
+    "catchup_split": {
+      "gold_etf": 550,
+      "silver": 250,
+      "real_assets": 250,
+      "cash": 250,
+      "equities": 250,
+      "crypto": 250
+    },
+    "ira_amount": 200,
+    "taxable_total": 1800
+  },
+  "budget": {
+    "monthly_income": 0,
+    "categories": [
+      { "name": "Housing", "limit": 0 },
+      { "name": "Utilities", "limit": 0 },
+      { "name": "Food", "limit": 0 },
+      { "name": "Transportation", "limit": 0 },
+      { "name": "Entertainment", "limit": 0 },
+      { "name": "Health", "limit": 0 },
+      { "name": "Savings/Investments", "limit": 4300 },
+      { "name": "Other", "limit": 0 }
+    ]
+  },
+  "links": {
+    "physical_gold": ["https://www.apmex.com/gold"],
+    "physical_silver": ["https://www.apmex.com/silver"],
+    "crypto": ["https://www.coinbase.com/"],
+    "brokerage": ["https://www.fidelity.com/"]
+  }
+}

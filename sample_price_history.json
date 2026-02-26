@@ -1,0 +1,31 @@
+{
+  "history": [
+    {"date": "2025-09-01", "total": 68420.50, "open": 68100.00, "high": 68520.00, "low": 68050.00, "close": 68420.50, "gold": 2510.00, "silver": 29.50, "gold_silver_ratio": 85.08, "tnx_10y": 4.15, "tnx_2y": 3.85},
+    {"date": "2025-09-08", "total": 69150.30, "open": 68420.50, "high": 69200.00, "low": 68300.00, "close": 69150.30, "gold": 2535.00, "silver": 29.80, "gold_silver_ratio": 85.07, "tnx_10y": 4.10, "tnx_2y": 3.80},
+    {"date": "2025-09-15", "total": 68800.00, "open": 69150.30, "high": 69400.00, "low": 68600.00, "close": 68800.00, "gold": 2520.00, "silver": 29.60, "gold_silver_ratio": 85.14, "tnx_10y": 4.12, "tnx_2y": 3.82},
+    {"date": "2025-09-22", "total": 70200.80, "open": 68800.00, "high": 70350.00, "low": 68750.00, "close": 70200.80, "gold": 2560.00, "silver": 30.10, "gold_silver_ratio": 85.05, "tnx_10y": 4.08, "tnx_2y": 3.78},
+    {"date": "2025-09-29", "total": 71050.20, "open": 70200.80, "high": 71200.00, "low": 70100.00, "close": 71050.20, "gold": 2580.00, "silver": 30.40, "gold_silver_ratio": 84.87, "tnx_10y": 4.05, "tnx_2y": 3.75},
+    {"date": "2025-10-06", "total": 70500.00, "open": 71050.20, "high": 71150.00, "low": 70200.00, "close": 70500.00, "gold": 2590.00, "silver": 30.60, "gold_silver_ratio": 84.64, "tnx_10y": 4.10, "tnx_2y": 3.80},
+    {"date": "2025-10-13", "total": 72100.50, "open": 70500.00, "high": 72200.00, "low": 70400.00, "close": 72100.50, "gold": 2620.00, "silver": 31.00, "gold_silver_ratio": 84.52, "tnx_10y": 4.08, "tnx_2y": 3.78},
+    {"date": "2025-10-20", "total": 73500.00, "open": 72100.50, "high": 73700.00, "low": 72000.00, "close": 73500.00, "gold": 2650.00, "silver": 31.20, "gold_silver_ratio": 84.94, "tnx_10y": 4.15, "tnx_2y": 3.85},
+    {"date": "2025-10-27", "total": 73200.30, "open": 73500.00, "high": 73600.00, "low": 72900.00, "close": 73200.30, "gold": 2640.00, "silver": 31.10, "gold_silver_ratio": 84.89, "tnx_10y": 4.18, "tnx_2y": 3.88},
+    {"date": "2025-11-03", "total": 74800.00, "open": 73200.30, "high": 75000.00, "low": 73100.00, "close": 74800.00, "gold": 2680.00, "silver": 31.50, "gold_silver_ratio": 85.08, "tnx_10y": 4.20, "tnx_2y": 3.90},
+    {"date": "2025-11-10", "total": 75600.50, "open": 74800.00, "high": 75800.00, "low": 74700.00, "close": 75600.50, "gold": 2710.00, "silver": 31.80, "gold_silver_ratio": 85.22, "tnx_10y": 4.22, "tnx_2y": 3.92},
+    {"date": "2025-11-17", "total": 74900.00, "open": 75600.50, "high": 75700.00, "low": 74600.00, "close": 74900.00, "gold": 2700.00, "silver": 31.60, "gold_silver_ratio": 85.44, "tnx_10y": 4.25, "tnx_2y": 3.95},
+    {"date": "2025-11-24", "total": 76300.00, "open": 74900.00, "high": 76500.00, "low": 74800.00, "close": 76300.00, "gold": 2740.00, "silver": 32.00, "gold_silver_ratio": 85.63, "tnx_10y": 4.28, "tnx_2y": 3.98},
+    {"date": "2025-12-01", "total": 77100.80, "open": 76300.00, "high": 77300.00, "low": 76200.00, "close": 77100.80, "gold": 2760.00, "silver": 32.10, "gold_silver_ratio": 85.98, "tnx_10y": 4.30, "tnx_2y": 4.00},
+    {"date": "2025-12-08", "total": 76500.00, "open": 77100.80, "high": 77200.00, "low": 76200.00, "close": 76500.00, "gold": 2750.00, "silver": 31.90, "gold_silver_ratio": 86.21, "tnx_10y": 4.32, "tnx_2y": 4.02},
+    {"date": "2025-12-15", "total": 78200.50, "open": 76500.00, "high": 78400.00, "low": 76400.00, "close": 78200.50, "gold": 2800.00, "silver": 32.30, "gold_silver_ratio": 86.69, "tnx_10y": 4.28, "tnx_2y": 3.98},
+    {"date": "2025-12-22", "total": 77800.00, "open": 78200.50, "high": 78300.00, "low": 77500.00, "close": 77800.00, "gold": 2790.00, "silver": 32.20, "gold_silver_ratio": 86.65, "tnx_10y": 4.30, "tnx_2y": 4.00},
+    {"date": "2025-12-29", "total": 79500.30, "open": 77800.00, "high": 79700.00, "low": 77700.00, "close": 79500.30, "gold": 2830.00, "silver": 32.50, "gold_silver_ratio": 87.08, "tnx_10y": 4.25, "tnx_2y": 3.95},
+    {"date": "2026-01-05", "total": 80200.00, "open": 79500.30, "high": 80400.00, "low": 79400.00, "close": 80200.00, "gold": 2850.00, "silver": 32.60, "gold_silver_ratio": 87.42, "tnx_10y": 4.28, "tnx_2y": 4.05},
+    {"date": "2026-01-12", "total": 79800.50, "open": 80200.00, "high": 80300.00, "low": 79500.00, "close": 79800.50, "gold": 2840.00, "silver": 32.50, "gold_silver_ratio": 87.38, "tnx_10y": 4.30, "tnx_2y": 4.08},
+    {"date": "2026-01-19", "total": 81500.00, "open": 79800.50, "high": 81700.00, "low": 79700.00, "close": 81500.00, "gold": 2870.00, "silver": 32.70, "gold_silver_ratio": 87.77, "tnx_10y": 4.32, "tnx_2y": 4.10},
+    {"date": "2026-01-26", "total": 82300.80, "open": 81500.00, "high": 82500.00, "low": 81400.00, "close": 82300.80, "gold": 2890.00, "silver": 32.80, "gold_silver_ratio": 88.11, "tnx_10y": 4.35, "tnx_2y": 4.12},
+    {"date": "2026-02-02", "total": 81800.00, "open": 82300.80, "high": 82400.00, "low": 81500.00, "close": 81800.00, "gold": 2900.00, "silver": 32.90, "gold_silver_ratio": 88.15, "tnx_10y": 4.30, "tnx_2y": 4.10},
+    {"date": "2026-02-09", "total": 83200.50, "open": 81800.00, "high": 83400.00, "low": 81700.00, "close": 83200.50, "gold": 2920.00, "silver": 33.00, "gold_silver_ratio": 88.48, "tnx_10y": 4.28, "tnx_2y": 4.15},
+    {"date": "2026-02-16", "total": 84100.00, "open": 83200.50, "high": 84300.00, "low": 83100.00, "close": 84100.00, "gold": 2930.00, "silver": 32.80, "gold_silver_ratio": 89.33, "tnx_10y": 4.30, "tnx_2y": 4.16},
+    {"date": "2026-02-23", "total": 83600.30, "open": 84100.00, "high": 84200.00, "low": 83300.00, "close": 83600.30, "gold": 2935.00, "silver": 32.85, "gold_silver_ratio": 89.34, "tnx_10y": 4.32, "tnx_2y": 4.18},
+    {"date": "2026-02-26", "total": 84850.00, "open": 83600.30, "high": 85000.00, "low": 83500.00, "close": 84850.00, "last_update": "10:30", "gold": 2935.40, "silver": 32.85, "gold_silver_ratio": 89.35, "tnx_10y": 4.32, "tnx_2y": 4.18}
+  ]
+}

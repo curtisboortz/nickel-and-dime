@@ -1,0 +1,209 @@
+{
+  "contribution": {
+    "amount": 2000,
+    "frequency": "biweekly",
+    "ira_percent": 10,
+    "taxable_percent": 90
+  },
+  "inputs": {
+    "physical_gold_oz": 1.5,
+    "physical_silver_oz": 50,
+    "crypto_cap_percent": 15,
+    "physical_gold_threshold": 500,
+    "physical_silver_threshold": 250,
+    "next_contribution_date": "2026-03-01"
+  },
+  "api_keys": {
+    "goldapi_io": "",
+    "coinbase_key_name": "",
+    "coinbase_private_key": ""
+  },
+  "accounts": [
+    { "name": "Fidelity Taxable", "type": "Taxable", "provider": "Fidelity", "controllable": true },
+    { "name": "Vanguard IRA", "type": "IRA", "provider": "Vanguard", "controllable": true },
+    { "name": "Company 401k", "type": "401k", "provider": "Fidelity", "controllable": false },
+    { "name": "Fundrise", "type": "Alt", "provider": "Fundrise", "controllable": true },
+    { "name": "Crypto Exchange", "type": "Crypto", "provider": "Coinbase", "controllable": true },
+    { "name": "Physical Metals", "type": "Physical", "provider": "Self", "controllable": true }
+  ],
+  "holdings": [
+    { "account": "Fidelity", "ticker": "SPAXX", "asset_class": "Cash", "qty": null, "value_override": 12500.00, "notes": "Money Market | Cash" },
+    { "account": "Fidelity", "ticker": "VTI", "asset_class": "Equities", "qty": 28.5, "value_override": null, "notes": "Vanguard Total Stock Market ETF" },
+    { "account": "Fidelity", "ticker": "SCHD", "asset_class": "Equities", "qty": 45.0, "value_override": null, "notes": "Schwab US Dividend Equity ETF" },
+    { "account": "Fidelity", "ticker": "AAPL", "asset_class": "Equities", "qty": 12.0, "value_override": null, "notes": "Apple Inc." },
+    { "account": "Fidelity", "ticker": "NVDA", "asset_class": "Equities", "qty": 8.5, "value_override": null, "notes": "NVIDIA Corporation" },
+    { "account": "Fidelity", "ticker": "GOOGL", "asset_class": "Equities", "qty": 15.0, "value_override": null, "notes": "Alphabet Inc." },
+    { "account": "Fidelity", "ticker": "AMZN", "asset_class": "Equities", "qty": 6.0, "value_override": null, "notes": "Amazon.com Inc." },
+    { "account": "Fidelity", "ticker": "COST", "asset_class": "Equities", "qty": 1.2, "value_override": null, "notes": "Costco Wholesale Corp" },
+    { "account": "Fidelity", "ticker": "COIN", "asset_class": "Equities", "qty": 10.0, "value_override": null, "notes": "Coinbase Global Inc." },
+    { "account": "Fidelity", "ticker": "GLD", "asset_class": "Gold", "qty": 12.0, "value_override": null, "notes": "SPDR Gold Trust ETF" },
+    { "account": "Fidelity", "ticker": "GLDM", "asset_class": "Gold", "qty": 25.0, "value_override": null, "notes": "SPDR Gold MiniShares" },
+    { "account": "Fidelity", "ticker": "SLV", "asset_class": "Silver", "qty": 35.0, "value_override": null, "notes": "iShares Silver Trust ETF" },
+    { "account": "Fidelity", "ticker": "PSLV", "asset_class": "Silver", "qty": 50.0, "value_override": null, "notes": "Sprott Physical Silver Trust" },
+    { "account": "Vanguard IRA", "ticker": "VTI", "asset_class": "Equities", "qty": 40.0, "value_override": null, "notes": "Vanguard Total Stock Market ETF" },
+    { "account": "Vanguard IRA", "ticker": "VXUS", "asset_class": "Equities", "qty": 60.0, "value_override": null, "notes": "Vanguard Total International Stock ETF" },
+    { "account": "Vanguard IRA", "ticker": "BND", "asset_class": "Cash", "qty": 30.0, "value_override": null, "notes": "Vanguard Total Bond Market ETF" }
+  ],
+  "blended_accounts": [
+    { "name": "Company 401k", "value": 18500, "asset_class": "RetirementBlend" },
+    { "name": "Fundrise", "value": 5200, "asset_class": "RealAssets" }
+  ],
+  "crypto_holdings": [
+    { "symbol": "BTC", "qty": 0.15 },
+    { "symbol": "ETH", "qty": 2.5 },
+    { "symbol": "SOL", "qty": 25.0 },
+    { "symbol": "XRP", "qty": 500 }
+  ],
+  "physical_metals": [
+    { "metal": "Gold", "form": "1 oz American Eagle", "qty_oz": 1.0, "cost_per_oz": 2050.00, "date": "2024-06-15", "note": "Purchased from APMEX" },
+    { "metal": "Gold", "form": "1/2 oz Canadian Maple Leaf", "qty_oz": 0.5, "cost_per_oz": 2100.00, "date": "2025-01-10", "note": "" },
+    { "metal": "Silver", "form": "10 oz Bar", "qty_oz": 30.0, "cost_per_oz": 28.50, "date": "2024-09-01", "note": "3x 10oz bars" },
+    { "metal": "Silver", "form": "1 oz American Eagle", "qty_oz": 20.0, "cost_per_oz": 32.00, "date": "2025-03-01", "note": "Tube of 20" }
+  ],
+  "targets": {
+    "tactical": {
+      "Cash": { "target": 15, "min": 10, "max": 20 },
+      "Equities": { "target": 38, "min": 32, "max": 45 },
+      "Gold": { "target": 18, "min": 15, "max": 22 },
+      "Silver": { "target": 6, "min": 4, "max": 9 },
+      "Crypto": { "target": 12, "min": 8, "max": 15 },
+      "RealAssets": { "target": 8, "min": 5, "max": 12 },
+      "Art": { "target": 3, "min": 0, "max": 5 }
+    },
+    "catchup": {
+      "Cash": { "target": 15, "min": 10, "max": 20 },
+      "Equities": { "target": 35, "min": 28, "max": 42 },
+      "Gold": { "target": 20, "min": 16, "max": 24 },
+      "Silver": { "target": 6, "min": 4, "max": 9 },
+      "Crypto": { "target": 12, "min": 8, "max": 15 },
+      "RealAssets": { "target": 9, "min": 6, "max": 14 },
+      "Art": { "target": 3, "min": 0, "max": 5 }
+    }
+  },
+  "contribution_plan": {
+    "tactical_weeks": 12,
+    "tactical_split": {
+      "gold_etf": 300,
+      "gold_phys_save": 150,
+      "silver_etf": 180,
+      "silver_phys_save": 120,
+      "crypto": 360,
+      "equities": 390,
+      "real_assets": 180,
+      "cash": 300
+    },
+    "catchup_split": {
+      "gold_etf": 550,
+      "silver": 250,
+      "real_assets": 250,
+      "cash": 250,
+      "equities": 250,
+      "crypto": 250
+    },
+    "ira_amount": 200,
+    "taxable_total": 1800
+  },
+  "budget": {
+    "monthly_income": 6500,
+    "month": "2026-02",
+    "categories": [
+      { "name": "Housing", "limit": 1650 },
+      { "name": "Utilities", "limit": 250 },
+      { "name": "Food", "limit": 500 },
+      { "name": "Transportation", "limit": 350 },
+      { "name": "Entertainment", "limit": 150 },
+      { "name": "Health", "limit": 200 },
+      { "name": "Savings/Investments", "limit": 2000 },
+      { "name": "Other", "limit": 200 }
+    ]
+  },
+  "monthly_investments": {
+    "month": "2026-02",
+    "contributions": {
+      "401k": 750,
+      "ira": 200,
+      "taxable": 600,
+      "crypto": 250,
+      "real_assets": 100,
+      "metals": 100
+    }
+  },
+  "transactions": [
+    { "date": "2026-02-01", "category": "Housing", "amount": 1650, "note": "Rent - February" },
+    { "date": "2026-02-01", "category": "Utilities", "amount": 85, "note": "Electric bill" },
+    { "date": "2026-02-02", "category": "Utilities", "amount": 65, "note": "Internet" },
+    { "date": "2026-02-03", "category": "Food", "amount": 142.50, "note": "Costco grocery run" },
+    { "date": "2026-02-05", "category": "Transportation", "amount": 45, "note": "Gas" },
+    { "date": "2026-02-06", "category": "Food", "amount": 28.75, "note": "Chipotle" },
+    { "date": "2026-02-07", "category": "Entertainment", "amount": 15.99, "note": "Netflix" },
+    { "date": "2026-02-08", "category": "Health", "amount": 50, "note": "Gym membership" },
+    { "date": "2026-02-10", "category": "Food", "amount": 95.20, "note": "Trader Joe's" },
+    { "date": "2026-02-12", "category": "Transportation", "amount": 48, "note": "Gas" },
+    { "date": "2026-02-13", "category": "Food", "amount": 32.50, "note": "Lunch out" },
+    { "date": "2026-02-14", "category": "Entertainment", "amount": 85, "note": "Dinner out - Valentine's" },
+    { "date": "2026-02-15", "category": "Savings/Investments", "amount": 1000, "note": "Bi-weekly investment deposit" },
+    { "date": "2026-02-16", "category": "Food", "amount": 67.30, "note": "Grocery store" },
+    { "date": "2026-02-18", "category": "Health", "amount": 25, "note": "Supplements" },
+    { "date": "2026-02-19", "category": "Other", "amount": 45.99, "note": "Amazon - household items" },
+    { "date": "2026-02-20", "category": "Transportation", "amount": 42, "note": "Gas" },
+    { "date": "2026-02-22", "category": "Food", "amount": 130.50, "note": "Costco grocery run" },
+    { "date": "2026-02-24", "category": "Utilities", "amount": 95, "note": "Water & sewer" },
+    { "date": "2026-02-25", "category": "Savings/Investments", "amount": 1000, "note": "Bi-weekly investment deposit" }
+  ],
+  "spending_history": {
+    "2025-12": {
+      "Housing": 1650, "Utilities": 280, "Food": 520, "Transportation": 310,
+      "Entertainment": 180, "Health": 75, "Savings/Investments": 2000, "Other": 150
+    },
+    "2026-01": {
+      "Housing": 1650, "Utilities": 260, "Food": 485, "Transportation": 340,
+      "Entertainment": 120, "Health": 75, "Savings/Investments": 2000, "Other": 95
+    },
+    "2026-02": {
+      "Housing": 1650, "Utilities": 245, "Food": 496.75, "Transportation": 135,
+      "Entertainment": 100.99, "Health": 75, "Savings/Investments": 2000, "Other": 45.99
+    }
+  },
+  "recurring_transactions": [
+    { "name": "Rent", "amount": 1650, "category": "Housing", "frequency": "monthly" },
+    { "name": "Netflix", "amount": 15.99, "category": "Entertainment", "frequency": "monthly" },
+    { "name": "Gym", "amount": 50, "category": "Health", "frequency": "monthly" },
+    { "name": "Internet", "amount": 65, "category": "Utilities", "frequency": "monthly" },
+    { "name": "Investment Deposit", "amount": 1000, "category": "Savings/Investments", "frequency": "biweekly" }
+  ],
+  "financial_goals": [
+    { "name": "Emergency Fund (6 months)", "target": 25000, "current": 12500, "target_date": "2026-12-31" },
+    { "name": "Down Payment Fund", "target": 60000, "current": 8200, "target_date": "2028-06-01" },
+    { "name": "Max Roth IRA 2026", "target": 7000, "current": 2400, "target_date": "2026-12-31" },
+    { "name": "1 Full Bitcoin", "target": 1, "current": 0.15, "target_date": "2027-12-31" }
+  ],
+  "price_alerts": [
+    { "symbol": "BTC", "target": 150000, "direction": "above", "triggered": false },
+    { "symbol": "GC=F", "target": 3500, "direction": "above", "triggered": false },
+    { "symbol": "SI=F", "target": 40, "direction": "above", "triggered": false },
+    { "symbol": "VTI", "target": 200, "direction": "below", "triggered": false }
+  ],
+  "dividends": [
+    { "date": "2026-01-15", "ticker": "SCHD", "amount": 42.50, "type": "dividend", "note": "Q4 2025 dividend" },
+    { "date": "2026-01-15", "ticker": "VTI", "amount": 28.30, "type": "dividend", "note": "Q4 2025 dividend" },
+    { "date": "2025-10-15", "ticker": "SCHD", "amount": 38.75, "type": "dividend", "note": "Q3 2025 dividend" },
+    { "date": "2025-10-15", "ticker": "AAPL", "amount": 3.00, "type": "dividend", "note": "Q3 2025 dividend" }
+  ],
+  "debts": [
+    { "name": "Student Loan", "balance": 12500, "monthly_payment": 250 },
+    { "name": "Car Loan", "balance": 8200, "monthly_payment": 350 }
+  ],
+  "links": {
+    "physical_gold": ["https://www.apmex.com/gold"],
+    "physical_silver": ["https://www.apmex.com/silver"],
+    "crypto": ["https://www.coinbase.com/"],
+    "brokerage": ["https://www.fidelity.com/"]
+  },
+  "auto_refresh": {
+    "enabled": true,
+    "interval_minutes": 15
+  },
+  "custom_pulse_cards": [],
+  "pulse_card_order": [],
+  "hidden_pulse_cards": []
+}

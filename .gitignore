@@ -1,0 +1,36 @@
+# Personal data — do not commit
+config.json
+Curtis_WealthOS.xlsx
+price_history.json
+price_cache.json
+dashboard.html
+.env
+.env.local
+
+# SSL certs
+cert.pem
+key.pem
+
+# Temp files
+tmp_*.csv
+tmp_*.pdf
+
+# Backups
+*.bak
+server_backup.py
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+dist/
+build/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.cursor/

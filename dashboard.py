@@ -2336,7 +2336,7 @@ function buildHistoryChart(metric) {{
           }}
         }},
         scales: {{
-          x: {{ type: "timeseries", time:{{ unit:"day", tooltipFormat:"MMM d, yyyy" }}, ticks:{{ maxTicksLimit:8, color:"#64748b", font:{{size:10}} }}, grid:{{ color:"rgba(255,255,255,0.03)" }} }},
+          x: {{ type: "time", time:{{ unit:"day", tooltipFormat:"MMM d, yyyy" }}, ticks:{{ maxTicksLimit:8, color:"#64748b", font:{{size:10}} }}, grid:{{ color:"rgba(255,255,255,0.03)" }} }},
           y: {{ ticks:{{ color:"#64748b", font:{{size:10}}, callback: function(v) {{ return "$" + (v/1000).toFixed(0) + "K"; }} }}, grid:{{ color:"rgba(255,255,255,0.03)" }} }}
         }}
       }}
@@ -2955,6 +2955,9 @@ function restoreAllPulseCards() {{
       var candles = data.map(function(p) {{
         return {{ x: new Date(p.date).getTime(), o: p.o, h: p.h, l: p.l, c: p.c }};
       }});
+      var candleXScale = isIntraday
+        ? {{ type: "timeseries", time: {{ unit: timeUnit }}, grid: {{ color: "rgba(255,255,255,0.04)" }}, ticks: {{ color: "rgba(255,255,255,0.5)", maxTicksLimit: 10 }} }}
+        : {{ type: "time", time: {{ unit: timeUnit, tooltipFormat: "MMM d, yyyy" }}, grid: {{ color: "rgba(255,255,255,0.04)" }}, ticks: {{ color: "rgba(255,255,255,0.5)", maxTicksLimit: 10 }} }};
       pcmChart = new Chart(canvas.getContext("2d"), {{
         type: "candlestick",
         data: {{ datasets: [{{
@@ -2966,7 +2969,7 @@ function restoreAllPulseCards() {{
         options: {{
           responsive: true, maintainAspectRatio: false,
           scales: {{
-            x: {{ type: "timeseries", time: {{ unit: timeUnit }}, grid: {{ color: "rgba(255,255,255,0.04)" }}, ticks: {{ color: "rgba(255,255,255,0.5)", maxTicksLimit: 10 }} }},
+            x: candleXScale,
             y: {{ position: "right", grid: {{ color: "rgba(255,255,255,0.04)" }}, ticks: {{ color: "rgba(255,255,255,0.5)" }} }}
           }},
           plugins: {{
@@ -2976,28 +2979,56 @@ function restoreAllPulseCards() {{
         }}
       }});
     }} else {{
-      var labels = data.map(function(p) {{ return p.date; }});
       var closes = data.map(function(p) {{ return p.c; }});
       var first = closes[0]; var last = closes[closes.length - 1];
       var lineColor = last >= first ? "rgba(34,197,94,0.9)" : "rgba(239,68,68,0.9)";
       var fillColor = last >= first ? "rgba(34,197,94,0.08)" : "rgba(239,68,68,0.08)";
-      pcmChart = new Chart(canvas.getContext("2d"), {{
-        type: "line",
-        data: {{ labels: labels, datasets: [{{
-          label: pcmState.label,
-          data: closes,
+
+      // Intraday: even spacing (no gaps for closed hours), show simplified tick labels
+      // Daily+: proportional time axis so weekends/holidays show proper gaps
+      var xScale, chartData;
+      if (isIntraday) {{
+        // Format labels: show date at session boundaries, time otherwise
+        var tickLabels = data.map(function(p, i) {{
+          var dt = new Date(p.date);
+          var prev = i > 0 ? new Date(data[i-1].date) : null;
+          if (!prev || dt.toDateString() !== prev.toDateString()) {{
+            return dt.toLocaleDateString(undefined, {{month:"short", day:"numeric"}});
+          }}
+          return "";
+        }});
+        xScale = {{ type: "category", labels: tickLabels,
+          grid: {{ color: "rgba(255,255,255,0.04)" }},
+          ticks: {{ color: "rgba(255,255,255,0.5)", maxTicksLimit: 8, autoSkip: true, maxRotation: 0 }}
+        }};
+        chartData = {{ labels: tickLabels, datasets: [{{
+          label: pcmState.label, data: closes,
           borderColor: lineColor, backgroundColor: fillColor,
           borderWidth: 2, pointRadius: 0, pointHitRadius: 8,
           fill: true, tension: 0.15
-        }}] }},
+        }}] }};
+      }} else {{
+        var pointData = data.map(function(p) {{ return {{ x: p.date, y: p.c }}; }});
+        xScale = {{ type: "time", time: {{ unit: timeUnit, tooltipFormat: "MMM d, yyyy" }},
+          grid: {{ color: "rgba(255,255,255,0.04)" }},
+          ticks: {{ color: "rgba(255,255,255,0.5)", maxTicksLimit: 8 }}
+        }};
+        chartData = {{ datasets: [{{
+          label: pcmState.label, data: pointData,
+          borderColor: lineColor, backgroundColor: fillColor,
+          borderWidth: 2, pointRadius: 0, pointHitRadius: 8,
+          fill: true, tension: 0.15
+        }}] }};
+      }}
+
+      pcmChart = new Chart(canvas.getContext("2d"), {{
+        type: "line",
+        data: chartData,
         options: {{
           responsive: true, maintainAspectRatio: false,
-          interaction: {{ mode: "index", intersect: false }},
+          interaction: {{ mode: "nearest", axis: "x", intersect: false }},
           scales: {{
-            x: {{ type: "time", time: {{ unit: timeUnit, tooltipFormat: isIntraday ? "MMM d, HH:mm" : "MMM d, yyyy" }},
-              grid: {{ color: "rgba(255,255,255,0.04)" }}, ticks: {{ color: "rgba(255,255,255,0.5)", maxTicksLimit: 8 }},
-              adapters: {{ date: {{}} }}
-            }},
+            x: xScale,
             y: {{ position: "right", grid: {{ color: "rgba(255,255,255,0.04)" }}, ticks: {{ color: "rgba(255,255,255,0.5)" }} }}
           }},
           plugins: {{
@@ -3007,10 +3038,18 @@ function restoreAllPulseCards() {{
               backgroundColor: "rgba(30,30,30,0.95)", titleColor: "#e2e8f0", bodyColor: "#e2e8f0",
               borderColor: "rgba(99,102,241,0.4)", borderWidth: 1,
               callbacks: {{
+                title: function(items) {{
+                  var idx = items[0] ? items[0].dataIndex : 0;
+                  var p = data[idx];
+                  if (!p) return "";
+                  var dt = new Date(p.date);
+                  return isIntraday ? dt.toLocaleString(undefined, {{month:"short", day:"numeric", hour:"numeric", minute:"2-digit"}}) : p.date;
+                }},
                 label: function(ctx) {{
                   var noDollar = ["AUAG-RATIO","^VIX","^TNX","^IRX","10Y2Y-SPREAD","DX-Y.NYB"].indexOf(pcmState.symbol) >= 0;
                   var prefix = noDollar ? "" : "$";
-                  return pcmState.label + ": " + prefix + Number(ctx.parsed.y).toLocaleString(undefined, {{minimumFractionDigits:2, maximumFractionDigits:2}});
+                  var val = isIntraday ? ctx.raw : ctx.raw.y;
+                  return pcmState.label + ": " + prefix + Number(val).toLocaleString(undefined, {{minimumFractionDigits:2, maximumFractionDigits:2}});
                 }}
               }}
             }},

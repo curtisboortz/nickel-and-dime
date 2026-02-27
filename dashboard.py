@@ -2342,22 +2342,22 @@ function buildHistoryChart(metric) {{
       }}
     }});
   }} else {{
-    // Line mode using close/total values
-    var data = PRICE_HISTORY_DATA.map(function(r) {{ return r.close || r.total; }});
+    // Line mode using close/total values with proper time-based x-axis
+    var pointData = PRICE_HISTORY_DATA.map(function(r) {{ return {{ x: r.date, y: r.close || r.total }}; }});
     var fmt = function(v) {{ return v != null ? "$" + v.toLocaleString(undefined, {{maximumFractionDigits:0}}) : "—"; }};
-    var validData = data.filter(function(v) {{ return v != null && isFinite(v); }});
-    var dataMin = validData.length ? Math.min.apply(null, validData) : 0;
-    var dataMax = validData.length ? Math.max.apply(null, validData) : 0;
+    var validData = pointData.filter(function(p) {{ return p.y != null && isFinite(p.y); }});
+    var vals = validData.map(function(p) {{ return p.y; }});
+    var dataMin = vals.length ? Math.min.apply(null, vals) : 0;
+    var dataMax = vals.length ? Math.max.apply(null, vals) : 0;
     var padding = dataMin === dataMax ? Math.max(dataMax * 0.02, 500) : Math.max((dataMax - dataMin) * 0.15, dataMax * 0.005);
     window.historyChart = new Chart(ctx, {{
       type: "line",
       data: {{
-        labels: labels,
-        datasets: [{{ label: "Portfolio Value", data: data, borderColor: "#d4a017", backgroundColor: "rgba(212,160,23,0.12)", fill: true, tension: 0.35, pointRadius: PRICE_HISTORY_DATA.length < 30 ? 4 : 0, pointHoverRadius: 6, pointHoverBackgroundColor: "#d4a017", pointBackgroundColor: "#d4a017", borderWidth: 2.5 }}]
+        datasets: [{{ label: "Portfolio Value", data: pointData, borderColor: "#d4a017", backgroundColor: "rgba(212,160,23,0.12)", fill: true, tension: 0.35, pointRadius: PRICE_HISTORY_DATA.length < 30 ? 4 : 0, pointHoverRadius: 6, pointHoverBackgroundColor: "#d4a017", pointBackgroundColor: "#d4a017", borderWidth: 2.5 }}]
       }},
       options: {{
         responsive: true, maintainAspectRatio: false,
-      interaction: {{ intersect: false, mode: "index" }},
+      interaction: {{ intersect: false, mode: "nearest", axis: "x" }},
       plugins: {{
           legend: {{ display: false }},
           tooltip: {{
@@ -2366,21 +2366,22 @@ function buildHistoryChart(metric) {{
             borderColor:"rgba(255,255,255,0.1)", borderWidth:1, padding:12, cornerRadius:8,
             bodyFont: {{ family: "'JetBrains Mono', monospace", size: 11 }},
             callbacks: {{
+              title: function(items) {{ return items[0] ? items[0].raw.x : ""; }},
               label: function(c) {{
                 var r = PRICE_HISTORY_DATA[c.dataIndex];
                 if (r && r.open) {{
                   return [
-                    " Close: " + fmt(c.raw),
+                    " Close: " + fmt(c.raw.y),
                     " Day Range: " + fmt(r.low) + " – " + fmt(r.high),
                   ];
                 }}
-                return " " + fmt(c.raw);
+                return " " + fmt(c.raw.y);
               }}
             }}
           }}
       }},
       scales: {{
-          x: {{ ticks:{{ maxTicksLimit:8, color:"#64748b", font:{{size:10}} }}, grid:{{ color:"rgba(255,255,255,0.03)" }} }},
+          x: {{ type: "time", time: {{ unit: PRICE_HISTORY_DATA.length > 90 ? "week" : "day", tooltipFormat: "yyyy-MM-dd" }}, ticks:{{ maxTicksLimit:8, color:"#64748b", font:{{size:10}} }}, grid:{{ color:"rgba(255,255,255,0.03)" }} }},
           y: {{ min: Math.floor((dataMin - padding) / 1000) * 1000, max: Math.ceil((dataMax + padding) / 1000) * 1000, ticks:{{ color:"#64748b", font:{{size:10}}, callback: function(v) {{ return "$" + (v/1000).toFixed(0) + "K"; }} }}, grid:{{ color:"rgba(255,255,255,0.03)" }} }}
         }}
       }}
@@ -3683,10 +3684,10 @@ function addBenchmark() {{
       var spyFirst = json.data[0].c;
       var spyPct = json.data.map(function(d) {{ return ((d.c / spyFirst) - 1) * 100; }});
       var spyLabels = json.data.map(function(d) {{ return d.date; }});
-      // Rebasing is approximate; just show on same chart if possible
       if (window.historyChart.data.datasets.length < 2) {{
+        var spyPoints = json.data.map(function(d, i) {{ return {{ x: d.date, y: spyPct[i] }}; }}).slice(-PRICE_HISTORY_DATA.length);
         window.historyChart.data.datasets.push({{
-          label: "SPY Benchmark", data: spyPct.slice(-PRICE_HISTORY_DATA.length),
+          label: "SPY Benchmark", data: spyPoints,
           borderColor: "#64748b", borderDash:[5,3], borderWidth:1.5, fill:false, tension:0.3, pointRadius:0
         }});
         window.historyChart.update();

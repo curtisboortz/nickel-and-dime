@@ -2,7 +2,7 @@
 
 A full-stack personal finance dashboard built with Python/Flask that tracks multi-asset portfolios with live market data, allocation drift analysis, budgeting, and economic indicators.
 
-**[Live Demo](https://nickel-and-dime.onrender.com)** (sample data — deploy your own for real use)
+**[Live Demo](https://nickel-and-dime-production.up.railway.app)** (sample data — deploy your own for real use)
 
 ---
 

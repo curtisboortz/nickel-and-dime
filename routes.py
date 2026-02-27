@@ -727,20 +727,22 @@ def api_export():
 
 @bp.route("/api/new-month", methods=["POST"])
 def api_new_month():
-    """Start a new month - reset all investment contributions to 0."""
+    """Start a new month - advance to next month and reset contributions."""
     from flask import jsonify
     from datetime import datetime
+    from dateutil.relativedelta import relativedelta
     config = load_config(CONFIG_PATH)
     monthly = config.get("monthly_investments", {})
     budget = config.get("budget", {})
     
-    new_month = datetime.now().strftime("%Y-%m")
+    current_stored = monthly.get("month", datetime.now().strftime("%Y-%m"))
+    stored_date = datetime.strptime(current_stored, "%Y-%m")
+    next_date = stored_date + relativedelta(months=1)
+    new_month = next_date.strftime("%Y-%m")
     
-    # Update months
     monthly["month"] = new_month
     budget["month"] = new_month
     
-    # Reset all contributions to 0
     contributions = monthly.get("contributions", {})
     for key in contributions:
         contributions[key] = 0
@@ -752,20 +754,22 @@ def api_new_month():
 
 @bp.route("/api/new-budget-month", methods=["POST"])
 def api_new_budget_month():
-    """Start a new budget month - updates both budget and investment months, resets contributions."""
+    """Start a new budget month - advance both months and reset contributions."""
     from flask import jsonify
     from datetime import datetime
+    from dateutil.relativedelta import relativedelta
     config = load_config(CONFIG_PATH)
     monthly = config.get("monthly_investments", {})
     budget = config.get("budget", {})
     
-    new_month = datetime.now().strftime("%Y-%m")
+    current_stored = budget.get("month", monthly.get("month", datetime.now().strftime("%Y-%m")))
+    stored_date = datetime.strptime(current_stored, "%Y-%m")
+    next_date = stored_date + relativedelta(months=1)
+    new_month = next_date.strftime("%Y-%m")
     
-    # Update both months
     monthly["month"] = new_month
     budget["month"] = new_month
     
-    # Reset investment contributions to 0
     contributions = monthly.get("contributions", {})
     for key in contributions:
         contributions[key] = 0

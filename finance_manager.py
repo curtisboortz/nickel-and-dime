@@ -798,16 +798,21 @@ def _price_history_path(base: Path) -> Path:
 
 
 def _read_price_history_unlocked(base: Path) -> list:
-    """Read price history from JSON file. Caller must hold _price_history_lock."""
+    """Read price history from JSON file. Caller must hold _price_history_lock.
+    Falls back to .bak file if main file is corrupt, then tries Excel restore."""
     path = _price_history_path(base)
+    bak_path = Path(str(path) + ".bak")
     history = []
-    if path.exists():
-        try:
-            with open(path, "r", encoding="utf-8") as f:
-                data = json.load(f)
-            history = data.get("history", []) if isinstance(data, dict) else (data if isinstance(data, list) else [])
-        except Exception:
-            pass
+    for p in (path, bak_path):
+        if p.exists():
+            try:
+                with open(p, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                loaded = data.get("history", []) if isinstance(data, dict) else (data if isinstance(data, list) else [])
+                if len(loaded) > len(history):
+                    history = loaded
+            except Exception:
+                continue
     if len(history) <= 1:
         if restore_price_history_from_excel(base):
             try:
@@ -893,13 +898,45 @@ def append_price_history(
             history.append(entry)
 
         history = history[-PRICE_HISTORY_MAX:]
-        path = _price_history_path(base)
+        _write_price_history_safe(base, history)
+
+
+def _write_price_history_safe(base: Path, history: list) -> None:
+    """Write price history using atomic rename with backup. Refuses to overwrite
+    a longer history with a shorter one (protection against corruption cascades)."""
+    import tempfile, shutil
+    path = _price_history_path(base)
+    bak_path = Path(str(path) + ".bak")
+
+    # Safety: never replace a longer file with fewer entries
+    if path.exists():
         try:
-            with open(path, "w", encoding="utf-8") as f:
-                json.dump({"history": history}, f, indent=2)
+            with open(path, "r", encoding="utf-8") as f:
+                existing = json.load(f)
+            existing_len = len(existing.get("history", []) if isinstance(existing, dict) else existing)
+            if len(history) < existing_len - 1:
+                print(f"[History] SAFETY: refusing to overwrite {existing_len} entries with {len(history)}")
+                return
         except Exception:
             pass
 
+    # Atomic write: write to temp file in same directory, then rename
+    try:
+        if path.exists():
+            shutil.copy2(path, bak_path)
+        fd, tmp_path = tempfile.mkstemp(dir=str(base), suffix=".json.tmp")
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                json.dump({"history": history}, f, indent=2)
+            Path(tmp_path).replace(path)
+        except Exception:
+            Path(tmp_path).unlink(missing_ok=True)
+            raise
+    except Exception as e:
+        print(f"[History] Write failed: {e}")
+
+    # Only sync to Excel if we have meaningful data
+    if len(history) >= 2:
         _sync_price_history_to_excel(base, history)
 
 
@@ -932,29 +969,84 @@ def _sync_price_history_to_excel(base: Path, history: list) -> None:
 
 def restore_price_history_from_excel(base: Path) -> bool:
     """Rebuild price_history.json from the PriceHistory sheet in Excel.
-    Returns True if data was restored, False otherwise."""
+    Uses zipfile+XML to bypass corrupted sheets that crash openpyxl."""
+    import zipfile
+    import xml.etree.ElementTree as ET
     wb_path = base / "Curtis_WealthOS.xlsx"
     if not wb_path.exists():
         return False
     try:
-        wb = load_workbook(wb_path, read_only=True)
-        if "PriceHistory" not in [s.title for s in wb.worksheets]:
-            wb.close()
+        z = zipfile.ZipFile(str(wb_path))
+        # Find PriceHistory sheet by reading workbook.xml for sheet->rId mapping
+        wb_xml = z.open("xl/workbook.xml").read()
+        root = ET.fromstring(wb_xml)
+        xns = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+        rns = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+        target_rid = None
+        for s in root.findall(f".//{{{xns}}}sheet"):
+            if s.get("name") == "PriceHistory":
+                target_rid = s.get(f"{{{rns}}}id")
+                break
+        if not target_rid:
+            z.close()
             return False
-        ws = wb["PriceHistory"]
-        rows = list(ws.iter_rows(min_row=1, values_only=True))
-        wb.close()
-        if len(rows) < 2:
+        # Resolve rId to file path
+        rels_xml = z.open("xl/_rels/workbook.xml.rels").read()
+        rels_root = ET.fromstring(rels_xml)
+        sheet_file = None
+        for rel in rels_root:
+            if rel.get("Id") == target_rid:
+                sheet_file = rel.get("Target").lstrip("/")
+                if not sheet_file.startswith("xl/"):
+                    sheet_file = "xl/" + sheet_file
+                break
+        if not sheet_file:
+            z.close()
             return False
-        headers = [str(c) if c else "" for c in rows[0]]
+        tree = ET.parse(z.open(sheet_file))
+        ns = {"s": xns}
+        rows = tree.getroot().findall(".//s:row", ns)
+        cols = _PRICE_HISTORY_COLS
+
+        def col_to_idx(col_ref):
+            result = 0
+            for ch in col_ref:
+                if ch.isalpha():
+                    result = result * 26 + (ord(ch.upper()) - ord('A') + 1)
+            return result - 1
+
         history = []
-        for row in rows[1:]:
+        for row_idx, row in enumerate(rows):
+            if row_idx == 0:
+                continue
+            cells = row.findall("s:c", ns)
             entry = {}
-            for i, col in enumerate(headers):
-                if i < len(row) and row[i] is not None:
-                    entry[col] = row[i]
+            for c in cells:
+                ref = c.get("r", "")
+                ci = col_to_idx("".join(ch for ch in ref if ch.isalpha()))
+                if ci >= len(cols):
+                    continue
+                col_name = cols[ci]
+                # Handle inline strings
+                is_elem = c.find("s:is", ns)
+                if is_elem is not None:
+                    t_elem = is_elem.find("s:t", ns)
+                    val = t_elem.text if t_elem is not None and t_elem.text else None
+                else:
+                    v_elem = c.find("s:v", ns)
+                    val = v_elem.text if v_elem is not None and v_elem.text else None
+                if val is None:
+                    continue
+                if col_name in ("date", "last_update"):
+                    entry[col_name] = val
+                else:
+                    try:
+                        entry[col_name] = round(float(val), 2)
+                    except ValueError:
+                        entry[col_name] = val
             if entry.get("date"):
                 history.append(entry)
+        z.close()
         if not history:
             return False
         path = _price_history_path(base)

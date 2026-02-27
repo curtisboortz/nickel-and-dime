@@ -6,6 +6,7 @@ __pycache__
 *.pyc
 *.xlsx
 *.xlsx.bak
+*.json.bak
 config.json
 price_cache.json
 price_history.json

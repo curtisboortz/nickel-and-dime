@@ -24,22 +24,24 @@ except ImportError:
     pass
 
 DEMO_MODE = os.environ.get("DEMO_MODE", "").lower() in ("1", "true", "yes")
-CONFIG_PATH = BASE / "config.json"
 
 if DEMO_MODE:
-    # In demo mode, copy sample data files into place if config.json doesn't exist
-    # or if we want to always reset to sample data on startup
     import shutil
-    sample_cfg = BASE / "sample_config.json"
-    sample_cache = BASE / "sample_price_cache.json"
-    sample_history = BASE / "sample_price_history.json"
-    if sample_cfg.exists():
-        shutil.copy(sample_cfg, CONFIG_PATH)
-    if sample_cache.exists():
-        shutil.copy(sample_cache, BASE / "price_cache.json")
-    if sample_history.exists():
-        shutil.copy(sample_history, BASE / "price_history.json")
-    print("[DEMO MODE] Loaded sample data — all write operations are disabled")
+    import tempfile
+    DEMO_DIR = Path(tempfile.mkdtemp(prefix="nickeldime_demo_"))
+    for src, dst in [
+        ("sample_config.json", "config.json"),
+        ("sample_price_cache.json", "price_cache.json"),
+        ("sample_price_history.json", "price_history.json"),
+    ]:
+        src_path = BASE / src
+        if src_path.exists():
+            shutil.copy(src_path, DEMO_DIR / dst)
+    CONFIG_PATH = DEMO_DIR / "config.json"
+    BASE = DEMO_DIR
+    print(f"[DEMO MODE] Sample data loaded into temp dir — your real files are untouched")
+else:
+    CONFIG_PATH = BASE / "config.json"
 
 # Auth PIN: set WEALTH_OS_PIN in .env (e.g. WEALTH_OS_PIN=1234). If unset, no auth required.
 AUTH_PIN = os.environ.get("WEALTH_OS_PIN", "")

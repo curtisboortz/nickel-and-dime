@@ -15,10 +15,11 @@ except ImportError:
     pass
 
 DEMO_MODE = os.environ.get("DEMO_MODE", "").lower() in ("1", "true", "yes")
-CONFIG_PATH = BASE / "config.json"
 
 if DEMO_MODE:
     import shutil
+    import tempfile
+    DEMO_DIR = Path(tempfile.mkdtemp(prefix="nickeldime_demo_"))
     for src, dst in [
         ("sample_config.json", "config.json"),
         ("sample_price_cache.json", "price_cache.json"),
@@ -26,7 +27,11 @@ if DEMO_MODE:
     ]:
         src_path = BASE / src
         if src_path.exists():
-            shutil.copy(src_path, BASE / dst)
+            shutil.copy(src_path, DEMO_DIR / dst)
+    CONFIG_PATH = DEMO_DIR / "config.json"
+    BASE = DEMO_DIR
+else:
+    CONFIG_PATH = BASE / "config.json"
 
 from flask import Flask
 from finance_manager import (

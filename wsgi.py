@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 
 BASE = Path(__file__).resolve().parent
+PROJECT_ROOT = BASE
 sys.path.insert(0, str(BASE))
 
 try:
@@ -67,6 +68,7 @@ app.secret_key = os.environ.get("FLASK_SECRET", "wealth-os-prod-key-change-me")
 init_routes({
     "CONFIG_PATH": CONFIG_PATH,
     "BASE": BASE,
+    "PROJECT_ROOT": PROJECT_ROOT,
     "AUTH_PIN": AUTH_PIN,
     "DEMO_MODE": DEMO_MODE,
     "load_config": load_config,

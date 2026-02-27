@@ -12,6 +12,7 @@ bp = Blueprint("main", __name__)
 # Module-level references, set by init_routes()
 CONFIG_PATH = None
 BASE = None
+PROJECT_ROOT = None
 AUTH_PIN = ""
 _deps = {}  # all other dependencies
 
@@ -20,9 +21,10 @@ DEMO_MODE = False
 
 def init_routes(config):
     """Inject dependencies from main(). Call before registering blueprint."""
-    global CONFIG_PATH, BASE, AUTH_PIN, DEMO_MODE, _deps, scheduler
+    global CONFIG_PATH, BASE, PROJECT_ROOT, AUTH_PIN, DEMO_MODE, _deps, scheduler
     CONFIG_PATH = config["CONFIG_PATH"]
     BASE = config["BASE"]
+    PROJECT_ROOT = config.get("PROJECT_ROOT", config["BASE"])
     AUTH_PIN = config["AUTH_PIN"]
     DEMO_MODE = config.get("DEMO_MODE", False)
     scheduler = config.get("scheduler")
@@ -639,10 +641,10 @@ def manifest():
 @bp.route("/icon-512.png")
 @bp.route("/logo-sidebar.png")
 def serve_icon():
-    """Serve icon/image files from the project root."""
+    """Serve icon/image files from the real project root (not temp demo dir)."""
     from flask import send_from_directory
     filename = request.path.lstrip("/")
-    return send_from_directory(BASE, filename)
+    return send_from_directory(PROJECT_ROOT, filename)
 
 @bp.route("/sw.js")
 def service_worker():

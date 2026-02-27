@@ -759,8 +759,10 @@ body {{
   margin-bottom:32px;
   flex-shrink:0;
   overflow:hidden;
-  background:linear-gradient(135deg, #d4a017, #f0c040);
-  display:flex; align-items:center; justify-content:center;
+}}
+.sidebar-logo img {{
+  width:100%; height:100%; object-fit:cover;
+  border-radius:10px;
 }}
 .sidebar-nav {{
   display:flex; flex-direction:column; gap:4px;
@@ -1152,7 +1154,7 @@ html.light {{
   --text-primary:#1a1a2e; --text-secondary:#4a4a5a; --text-muted:#7a7a8a;
 }}
 html.light .sidebar {{ background:var(--bg-secondary); border-color:var(--border-subtle); }}
-html.light .sidebar-logo {{ background:linear-gradient(135deg, #d4a017, #f0c040); }}
+html.light .sidebar-logo {{ background:var(--bg-card); }}
 html.light input, html.light select {{ background:var(--bg-input); color:var(--text-primary); border-color:var(--border-subtle); }}
 html.light select option {{ background:var(--bg-input); color:var(--text-primary); }}
 html.light .hero-value {{ -webkit-text-fill-color:var(--accent-primary); }}
@@ -1319,7 +1321,7 @@ html.light .skeleton {{ background:linear-gradient(90deg, rgba(0,0,0,0.04) 25%, 
 
 <!-- Sidebar Navigation -->
 <nav class="sidebar">
-  <div class="sidebar-logo"><svg viewBox="0 0 40 40" width="40" height="40"><text x="50%" y="54%" dominant-baseline="central" text-anchor="middle" font-family="Inter,sans-serif" font-weight="700" font-size="16" fill="#09090b">ND</text></svg></div>
+  <div class="sidebar-logo"><img src="/icon-192.png" alt="Nickel&amp;Dime"></div>
   <div class="sidebar-nav">
     <a class="nav-item active" data-tab="summary" href="#">
       <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>

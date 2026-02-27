@@ -14,6 +14,7 @@ from urllib.parse import quote
 
 # Run from finance-tool directory
 BASE = Path(__file__).resolve().parent
+PROJECT_ROOT = BASE
 sys.path.insert(0, str(BASE))
 
 # Load .env so API keys work when running server
@@ -153,6 +154,7 @@ def main():
     init_routes({
         "CONFIG_PATH": CONFIG_PATH,
         "BASE": BASE,
+        "PROJECT_ROOT": PROJECT_ROOT,
         "AUTH_PIN": AUTH_PIN,
         "DEMO_MODE": DEMO_MODE,
         "load_config": load_config,

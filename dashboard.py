@@ -2703,7 +2703,8 @@ function processInvestChat() {{
       if (d.ok && d.type === "holding") {{
         div.className = "chat-msg ok";
         var sharesNote = d.shares_added ? ' (+' + d.shares_added + ' shares @ $' + d.price.toFixed(2) + ')' : '';
-        div.innerHTML = '<span class="chat-label">&#10003;</span>' + d.ticker + (d.account ? ' (' + d.account + ')' : '') + ': $' + d.old_value.toLocaleString(undefined, {{maximumFractionDigits:0}}) + ' &rarr; $' + d.new_value.toLocaleString(undefined, {{maximumFractionDigits:0}}) + sharesNote;
+        var cashNote = d.cash_deducted ? ' | SPAXX: $' + d.old_cash.toLocaleString(undefined, {{maximumFractionDigits:0}}) + ' &rarr; $' + d.new_cash.toLocaleString(undefined, {{maximumFractionDigits:0}}) : '';
+        div.innerHTML = '<span class="chat-label">&#10003;</span>' + d.ticker + (d.account ? ' (' + d.account + ')' : '') + ': $' + d.old_value.toLocaleString(undefined, {{maximumFractionDigits:0}}) + ' &rarr; $' + d.new_value.toLocaleString(undefined, {{maximumFractionDigits:0}}) + sharesNote + cashNote;
         log.appendChild(div);
       }} else if (d.ok && d.type === "balance") {{
         div.className = "chat-msg ok";

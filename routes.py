@@ -1323,9 +1323,24 @@ def api_quick_update():
             old_value = round(old_qty * current_price, 2)
             new_value = round(new_qty * current_price, 2)
             matched_holding["qty"] = new_qty
+
+            # Deduct from SPAXX money market in the same account
+            cash_deducted = 0
+            old_cash = 0
+            new_cash = 0
+            holding_acct = (matched_holding.get("account") or "").lower()
+            for h in holdings:
+                if (h.get("ticker") or "").upper() == "SPAXX" and \
+                   (h.get("account") or "").lower() == holding_acct:
+                    old_cash = float(h.get("value_override") or 0)
+                    h["value_override"] = round(old_cash - amount, 2)
+                    new_cash = h["value_override"]
+                    cash_deducted = amount
+                    break
+
             with open(CONFIG_PATH, "w", encoding="utf-8") as f:
                 json.dump(config, f, indent=2)
-            return jsonify({
+            resp = {
                 "ok": True,
                 "type": "holding",
                 "ticker": ticker,
@@ -1335,7 +1350,12 @@ def api_quick_update():
                 "shares_added": new_shares,
                 "new_qty": new_qty,
                 "price": current_price,
-            })
+            }
+            if cash_deducted > 0:
+                resp["cash_deducted"] = cash_deducted
+                resp["old_cash"] = old_cash
+                resp["new_cash"] = new_cash
+            return jsonify(resp)
         else:
             # Value-only position (no qty, e.g. SPAXX cash) — add to value_override
             old_val = float(matched_holding.get("value_override") or 0)

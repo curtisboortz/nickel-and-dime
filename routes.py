@@ -1489,3 +1489,191 @@ def api_auto_refresh():
                 pass
         return jsonify({"success": True, **auto_cfg})
 
+
+# ── Sentiment / Fear & Greed ────────────────────────────────────
+
+_sentiment_cache = {"data": None, "ts": 0}
+_SENTIMENT_TTL = 1800  # 30 minutes
+
+@bp.route("/api/sentiment")
+def api_sentiment():
+    """Return fear & greed / sentiment data for stocks, crypto, gold, VIX, yield curve."""
+    from flask import jsonify
+    import time, math
+
+    if DEMO_MODE:
+        return jsonify({
+            "stock":  {"value": 42, "label": "Fear"},
+            "crypto": {"value": 25, "label": "Extreme Fear"},
+            "gold":   {"value": 68, "label": "Greed"},
+            "vix":    {"value": 22.5, "score": 55, "label": "Moderate"},
+            "yield_curve": {"value": 62, "spread": 0.45, "label": "Greed"},
+        })
+
+    now = time.time()
+    if _sentiment_cache["data"] and (now - _sentiment_cache["ts"]) < _SENTIMENT_TTL:
+        return jsonify(_sentiment_cache["data"])
+
+    result = {}
+
+    # Fetch CNN and Crypto F&G in parallel
+    import urllib.request
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    def _fetch_cnn():
+        req = urllib.request.Request(
+            "https://production.dataviz.cnn.io/index/fearandgreed/graphdata",
+            headers={
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                "Accept": "application/json, text/plain, */*",
+                "Referer": "https://edition.cnn.com/markets/fear-and-greed",
+                "Origin": "https://edition.cnn.com",
+            }
+        )
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            cnn = json.loads(resp.read().decode())
+        fg = cnn.get("fear_and_greed", {})
+        score = fg.get("score", 50)
+        return {"value": round(score), "label": _fg_label(score)}
+
+    def _fetch_crypto():
+        req = urllib.request.Request(
+            "https://api.alternative.me/fng/?limit=1",
+            headers={"User-Agent": "Mozilla/5.0"}
+        )
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            alt = json.loads(resp.read().decode())
+        entry = alt.get("data", [{}])[0]
+        val = int(entry.get("value", 50))
+        return {"value": val, "label": entry.get("value_classification", _fg_label(val))}
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        cnn_fut = pool.submit(_fetch_cnn)
+        crypto_fut = pool.submit(_fetch_crypto)
+
+    try:
+        result["stock"] = cnn_fut.result(timeout=10)
+    except Exception as e:
+        print(f"[Sentiment] CNN F&G fetch failed: {e}")
+        result["stock"] = None
+
+    try:
+        result["crypto"] = crypto_fut.result(timeout=10)
+    except Exception as e:
+        print(f"[Sentiment] Crypto F&G fetch failed: {e}")
+        result["crypto"] = None
+
+    # --- 3) VIX fear level ---
+    cache = load_price_cache(BASE)
+    stocks = cache.get("stocks", {})
+    vix_val = stocks.get("^VIX") or stocks.get("VIX") or 0
+    if vix_val:
+        vix_score = _vix_to_score(vix_val)
+        result["vix"] = {"value": round(vix_val, 1), "score": vix_score, "label": _fg_label(vix_score)}
+    else:
+        result["vix"] = None
+
+    # --- 4) Gold sentiment (computed) ---
+    try:
+        gold_price = (cache.get("metals", {}).get("GOLD") or 0)
+        dxy = stocks.get("DX-Y.NYB") or 0
+        gvz = stocks.get("^GVZ") or 0
+        gold_score = _compute_gold_sentiment(gold_price, vix_val, dxy, gvz)
+        result["gold"] = {"value": gold_score, "label": _fg_label(gold_score)}
+    except Exception as e:
+        print(f"[Sentiment] Gold sentiment calc failed: {e}")
+        result["gold"] = None
+
+    # --- 5) Yield curve sentiment ---
+    try:
+        treasury = cache.get("treasury", {})
+        y10 = treasury.get("tnx_10y")
+        y2 = treasury.get("tnx_2y")
+        if y10 is not None and y2 is not None:
+            spread = y10 - y2
+            yc_score = _yield_curve_to_score(spread)
+            result["yield_curve"] = {"value": yc_score, "spread": round(spread, 2), "label": _fg_label(yc_score)}
+        else:
+            result["yield_curve"] = None
+    except Exception:
+        result["yield_curve"] = None
+
+    _sentiment_cache["data"] = result
+    _sentiment_cache["ts"] = now
+    return jsonify(result)
+
+
+def _fg_label(score):
+    if score <= 25:
+        return "Extreme Fear"
+    elif score <= 45:
+        return "Fear"
+    elif score <= 55:
+        return "Neutral"
+    elif score <= 75:
+        return "Greed"
+    else:
+        return "Extreme Greed"
+
+
+def _vix_to_score(vix):
+    """Map VIX to 0-100 (inverted: high VIX = low score / more fear)."""
+    if vix >= 40:
+        return 5
+    elif vix >= 30:
+        return int(5 + (40 - vix) * 2)
+    elif vix >= 20:
+        return int(25 + (30 - vix) * 3.5)
+    elif vix >= 12:
+        return int(60 + (20 - vix) * 5)
+    else:
+        return 100
+
+
+def _compute_gold_sentiment(gold_price, vix, dxy, gvz):
+    """Compute a 0-100 gold sentiment score from available signals.
+    Higher = more bullish/greed for gold.
+    Signals: high gold price momentum (implied), low DXY, high VIX (safe-haven),
+    low gold volatility (calm accumulation)."""
+    score = 50  # baseline
+
+    if dxy:
+        if dxy < 100:
+            score += min(15, (100 - dxy) * 1.5)
+        else:
+            score -= min(15, (dxy - 100) * 1.5)
+
+    if vix:
+        if vix > 25:
+            score += min(10, (vix - 25) * 1.0)
+        elif vix < 15:
+            score -= min(10, (15 - vix) * 1.5)
+
+    if gvz:
+        if gvz < 15:
+            score += 8
+        elif gvz > 25:
+            score -= min(10, (gvz - 25) * 1.0)
+
+    if gold_price:
+        if gold_price > 2500:
+            score += min(10, (gold_price - 2500) / 100)
+        elif gold_price < 1800:
+            score -= min(10, (1800 - gold_price) / 100)
+
+    return max(0, min(100, round(score)))
+
+
+def _yield_curve_to_score(spread):
+    """Map 10Y-2Y spread to 0-100 sentiment. Inverted curve = fear, steep = greed."""
+    if spread < -1.0:
+        return 0
+    elif spread < 0:
+        return int(25 + spread * 25)
+    elif spread < 0.5:
+        return int(25 + spread * 60)
+    elif spread < 1.5:
+        return int(55 + (spread - 0.5) * 35)
+    else:
+        return min(100, int(90 + (spread - 1.5) * 10))
+

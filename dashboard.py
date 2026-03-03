@@ -1313,6 +1313,43 @@ html.light .skeleton {{ background:linear-gradient(90deg, rgba(0,0,0,0.04) 25%, 
   .pcm-box {{ width:100vw; max-width:100vw; max-height:100vh; border-radius:0; }}
   .pcm-body {{ min-height:260px; }}
 }}
+
+/* ── Sentiment Gauges ── */
+.sentiment-row {{
+  display:grid; grid-template-columns:repeat(5,1fr); gap:16px;
+  margin-bottom:4px;
+}}
+.sentiment-gauge {{
+  display:flex; flex-direction:column; align-items:center; gap:2px;
+}}
+.sentiment-gauge canvas {{ width:140px; height:85px; }}
+.gauge-title {{
+  font-size:0.7rem; font-weight:600; color:var(--text-secondary);
+  text-transform:uppercase; letter-spacing:0.04em;
+}}
+.gauge-value {{
+  font-family:var(--mono); font-size:1.35rem; font-weight:700;
+  color:var(--text-primary); line-height:1;
+}}
+.gauge-label {{
+  font-size:0.72rem; font-weight:600; padding:2px 8px; border-radius:6px;
+  line-height:1.2;
+}}
+.gauge-label.extreme-fear {{ background:rgba(239,68,68,0.15); color:#ef4444; }}
+.gauge-label.fear         {{ background:rgba(249,115,22,0.15); color:#f97316; }}
+.gauge-label.neutral      {{ background:rgba(234,179,8,0.15);  color:#eab308; }}
+.gauge-label.greed        {{ background:rgba(34,197,94,0.15);  color:#22c55e; }}
+.gauge-label.extreme-greed{{ background:rgba(16,185,129,0.15); color:#10b981; }}
+.gauge-sub {{
+  font-size:0.65rem; color:var(--text-secondary); font-family:var(--mono);
+}}
+@media (max-width:900px) {{
+  .sentiment-row {{ grid-template-columns:repeat(3,1fr); }}
+}}
+@media (max-width:500px) {{
+  .sentiment-row {{ grid-template-columns:repeat(2,1fr); }}
+  .sentiment-gauge canvas {{ width:110px; height:68px; }}
+}}
 </style>
 </head>
 <body>
@@ -1973,6 +2010,46 @@ html.light .skeleton {{ background:linear-gradient(90deg, rgba(0,0,0,0.04) 25%, 
 <!-- ═══ CHARTS TAB ═══ -->
 <div id="tab-history" class="tab">
 <!-- TAB:history -->
+  <!-- Market Sentiment -->
+  <div class="card" id="sentiment-card">
+    <div class="card-title">Market Sentiment</div>
+    <p class="hint" style="margin-bottom:14px;">Fear &amp; Greed gauges across asset classes. Updated every 30 min. Gold score is computed from momentum, dollar strength, and volatility.</p>
+    <div class="sentiment-row">
+      <div class="sentiment-gauge" data-gauge="stock">
+        <span class="gauge-title">Stocks (CNN F&amp;G)</span>
+        <canvas id="gauge-stock" width="140" height="85"></canvas>
+        <span class="gauge-value" id="gv-stock">--</span>
+        <span class="gauge-label neutral" id="gl-stock">Loading</span>
+      </div>
+      <div class="sentiment-gauge" data-gauge="crypto">
+        <span class="gauge-title">Crypto</span>
+        <canvas id="gauge-crypto" width="140" height="85"></canvas>
+        <span class="gauge-value" id="gv-crypto">--</span>
+        <span class="gauge-label neutral" id="gl-crypto">Loading</span>
+      </div>
+      <div class="sentiment-gauge" data-gauge="gold">
+        <span class="gauge-title">Gold</span>
+        <canvas id="gauge-gold" width="140" height="85"></canvas>
+        <span class="gauge-value" id="gv-gold">--</span>
+        <span class="gauge-label neutral" id="gl-gold">Loading</span>
+      </div>
+      <div class="sentiment-gauge" data-gauge="vix">
+        <span class="gauge-title">VIX</span>
+        <canvas id="gauge-vix" width="140" height="85"></canvas>
+        <span class="gauge-value" id="gv-vix">--</span>
+        <span class="gauge-label neutral" id="gl-vix">Loading</span>
+        <span class="gauge-sub" id="gs-vix"></span>
+      </div>
+      <div class="sentiment-gauge" data-gauge="yield_curve">
+        <span class="gauge-title">Yield Curve</span>
+        <canvas id="gauge-yield_curve" width="140" height="85"></canvas>
+        <span class="gauge-value" id="gv-yield_curve">--</span>
+        <span class="gauge-label neutral" id="gl-yield_curve">Loading</span>
+        <span class="gauge-sub" id="gs-yield_curve"></span>
+      </div>
+    </div>
+  </div>
+
   <!-- Projected Growth -->
   <div class="card">
     <div class="card-title">Projected Growth</div>
@@ -2194,6 +2271,7 @@ function _postTabInit(t) {{
     if (typeof runMonteCarlo === "function") runMonteCarlo();
     if (typeof buildDrawdownChart === "function") buildDrawdownChart();
     if (typeof buildPerfAttribution === "function") buildPerfAttribution();
+    if (typeof loadSentimentGauges === "function") loadSentimentGauges();
   }}
   if (t === "budget") _initBudgetListeners();
 }}
@@ -4932,6 +5010,104 @@ function convertDisplayCurrency(rate, symbol) {{
     _startLongPoll();
   }});
 }})();
+
+/* ── Sentiment Gauges ── */
+var _sentimentLoaded = false;
+function loadSentimentGauges() {{
+  if (_sentimentLoaded) return;
+  _sentimentLoaded = true;
+  fetch("/api/sentiment")
+    .then(function(r) {{ return r.json(); }})
+    .then(function(d) {{
+      var keys = ["stock", "crypto", "gold", "vix", "yield_curve"];
+      keys.forEach(function(k) {{
+        var info = d[k];
+        if (!info) {{
+          var lbl = document.getElementById("gl-" + k);
+          if (lbl) {{ lbl.textContent = "N/A"; lbl.className = "gauge-label neutral"; }}
+          return;
+        }}
+        var score = (k === "vix") ? info.score : info.value;
+        drawGauge("gauge-" + k, score);
+        var valEl = document.getElementById("gv-" + k);
+        if (valEl) valEl.textContent = score;
+        var lblEl = document.getElementById("gl-" + k);
+        if (lblEl) {{
+          lblEl.textContent = info.label;
+          lblEl.className = "gauge-label " + info.label.toLowerCase().replace(/\s+/g, "-");
+        }}
+        var subEl = document.getElementById("gs-" + k);
+        if (subEl) {{
+          if (k === "vix") subEl.textContent = "VIX: " + info.value;
+          if (k === "yield_curve" && info.spread != null) subEl.textContent = "Spread: " + (info.spread > 0 ? "+" : "") + info.spread.toFixed(2) + "%";
+        }}
+      }});
+    }})
+    .catch(function(e) {{
+      console.warn("[Sentiment] fetch failed:", e);
+    }});
+}}
+
+function drawGauge(canvasId, value) {{
+  var c = document.getElementById(canvasId);
+  if (!c) return;
+  var dpr = window.devicePixelRatio || 1;
+  var w = c.clientWidth || 140;
+  var h = c.clientHeight || 85;
+  c.width = w * dpr;
+  c.height = h * dpr;
+  var ctx = c.getContext("2d");
+  ctx.scale(dpr, dpr);
+
+  var cx = w / 2;
+  var cy = h - 8;
+  var r = Math.min(cx - 6, cy - 4);
+  var startAngle = Math.PI;
+  var endAngle = 2 * Math.PI;
+  var lineW = 10;
+
+  // Background track
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, startAngle, endAngle);
+  ctx.lineWidth = lineW;
+  ctx.strokeStyle = "rgba(255,255,255,0.06)";
+  ctx.lineCap = "round";
+  ctx.stroke();
+
+  // Gradient arc
+  var grad = ctx.createLinearGradient(cx - r, cy, cx + r, cy);
+  grad.addColorStop(0,   "#ef4444");
+  grad.addColorStop(0.25,"#f97316");
+  grad.addColorStop(0.5, "#eab308");
+  grad.addColorStop(0.75,"#22c55e");
+  grad.addColorStop(1,   "#10b981");
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, startAngle, endAngle);
+  ctx.lineWidth = lineW;
+  ctx.strokeStyle = grad;
+  ctx.lineCap = "round";
+  ctx.stroke();
+
+  // Needle
+  var pct = Math.max(0, Math.min(100, value)) / 100;
+  var needleAngle = Math.PI + pct * Math.PI;
+  var needleLen = r - 6;
+  var nx = cx + Math.cos(needleAngle) * needleLen;
+  var ny = cy + Math.sin(needleAngle) * needleLen;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy);
+  ctx.lineTo(nx, ny);
+  ctx.lineWidth = 2.5;
+  ctx.strokeStyle = "rgba(255,255,255,0.85)";
+  ctx.lineCap = "round";
+  ctx.stroke();
+
+  // Center dot
+  ctx.beginPath();
+  ctx.arc(cx, cy, 4, 0, 2 * Math.PI);
+  ctx.fillStyle = "rgba(255,255,255,0.9)";
+  ctx.fill();
+}}
 
 </script>
 </body>

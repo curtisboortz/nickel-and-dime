@@ -267,6 +267,39 @@ def render_dashboard(data: dict, saved: str = "", active_tab: str = "summary", d
     holding_rows += '<tr><td><input type="text" name="h_account" placeholder="Account"></td><td><input type="text" name="h_ticker" placeholder="Ticker"></td><td><input type="text" name="h_asset_class" placeholder="Asset class"></td><td><input type="text" name="h_qty" class="num" placeholder="Qty"></td><td></td><td></td><td><input type="text" name="h_value_override" class="num" placeholder="Value override"></td><td><input type="text" name="h_notes" placeholder="Notes"></td></tr>'
     totals_row = f'<tr style="font-weight:600;border-top:2px solid #30363d"><td colspan="4">Holdings total (should match CSV)</td><td></td><td style="text-align:right;color:#58a6ff">${holdings_total:,.2f}</td><td colspan="2"></td></tr>'
 
+    # Crypto holdings (Coinbase) table rows
+    crypto_holdings_list = config.get("crypto_holdings", [])
+    crypto_rows_html = ""
+    crypto_total_value = 0.0
+    crypto_entries = []
+    for ch in crypto_holdings_list:
+        sym = ch.get("symbol", "")
+        qty = float(ch.get("qty", 0))
+        price = crypto_prices.get(sym, 0)
+        val = qty * price
+        if val < 0.01 and qty < 0.001:
+            continue
+        crypto_entries.append((sym, qty, price, val))
+        crypto_total_value += val
+    crypto_entries.sort(key=lambda x: -x[3])
+    for sym, qty, price, val in crypto_entries:
+        qty_fmt = f"{qty:.6f}" if qty < 1 else (f"{qty:.4f}" if qty < 100 else f"{qty:,.2f}")
+        price_s = f"${price:,.2f}" if price else "—"
+        val_s = f"${val:,.2f}" if val >= 0.01 else "<$0.01"
+        pct = (val / crypto_total_value * 100) if crypto_total_value > 0 else 0
+        bar_w = min(100, pct)
+        crypto_rows_html += (
+            f'<tr>'
+            f'<td style="font-weight:600">{sym}</td>'
+            f'<td class="mono" style="text-align:right">{qty_fmt}</td>'
+            f'<td class="mono" style="text-align:right;color:#8b949e">{price_s}</td>'
+            f'<td class="mono" style="text-align:right;color:#e6edf3">{val_s}</td>'
+            f'<td style="text-align:right;color:#8b949e;font-size:0.8rem">{pct:.1f}%</td>'
+            f'<td style="width:80px"><div style="background:rgba(88,166,255,0.15);border-radius:3px;height:6px;width:100%"><div style="background:#58a6ff;border-radius:3px;height:6px;width:{bar_w:.1f}%"></div></div></td>'
+            f'</tr>'
+        )
+    crypto_totals_row = f'<tr style="font-weight:600;border-top:2px solid #30363d"><td>Total</td><td colspan="2"></td><td class="mono" style="text-align:right;color:#58a6ff">${crypto_total_value:,.2f}</td><td colspan="2"></td></tr>'
+
     # Physical metals table rows
     phys_metals = config.get("physical_metals", [])
     metals_rows_html = ""
@@ -1829,6 +1862,32 @@ html.light .skeleton {{ background:linear-gradient(90deg, rgba(0,0,0,0.04) 25%, 
       </div>
       <button type="submit" class="success" style="margin-top:16px;">Save Holdings</button>
     </form>
+  </div>
+
+  <!-- Crypto Holdings (Coinbase) -->
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Crypto Holdings</div>
+        <div class="card-subtitle">Synced from Coinbase &mdash; {len(crypto_entries)} assets</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:20px;margin-bottom:12px;">
+      <div style="padding:10px 16px;background:var(--bg-input);border-radius:var(--radius);flex:1;text-align:center;">
+        <div class="hint" style="margin-bottom:4px;">Total Value</div>
+        <div class="mono" style="font-size:1.1rem;color:#58a6ff;">${crypto_total_value:,.2f}</div>
+      </div>
+      <div style="padding:10px 16px;background:var(--bg-input);border-radius:var(--radius);flex:1;text-align:center;">
+        <div class="hint" style="margin-bottom:4px;">Assets</div>
+        <div class="mono" style="font-size:1.1rem;color:var(--text-primary);">{len(crypto_entries)}</div>
+      </div>
+    </div>
+    <div style="max-height:350px;overflow-y:auto;">
+      <table>
+        <thead><tr><th>Symbol</th><th style="text-align:right">Qty</th><th style="text-align:right">Price</th><th style="text-align:right">Value</th><th style="text-align:right">%</th><th></th></tr></thead>
+        <tbody>{crypto_rows_html}{crypto_totals_row}</tbody>
+      </table>
+    </div>
   </div>
 
   <!-- Physical Metals -->

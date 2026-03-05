@@ -2677,7 +2677,8 @@ function saveContributions() {{
   .then(function(res){{
     if(res.success) {{
       var btn=document.querySelector("button[onclick*='saveContributions']");
-      if(btn) {{ var orig=btn.textContent; btn.textContent="Saved!"; setTimeout(function(){{ btn.textContent=orig; }},1500); }}
+      if(btn) {{ btn.textContent="Saved!"; }}
+      setTimeout(function() {{ location.reload(); }}, 600);
     }}
   }});
 }}
@@ -2690,9 +2691,14 @@ function newBudgetMonth() {{
   fetch("/api/new-budget-month",{{method:"POST"}}).then(function(r){{return r.json();}}).then(function(d){{ if(d.success) location.reload(); }});
 }}
 var saveTimeout;
+function _autoSaveContributions() {{
+  var data={{}};
+  document.querySelectorAll(".contrib-input").forEach(function(i) {{ data[i.dataset.key]=parseFloat(i.value)||0; }});
+  fetch("/api/save-contributions",{{ method:"POST", headers:{{"Content-Type":"application/json"}}, body:JSON.stringify(data) }});
+}}
 document.querySelectorAll(".contrib-input").forEach(function(input) {{
-  input.addEventListener("input", function() {{ updateProgressBar(this); clearTimeout(saveTimeout); saveTimeout=setTimeout(saveContributions,1000); }});
-  input.addEventListener("change", function() {{ updateProgressBar(this); clearTimeout(saveTimeout); saveTimeout=setTimeout(saveContributions,500); }});
+  input.addEventListener("input", function() {{ updateProgressBar(this); clearTimeout(saveTimeout); saveTimeout=setTimeout(_autoSaveContributions,1000); }});
+  input.addEventListener("change", function() {{ updateProgressBar(this); clearTimeout(saveTimeout); saveTimeout=setTimeout(_autoSaveContributions,500); }});
 }});
 
 /* ── Investment Quick-Log Chat ── */
@@ -2870,7 +2876,11 @@ function processInvestChat() {{
   input.value = "";
   if (hasContribEntry && results.some(function(r) {{ return r.ok; }})) {{
     clearTimeout(saveTimeout);
-    saveTimeout = setTimeout(saveContributions, 500);
+    // Save contributions then reload to reflect updated totals
+    var cdata={{}};
+    document.querySelectorAll(".contrib-input").forEach(function(i) {{ cdata[i.dataset.key]=parseFloat(i.value)||0; }});
+    fetch("/api/save-contributions",{{ method:"POST", headers:{{"Content-Type":"application/json"}}, body:JSON.stringify(cdata) }})
+    .then(function() {{ setTimeout(function() {{ location.reload(); }}, 800); }});
     updateTotals();
   }}
 }}

@@ -797,7 +797,8 @@ def save_balances():
     with open(CONFIG_PATH, "w", encoding="utf-8") as f:
         json.dump(config, f, indent=2)
     append_history_log("Balances updated", "Blended account values saved from dashboard")
-    run_price_update(config, fetch_metals=False)
+    import threading
+    threading.Thread(target=run_price_update, args=(config,), kwargs={"fetch_metals": False}, daemon=True).start()
     return redirect("/?saved=Balances&tab=balances")
 
 @bp.route("/save/budget", methods=["POST"])
@@ -819,7 +820,8 @@ def save_budget():
     with open(CONFIG_PATH, "w", encoding="utf-8") as f:
         json.dump(config, f, indent=2)
     append_history_log("Budget updated", "Monthly income and category limits saved from dashboard")
-    run_price_update(config, fetch_metals=False)
+    import threading
+    threading.Thread(target=run_price_update, args=(config,), kwargs={"fetch_metals": False}, daemon=True).start()
     return redirect("/?saved=Budget&tab=budget")
 
 @bp.route("/save/debts", methods=["POST"])
@@ -868,7 +870,8 @@ def import_csv_route():
     if updated:
         config = load_config(CONFIG_PATH)
         append_history_log("CSV import", f"{msg} (source: {source})")
-        run_price_update(config, fetch_metals=False)
+        import threading
+        threading.Thread(target=run_price_update, args=(config,), kwargs={"fetch_metals": False}, daemon=True).start()
     return redirect("/?saved=" + quote(msg) + "&tab=import")
 
 @bp.route("/api/statement-preview", methods=["POST"])
@@ -1263,7 +1266,8 @@ def save_holdings():
     with open(CONFIG_PATH, "w", encoding="utf-8") as f:
         json.dump(config, f, indent=2)
     append_history_log("Holdings updated", f"{len(new_holdings)} positions saved from dashboard")
-    run_price_update(config, fetch_metals=False)
+    import threading
+    threading.Thread(target=run_price_update, args=(config,), kwargs={"fetch_metals": False}, daemon=True).start()
     return redirect("/?saved=Holdings&tab=holdings")
 
 @bp.route("/api/quick-update", methods=["POST"])

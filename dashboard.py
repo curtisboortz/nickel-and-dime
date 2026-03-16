@@ -14,17 +14,35 @@ def render_economics_fragment_html() -> str:
     """Return the inner HTML for the Economics tab (lazily loaded on first visit)."""
     return """  <div class="card">
     <div class="card-title">US Economics &amp; Fiscal Data</div>
-    <p class="hint" style="margin-bottom:12px;">Data from FRED (Federal Reserve Economic Data). Set <code>FRED_API_KEY</code> in .env or api_keys.fred_api_key in config for live data.</p>
-    <div style="display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-bottom:16px;">
+    <div id="fred-load-status" class="hint" style="margin-bottom:12px;"></div>
+
+    <!-- Economic Calendar -->
+    <div id="fred-section-econcal" class="card" style="margin-top:16px;padding:16px;">
+      <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin-bottom:10px;">
+        <div class="card-title" style="margin:0;">Economic Calendar</div>
+        <span id="econcal-week" style="font-size:0.85rem;color:#94a3b8;"></span>
+        <div style="margin-left:auto;display:flex;gap:6px;">
+          <button type="button" id="econcal-prev" style="padding:5px 10px;font-size:0.82rem;border:1px solid rgba(255,255,255,0.2);border-radius:6px;background:rgba(255,255,255,0.06);color:#e2e8f0;cursor:pointer;">&laquo; Prev</button>
+          <button type="button" id="econcal-this" style="padding:5px 10px;font-size:0.82rem;border:1px solid rgba(99,102,241,0.5);border-radius:6px;background:rgba(99,102,241,0.15);color:#a5b4fc;cursor:pointer;font-weight:600;">This week</button>
+          <button type="button" id="econcal-next" style="padding:5px 10px;font-size:0.82rem;border:1px solid rgba(255,255,255,0.2);border-radius:6px;background:rgba(255,255,255,0.06);color:#e2e8f0;cursor:pointer;">Next &raquo;</button>
+        </div>
+      </div>
+      <div id="econcal-body" style="max-height:440px;overflow-y:auto;">
+        <p class="hint">Loading economic events&hellip;</p>
+      </div>
+      <p class="hint" style="margin-top:8px;">US economic data releases. Actuals update as numbers are reported. <span style="display:inline-block;width:8px;height:8px;background:#ef4444;border-radius:50%;"></span> High &nbsp;<span style="display:inline-block;width:8px;height:8px;background:#f59e0b;border-radius:50%;"></span> Medium &nbsp;<span style="display:inline-block;width:8px;height:8px;background:#64748b;border-radius:50%;"></span> Low impact.</p>
+    </div>
+
+    <!-- FRED Charts Controls -->
+    <div style="display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-top:20px;margin-bottom:4px;">
       <button type="button" class="secondary" id="fred-refresh-btn">Refresh FRED Data</button>
-      <span class="label" style="margin:0;">Horizon</span>
+      <span class="label" style="margin:0;">Range:</span>
       <select id="fred-horizon" style="padding:6px 10px;font-size:0.85rem;">
         <option value="1y">1 year (fast)</option>
         <option value="5y">5 years</option>
         <option value="max">Max (~50y)</option>
       </select>
     </div>
-    <div id="fred-load-status" class="hint" style="margin-bottom:12px;"></div>
 
     <!-- National Debt & Fiscal Policy -->
     <div id="fred-section-debt" class="card" style="margin-top:16px;padding:16px;">
@@ -65,6 +83,17 @@ def render_economics_fragment_html() -> str:
       <div class="card-title" style="font-size:0.9rem;margin-top:16px;">Treasury Yield Curve (current vs 1Y ago)</div>
       <div style="position:relative;height:220px;margin-top:8px;"><canvas id="fred-chart-yield-curve"></canvas></div>
       <p class="hint" style="margin-top:8px;">Inverted curve (short rates &gt; long) often precedes recessions. Fed Funds drives short-term rates; M2 shows liquidity.</p>
+    </div>
+
+    <!-- FedWatch Rate Expectations -->
+    <div id="fred-section-fedwatch" class="card" style="margin-top:16px;padding:16px;">
+      <div class="card-title" style="margin-bottom:4px;">Fed Rate Expectations (FedWatch)</div>
+      <p class="hint" style="margin-bottom:12px;">Market-implied probabilities derived from 30-Day Fed Funds Futures.</p>
+      <div id="fw-tabs" style="display:flex;gap:2px;flex-wrap:wrap;margin-bottom:16px;"></div>
+      <div id="fw-info" style="margin-bottom:12px;"></div>
+      <div id="fw-title" style="font-size:0.85rem;font-weight:600;color:var(--text-primary);margin-bottom:4px;"></div>
+      <div id="fw-subtitle" style="font-size:0.78rem;color:var(--accent-primary);margin-bottom:12px;text-align:center;"></div>
+      <div style="position:relative;height:260px;"><canvas id="fw-bar-chart"></canvas></div>
     </div>
 
     <!-- Credit Stress -->
@@ -150,6 +179,30 @@ def render_economics_fragment_html() -> str:
         <div><div style="position:relative;height:200px;"><canvas id="fred-chart-sentiment"></canvas></div></div>
       </div>
       <p class="hint" style="margin-top:8px;">Quarterly GDP growth (real, annualized) and U. of Michigan consumer sentiment. Sentiment can lead or confirm economic turns.</p>
+    </div>
+
+    <!-- Market Valuation (CAPE) -->
+    <div id="fred-section-cape" class="card" style="margin-top:16px;padding:16px;">
+      <div class="card-title" style="margin-bottom:12px;">Market Valuation (Shiller CAPE Ratio)</div>
+      <div id="cape-stats" class="pulse-bar" style="flex-wrap:wrap;gap:12px;margin-bottom:16px;"></div>
+      <div style="position:relative;height:240px;"><canvas id="cape-chart"></canvas></div>
+      <p class="hint" style="margin-top:8px;">Cyclically-adjusted P/E (CAPE) smooths earnings over 10 years. Long-term median ~16.8. Above 25 = historically expensive. Below 15 = historically cheap.</p>
+    </div>
+
+    <!-- Buffett Indicator -->
+    <div id="fred-section-buffett" class="card" style="margin-top:16px;padding:16px;">
+      <div class="card-title" style="margin-bottom:12px;">Buffett Indicator (Total Market Cap / GDP)</div>
+      <div id="buffett-stats" class="pulse-bar" style="flex-wrap:wrap;gap:12px;margin-bottom:16px;"></div>
+      <div style="position:relative;height:240px;"><canvas id="buffett-chart"></canvas></div>
+      <p class="hint" style="margin-top:8px;">Warren Buffett&#39;s &ldquo;best single measure of valuations.&rdquo; Compares total US market cap to GDP. Long-term average ~120%. Above 140% = overvalued territory.</p>
+    </div>
+
+    <!-- World Uncertainty Index -->
+    <div id="fred-section-wui" class="card" style="margin-top:16px;padding:16px;">
+      <div class="card-title" style="margin-bottom:12px;">World Uncertainty Index (GDP-Weighted)</div>
+      <div id="fred-wui-stats" class="pulse-bar" style="flex-wrap:wrap;gap:12px;margin-bottom:16px;"></div>
+      <div style="position:relative;height:220px;"><canvas id="fred-chart-wui"></canvas></div>
+      <p class="hint" style="margin-top:8px;">Measures global uncertainty by counting &ldquo;uncertainty&rdquo; mentions in Economist Intelligence Unit country reports, GDP-weighted across 143 countries. Higher = more uncertainty. Spikes around major geopolitical and economic events.</p>
     </div>
 
     <!-- Housing -->
@@ -289,16 +342,16 @@ def render_dashboard(data: dict, saved: str = "", active_tab: str = "summary", d
         pct = (val / crypto_total_value * 100) if crypto_total_value > 0 else 0
         bar_w = min(100, pct)
         crypto_rows_html += (
-            f'<tr>'
+            f'<tr class="crypto-row" data-crypto-sym="{sym}" data-crypto-qty="{qty}">'
             f'<td style="font-weight:600">{sym}</td>'
             f'<td class="mono" style="text-align:right">{qty_fmt}</td>'
-            f'<td class="mono" style="text-align:right;color:#8b949e">{price_s}</td>'
-            f'<td class="mono" style="text-align:right;color:#e6edf3">{val_s}</td>'
-            f'<td style="text-align:right;color:#8b949e;font-size:0.8rem">{pct:.1f}%</td>'
-            f'<td style="width:80px"><div style="background:rgba(88,166,255,0.15);border-radius:3px;height:6px;width:100%"><div style="background:#58a6ff;border-radius:3px;height:6px;width:{bar_w:.1f}%"></div></div></td>'
+            f'<td class="mono crypto-price-cell" style="text-align:right;color:#8b949e">{price_s}</td>'
+            f'<td class="mono crypto-val-cell" style="text-align:right;color:#e6edf3">{val_s}</td>'
+            f'<td class="crypto-pct-cell" style="text-align:right;color:#8b949e;font-size:0.8rem">{pct:.1f}%</td>'
+            f'<td style="width:80px"><div style="background:rgba(88,166,255,0.15);border-radius:3px;height:6px;width:100%"><div class="crypto-bar-fill" style="background:#58a6ff;border-radius:3px;height:6px;width:{bar_w:.1f}%"></div></div></td>'
             f'</tr>'
         )
-    crypto_totals_row = f'<tr style="font-weight:600;border-top:2px solid #30363d"><td>Total</td><td colspan="2"></td><td class="mono" style="text-align:right;color:#58a6ff">${crypto_total_value:,.2f}</td><td colspan="2"></td></tr>'
+    crypto_totals_row = f'<tr style="font-weight:600;border-top:2px solid #30363d"><td>Total</td><td colspan="2"></td><td id="crypto-total-val" class="mono" style="text-align:right;color:#58a6ff">${crypto_total_value:,.2f}</td><td colspan="2"></td></tr>'
 
     # Physical metals table rows
     phys_metals = config.get("physical_metals", [])
@@ -460,19 +513,22 @@ def render_dashboard(data: dict, saved: str = "", active_tab: str = "summary", d
     btc_price = crypto_prices.get("BTC", 0)
     eth_price = crypto_prices.get("ETH", 0)
     spy_price = stock_prices.get("SPY", 0)
-    dxy_price = stock_prices.get("DX-Y.NYB", 0)
+    dxy_price = stock_prices.get("DX=F", 0)
     vix_price = stock_prices.get("^VIX", 0)
     oil_price = stock_prices.get("CL=F", 0)
     copper_price = stock_prices.get("HG=F", 0)
+    gold_oil_ratio = gold_price / oil_price if gold_price and oil_price else None
+    gold_oil_s = f"{gold_oil_ratio:.1f}" if gold_oil_ratio is not None else "—"
 
     # ── Market Pulse Cards (built-in + custom) ──
     default_pulse_cards = [
         {"id": "gold", "label": "Gold", "value": gold_price, "fmt": "dollar0", "color": "gold", "spark": "GC=F"},
         {"id": "silver", "label": "Silver", "value": silver_price, "fmt": "dollar2", "color": "silver", "spark": "SI=F"},
         {"id": "au_ag", "label": "Au/Ag Ratio", "value": gs_ratio_s, "fmt": "raw"},
-        {"id": "dxy", "label": "DXY", "value": dxy_price, "fmt": "dollar2_nodollar", "spark": "DX-Y.NYB"},
+        {"id": "dxy", "label": "DXY", "value": dxy_price, "fmt": "dollar2_nodollar", "spark": "DX=F"},
         {"id": "vix", "label": "VIX", "value": vix_price, "fmt": "dollar2_nodollar", "spark": "^VIX"},
         {"id": "oil", "label": "Oil", "value": oil_price, "fmt": "dollar2", "spark": "CL=F"},
+        {"id": "gold_oil", "label": "Gold/Oil", "value": round(gold_oil_ratio, 2) if gold_oil_ratio else 0, "fmt": "raw2"},
         {"id": "copper", "label": "Copper", "value": copper_price, "fmt": "dollar2", "spark": "HG=F"},
         {"id": "tnx_10y", "label": "10Y Yield", "value": tnx_10y_s, "fmt": "raw"},
         {"id": "tnx_2y", "label": "2Y Yield", "value": tnx_2y_s, "fmt": "raw"},
@@ -660,6 +716,13 @@ def render_dashboard(data: dict, saved: str = "", active_tab: str = "summary", d
 
     # Pre-computed JS data
     holdings_tickers_json = json.dumps([h.get("ticker","") for h in cfg_holdings]).replace("</","<\\/")
+    # Quick-access tickers for Technical Analysis (user's holdings + market staples)
+    _skip_ta = {"SPAXX", "FZROX", "FXNAX"}  # money-market / non-tradable
+    ta_tickers = list(dict.fromkeys([h.get("ticker","").upper() for h in cfg_holdings if h.get("ticker","") and h.get("ticker","").upper() not in _skip_ta]))
+    for _mkt in ["SPY", "QQQ", "DIA", "GLD", "SLV", "BTCUSD", "ETHUSD", "DXY", "TLT", "VIX"]:
+        if _mkt not in ta_tickers:
+            ta_tickers.append(_mkt)
+    ta_tickers_json = json.dumps(ta_tickers).replace("</","<\\/")
     budget_cats_json = json.dumps([c.get("name","") for c in categories]).replace("</","<\\/")
     budget_limits_json = json.dumps({c.get("name",""): float(c.get("limit",0) or 0) for c in categories}).replace("</","<\\/")
     num_holdings = len(cfg_holdings)
@@ -1376,6 +1439,35 @@ html.light .skeleton {{ background:linear-gradient(90deg, rgba(0,0,0,0.04) 25%, 
 .gauge-sub {{
   font-size:0.65rem; color:var(--text-secondary); font-family:var(--mono);
 }}
+.sentiment-gauge {{ cursor:pointer; border-radius:10px; padding:8px 4px; transition:background 0.2s, box-shadow 0.2s; }}
+.sentiment-gauge:hover {{ background:rgba(255,255,255,0.04); }}
+.sentiment-gauge.active {{ background:rgba(99,102,241,0.1); box-shadow:0 0 0 2px rgba(99,102,241,0.3); }}
+#sentiment-detail {{
+  max-height:0; overflow:hidden; transition:max-height 0.35s ease, margin-top 0.35s ease, opacity 0.3s ease;
+  opacity:0; margin-top:0;
+}}
+#sentiment-detail.open {{
+  max-height:400px; opacity:1; margin-top:16px;
+}}
+#sentiment-detail-header {{
+  display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;
+}}
+#sentiment-detail-title {{
+  font-size:0.9rem; font-weight:600; color:var(--text-primary);
+}}
+#sentiment-detail-close {{
+  background:none; border:none; color:var(--text-secondary); cursor:pointer;
+  font-size:1.1rem; padding:2px 6px; border-radius:4px;
+}}
+#sentiment-detail-close:hover {{ color:var(--text-primary); background:rgba(255,255,255,0.06); }}
+.range-btn-group {{ display:flex; gap:2px; background:rgba(255,255,255,0.04); border-radius:6px; padding:2px; }}
+.range-btn {{
+  background:none; border:none; color:var(--text-secondary); cursor:pointer;
+  font-size:0.7rem; font-weight:600; padding:3px 8px; border-radius:4px;
+  transition:background 0.15s, color 0.15s;
+}}
+.range-btn:hover {{ color:var(--text-primary); background:rgba(255,255,255,0.06); }}
+.range-btn.active {{ color:var(--accent-primary); background:rgba(99,102,241,0.15); }}
 @media (max-width:900px) {{
   .sentiment-row {{ grid-template-columns:repeat(3,1fr); }}
 }}
@@ -1415,11 +1507,15 @@ html.light .skeleton {{ background:linear-gradient(90deg, rgba(0,0,0,0.04) 25%, 
     </a>
     <a class="nav-item" data-tab="history" href="#">
       <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-      <span class="tooltip">Charts</span>
+      <span class="tooltip">Portfolio</span>
     </a>
     <a class="nav-item" data-tab="economics" href="#">
       <svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
       <span class="tooltip">Economics</span>
+    </a>
+    <a class="nav-item" data-tab="technical" href="#">
+      <svg viewBox="0 0 24 24"><line x1="7" y1="2" x2="7" y2="8"/><rect x="5" y="8" width="4" height="7"/><line x1="7" y1="15" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="6"/><rect x="15" y="6" width="4" height="10"/><line x1="17" y1="16" x2="17" y2="22"/></svg>
+      <span class="tooltip">Technical</span>
     </a>
   </div>
   <div class="sidebar-bottom">
@@ -1466,9 +1562,9 @@ html.light .skeleton {{ background:linear-gradient(90deg, rgba(0,0,0,0.04) 25%, 
     <button class="mob-item active" data-tab="summary"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Home</button>
     <button class="mob-item" data-tab="holdings"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a4 4 0 00-8 0v2"/></svg>Holdings</button>
     <button class="mob-item" data-tab="budget"><svg viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>Budget</button>
-    <button class="mob-item" data-tab="history"><svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Charts</button>
+    <button class="mob-item" data-tab="history"><svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Portfolio</button>
     <button class="mob-item" data-tab="economics"><svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>Econ</button>
-    <button class="mob-item" data-tab="balances"><svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>More</button>
+    <button class="mob-item" data-tab="technical"><svg viewBox="0 0 24 24"><line x1="7" y1="2" x2="7" y2="8"/><rect x="5" y="8" width="4" height="7"/><line x1="7" y1="15" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="6"/><rect x="15" y="6" width="4" height="10"/><line x1="17" y1="16" x2="17" y2="22"/></svg>TA</button>
   </div>
 </nav>
 
@@ -1506,6 +1602,7 @@ html.light .skeleton {{ background:linear-gradient(90deg, rgba(0,0,0,0.04) 25%, 
     <div class="card hero-chart-card" style="flex:1;min-width:280px;margin:0;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
         <div class="card-title" style="font-size:0.8rem;margin:0;">Portfolio History</div>
+        <span id="hist-hover-info" style="font-family:'JetBrains Mono',monospace;font-size:0.65rem;color:var(--text-muted);opacity:0;transition:opacity 0.15s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;text-align:center;padding:0 8px;"></span>
         <div style="display:flex;gap:4px;">
           <button type="button" class="chart-toggle active" id="hist-line-btn" onclick="setHistoryChartType('line')" title="Line chart">&#9135;</button>
           <button type="button" class="chart-toggle" id="hist-candle-btn" onclick="setHistoryChartType('candlestick')" title="Candlestick chart">&#9649;</button>
@@ -1875,7 +1972,7 @@ html.light .skeleton {{ background:linear-gradient(90deg, rgba(0,0,0,0.04) 25%, 
     <div style="display:flex;gap:20px;margin-bottom:12px;">
       <div style="padding:10px 16px;background:var(--bg-input);border-radius:var(--radius);flex:1;text-align:center;">
         <div class="hint" style="margin-bottom:4px;">Total Value</div>
-        <div class="mono" style="font-size:1.1rem;color:#58a6ff;">${crypto_total_value:,.2f}</div>
+        <div id="crypto-header-total" class="mono" style="font-size:1.1rem;color:#58a6ff;">${crypto_total_value:,.2f}</div>
       </div>
       <div style="padding:10px 16px;background:var(--bg-input);border-radius:var(--radius);flex:1;text-align:center;">
         <div class="hint" style="margin-bottom:4px;">Assets</div>
@@ -1926,11 +2023,11 @@ html.light .skeleton {{ background:linear-gradient(90deg, rgba(0,0,0,0.04) 25%, 
       </div>
       <div style="padding:10px 16px;background:var(--bg-input);border-radius:var(--radius);flex:1;text-align:center;">
         <div class="hint" style="margin-bottom:4px;">Total Value</div>
-        <div class="mono" style="font-size:1.1rem;color:#58a6ff;">${metals_total_value:,.2f}</div>
+        <div id="metals-header-total" class="mono" style="font-size:1.1rem;color:#58a6ff;">${metals_total_value:,.2f}</div>
       </div>
       <div style="padding:10px 16px;background:var(--bg-input);border-radius:var(--radius);flex:1;text-align:center;">
         <div class="hint" style="margin-bottom:4px;">Gain / Loss</div>
-        <div class="mono" style="font-size:1.1rem;{metals_gl_cls}">${metals_total_gl:+,.2f}</div>
+        <div id="metals-header-gl" class="mono" style="font-size:1.1rem;{metals_gl_cls}">${metals_total_gl:+,.2f}</div>
       </div>
     </div>
     <div style="max-height:300px;overflow-y:auto;">
@@ -2107,6 +2204,21 @@ html.light .skeleton {{ background:linear-gradient(90deg, rgba(0,0,0,0.04) 25%, 
         <span class="gauge-sub" id="gs-yield_curve"></span>
       </div>
     </div>
+    <div id="sentiment-detail">
+      <div id="sentiment-detail-header">
+        <span id="sentiment-detail-title"></span>
+        <div style="display:flex;align-items:center;gap:4px;">
+          <div id="sent-range-btns" class="range-btn-group">
+            <button class="range-btn active" data-range="1y">1Y</button>
+            <button class="range-btn" data-range="3y">3Y</button>
+            <button class="range-btn" data-range="5y">5Y</button>
+            <button class="range-btn" data-range="max">Max</button>
+          </div>
+          <button id="sentiment-detail-close" title="Close">&times;</button>
+        </div>
+      </div>
+      <div style="position:relative;height:220px;"><canvas id="sentiment-history-chart"></canvas></div>
+    </div>
   </div>
 
   <!-- Projected Growth -->
@@ -2202,65 +2314,6 @@ html.light .skeleton {{ background:linear-gradient(90deg, rgba(0,0,0,0.04) 25%, 
   <!-- Tax-Loss Harvesting -->
   {tlh_card_html}
 
-  <div class="card">
-    <div class="card-title">Market Charts</div>
-    <p class="hint" style="margin-bottom:16px;">Historical price data from Yahoo Finance</p>
-    <div class="chart-controls">
-      <div class="ctrl-group">
-        <span class="label">Asset</span>
-        <select id="market-asset">
-          <option value="GC=F">Gold</option>
-          <option value="SI=F">Silver</option>
-          <option value="SPY">SPY (S&amp;P 500)</option>
-          <option value="VTI">VTI (Total Market)</option>
-          <option value="DX-Y.NYB">Dollar Index (DXY)</option>
-          <option value="^VIX">VIX (Volatility)</option>
-          <option value="CL=F">Oil (WTI Crude)</option>
-          <option value="HG=F">Copper</option>
-          <option value="BTC-USD">Bitcoin</option>
-          <option value="ETH-USD">Ethereum</option>
-          <option value="^TNX">10Y Treasury</option>
-          <option value="2YY=F">2Y Treasury</option>
-          <option value="10Y2Y-SPREAD">10Y-2Y Spread</option>
-        </select>
-    </div>
-      <div class="ctrl-group">
-        <span class="label">Period</span>
-        <select id="market-period">
-          <option value="5d">1W</option>
-          <option value="1mo" selected>1M</option>
-          <option value="3mo">3M</option>
-          <option value="6mo">6M</option>
-          <option value="1y">1Y</option>
-          <option value="5y">5Y</option>
-          <option value="max">Max</option>
-        </select>
-  </div>
-      <div class="ctrl-group">
-        <span class="label">Type</span>
-        <select id="chart-type">
-          <option value="line">Line</option>
-          <option value="candlestick">Candlestick</option>
-        </select>
-    </div>
-      <div class="ctrl-group">
-        <span class="label">Scale</span>
-        <select id="chart-scale">
-          <option value="linear">Linear</option>
-          <option value="logarithmic">Log</option>
-        </select>
-      </div>
-      <div class="ctrl-group" style="justify-content:flex-end;gap:6px;flex-direction:row;">
-        <button type="button" id="load-market-chart" class="secondary" style="padding:8px 14px;font-size:0.8rem;">Load</button>
-        <button type="button" id="reset-zoom" class="secondary" style="padding:8px 14px;font-size:0.8rem;">Reset Zoom</button>
-      </div>
-    </div>
-    <p class="hint" style="margin-bottom:6px;">Drag to pan &middot; Scroll to zoom &middot; Double-click to reset</p>
-    <div style="position:relative;height:400px;">
-      <canvas id="market-chart"></canvas>
-    </div>
-    <p id="market-chart-status" class="hint" style="margin-top:10px;"></p>
-  </div>
 <!-- /TAB:history -->
 </div>
 
@@ -2272,6 +2325,17 @@ html.light .skeleton {{ background:linear-gradient(90deg, rgba(0,0,0,0.04) 25%, 
     <p style="margin-top:16px;">Loading economics data&hellip;</p>
   </div>
 <!-- /TAB:economics -->
+</div>
+
+<!-- ═══ TECHNICAL ANALYSIS TAB ═══ -->
+<div id="tab-technical" class="tab">
+  <div style="padding:10px 16px 0;">
+    <div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-bottom:10px;">
+      <span style="font-weight:600;font-size:0.85rem;color:var(--text-secondary);white-space:nowrap;">Quick access:</span>
+      <div id="ta-ticker-btns" style="display:flex;flex-wrap:wrap;gap:4px;"></div>
+    </div>
+    <div id="tv_chart_container" style="height:calc(100vh - 130px);border-radius:8px;overflow:hidden;background:#131722;"></div>
+  </div>
 </div>
 
 </div><!-- /main-content -->
@@ -2325,7 +2389,6 @@ function _initBudgetListeners() {{
 function _postTabInit(t) {{
   if (t === "economics" && typeof loadFredData === "function") loadFredData();
   if (t === "history") {{
-    if (typeof loadMarketChart === "function") {{ _initMarketChartListeners(); loadMarketChart(); }}
     if (typeof buildProjectionChart === "function") buildProjectionChart();
     if (typeof runMonteCarlo === "function") runMonteCarlo();
     if (typeof buildDrawdownChart === "function") buildDrawdownChart();
@@ -2333,6 +2396,7 @@ function _postTabInit(t) {{
     if (typeof loadSentimentGauges === "function") loadSentimentGauges();
   }}
   if (t === "budget") _initBudgetListeners();
+  if (t === "technical") initTechnicalTab();
 }}
 
 function showTab(t) {{
@@ -2355,6 +2419,7 @@ function showTab(t) {{
       }});
   }} else {{
     if (t === "economics" && typeof loadFredData === "function") loadFredData();
+    if (t === "technical" && typeof initTechnicalTab === "function") initTechnicalTab();
   }}
   var url = "/" + (t === "summary" ? "" : t);
   if (window.location.pathname !== url) history.pushState({{tab:t}}, "", url);
@@ -2363,7 +2428,7 @@ window.addEventListener("popstate", function(e) {{ if(e.state && e.state.tab) sh
 document.querySelectorAll(".nav-item, .mob-item").forEach(function(a) {{
   a.addEventListener("click", function(e) {{ e.preventDefault(); showTab(this.getAttribute("data-tab")); }});
 }});
-var tabMap = {{"balances":"balances","budget":"budget","holdings":"holdings","import":"import","history":"history","economics":"economics","charts":"history"}};
+var tabMap = {{"balances":"balances","budget":"budget","holdings":"holdings","import":"import","history":"history","economics":"economics","charts":"history","technical":"technical"}};
 var pathTab = window.location.pathname.substring(1);
 var tab = tabMap[pathTab] || new URLSearchParams(window.location.search).get("tab") || "summary";
 showTab(tab);
@@ -2452,25 +2517,26 @@ function buildHistoryChart(metric) {{
       }},
       options: {{
         responsive: true, maintainAspectRatio: false,
+        interaction: {{ intersect: false, mode: "nearest", axis: "x" }},
         plugins: {{
           legend: {{ display: false }},
-          tooltip: {{
-            yAlign:"bottom", caretPadding:8,
-            backgroundColor:"rgba(9,9,11,0.95)", titleColor:"#f1f5f9", bodyColor:"#94a3b8",
-            borderColor:"rgba(255,255,255,0.1)", borderWidth:1, padding:12, cornerRadius:8,
-            bodyFont: {{ family: "'JetBrains Mono', monospace", size: 11 }},
-            callbacks: {{
-              label: function(ctx) {{
-                var d = ctx.raw;
-                return [
-                  " O: $" + d.o.toLocaleString(undefined, {{maximumFractionDigits:0}}),
-                  " H: $" + d.h.toLocaleString(undefined, {{maximumFractionDigits:0}}),
-                  " L: $" + d.l.toLocaleString(undefined, {{maximumFractionDigits:0}}),
-                  " C: $" + d.c.toLocaleString(undefined, {{maximumFractionDigits:0}}),
-                ];
-              }}
-            }}
-          }}
+          tooltip: {{ enabled: false, external: function(context) {{
+            var el = document.getElementById("hist-hover-info");
+            if (!el) return;
+            if (context.tooltip.opacity === 0) {{ el.style.opacity = "0"; return; }}
+            var dp = context.tooltip.dataPoints && context.tooltip.dataPoints[0];
+            if (!dp) return;
+            var d = dp.raw;
+            var dt = new Date(d.x);
+            var dStr = dt.toLocaleDateString(undefined, {{month:"short", day:"numeric", year:"numeric"}});
+            var f = function(v) {{ return "$" + v.toLocaleString(undefined, {{maximumFractionDigits:0}}); }};
+            var chg = d.c - d.o;
+            var color = chg >= 0 ? "var(--accent-green,#34d399)" : "var(--danger,#f87171)";
+            el.innerHTML = '<span style="color:#f1f5f9">' + dStr + '</span>'
+              + '&ensp;O: ' + f(d.o) + '&ensp;H: ' + f(d.h) + '&ensp;L: ' + f(d.l)
+              + '&ensp;<span style="color:' + color + '">C: ' + f(d.c) + '</span>';
+            el.style.opacity = "1";
+          }} }}
         }},
         scales: {{
           x: {{ type: "time", time:{{ unit:"day", tooltipFormat:"MMM d, yyyy" }}, ticks:{{ maxTicksLimit:8, color:"#64748b", font:{{size:10}} }}, grid:{{ color:"rgba(255,255,255,0.03)" }} }},
@@ -2497,25 +2563,27 @@ function buildHistoryChart(metric) {{
       interaction: {{ intersect: false, mode: "nearest", axis: "x" }},
       plugins: {{
           legend: {{ display: false }},
-          tooltip: {{
-            yAlign:"bottom", caretPadding:8,
-            backgroundColor:"rgba(9,9,11,0.95)", titleColor:"#f1f5f9", bodyColor:"#94a3b8",
-            borderColor:"rgba(255,255,255,0.1)", borderWidth:1, padding:12, cornerRadius:8,
-            bodyFont: {{ family: "'JetBrains Mono', monospace", size: 11 }},
-            callbacks: {{
-              title: function(items) {{ return items[0] ? items[0].raw.x : ""; }},
-              label: function(c) {{
-                var r = PRICE_HISTORY_DATA[c.dataIndex];
-                if (r && r.open) {{
-                  return [
-                    " Close: " + fmt(c.raw.y),
-                    " Day Range: " + fmt(r.low) + " – " + fmt(r.high),
-                  ];
-                }}
-                return " " + fmt(c.raw.y);
-              }}
+          tooltip: {{ enabled: false, external: function(context) {{
+            var el = document.getElementById("hist-hover-info");
+            if (!el) return;
+            if (context.tooltip.opacity === 0) {{ el.style.opacity = "0"; return; }}
+            var dp = context.tooltip.dataPoints && context.tooltip.dataPoints[0];
+            if (!dp) return;
+            var val = dp.raw.y;
+            var r = PRICE_HISTORY_DATA[dp.dataIndex];
+            var dStr = dp.raw.x;
+            try {{ dStr = new Date(dp.raw.x).toLocaleDateString(undefined, {{month:"short", day:"numeric", year:"numeric"}}); }} catch(e){{}}
+            if (r && r.open) {{
+              var chg = (r.close || val) - r.open;
+              var color = chg >= 0 ? "var(--accent-green,#34d399)" : "var(--danger,#f87171)";
+              el.innerHTML = '<span style="color:#f1f5f9">' + dStr + '</span>'
+                + '&ensp;' + fmt(val)
+                + '&ensp;<span style="color:#64748b">(' + fmt(r.low) + ' – ' + fmt(r.high) + ')</span>';
+            }} else {{
+              el.innerHTML = '<span style="color:#f1f5f9">' + dStr + '</span>&ensp;' + fmt(val);
             }}
-          }}
+            el.style.opacity = "1";
+          }} }}
       }},
       scales: {{
           x: {{ type: "time", time: {{ unit: PRICE_HISTORY_DATA.length > 90 ? "week" : "day", tooltipFormat: "yyyy-MM-dd" }}, ticks:{{ maxTicksLimit:8, color:"#64748b", font:{{size:10}} }}, grid:{{ color:"rgba(255,255,255,0.03)" }} }},
@@ -2580,68 +2648,6 @@ function loadAllSparklines() {{
     }})
     .catch(function() {{}});
 }}
-
-/* ── Market Charts ── */
-var marketChart = null;
-function loadMarketChart() {{
-  var assetEl = document.getElementById("market-asset");
-  if (!assetEl) return;
-  var symbol = assetEl.value;
-  var period = document.getElementById("market-period").value;
-  var chartType = document.getElementById("chart-type").value;
-  var scaleType = document.getElementById("chart-scale").value;
-  var status = document.getElementById("market-chart-status");
-  if (status) status.textContent = "Loading...";
-  fetch("/api/historical?symbol=" + encodeURIComponent(symbol) + "&period=" + encodeURIComponent(period))
-    .then(function(r) {{ return r.json(); }})
-    .then(function(json) {{
-      if (json.error) {{ status.textContent = "Error: " + json.error; return; }}
-      var ctx = document.getElementById("market-chart");
-      if (marketChart) marketChart.destroy();
-      var color = symbol.includes("BTC") || symbol.includes("ETH") ? "#f5c842" : "#d4a017";
-      var zoomCfg = {{ pan:{{ enabled:true, mode:"xy" }}, zoom:{{ wheel:{{ enabled:true, speed:0.03 }}, pinch:{{ enabled:true }}, mode:"xy" }} }};
-      var tooltipCfg = {{ yAlign:"bottom", caretPadding:8, backgroundColor:"rgba(9,9,11,0.95)", titleColor:"#f1f5f9", bodyColor:"#94a3b8", borderColor:"rgba(255,255,255,0.1)", borderWidth:1, padding:12, cornerRadius:8 }};
-      if (chartType === "candlestick") {{
-        var ohlcData = json.data.map(function(d) {{ return {{ x:new Date(d.date).getTime(), o:d.o, h:d.h, l:d.l, c:d.c }}; }});
-      marketChart = new Chart(ctx, {{
-          type:"candlestick",
-          data:{{ datasets:[{{ label:symbol, data:ohlcData, color:{{ up:"#34d399",down:"#f87171",unchanged:"#64748b" }}, borderColor:{{ up:"#34d399",down:"#f87171",unchanged:"#64748b" }} }}] }},
-          options:{{ responsive:true, maintainAspectRatio:false, plugins:{{ legend:{{display:false}}, tooltip:tooltipCfg, zoom:zoomCfg }},
-            scales:{{ x:{{ type:"timeseries", time:{{unit:"day"}}, ticks:{{color:"#64748b",font:{{size:10}}}}, grid:{{color:"rgba(255,255,255,0.03)"}} }}, y:{{ type:scaleType, ticks:{{color:"#64748b",font:{{size:10}}}}, grid:{{color:"rgba(255,255,255,0.03)"}} }} }}
-          }}
-        }});
-      }} else {{
-        var labels = json.data.map(function(d) {{ return d.date; }});
-        var values = json.data.map(function(d) {{ return d.c; }});
-        marketChart = new Chart(ctx, {{
-          type:"line",
-          data:{{ labels:labels, datasets:[{{ label:symbol, data:values, borderColor:color, backgroundColor:color+"12", fill:true, tension:0.3, pointRadius:0, pointHoverRadius:5, pointHoverBackgroundColor:color, borderWidth:2 }}] }},
-          options:{{ responsive:true, maintainAspectRatio:false, interaction:{{ intersect:false, mode:"index" }},
-            plugins:{{ legend:{{display:false}}, tooltip:Object.assign({{}}, tooltipCfg, {{ callbacks:{{ label:function(c){{ return c.raw!=null ? "$"+c.raw.toLocaleString(undefined,{{minimumFractionDigits:2,maximumFractionDigits:2}}) : "—"; }} }} }}), zoom:zoomCfg }},
-            scales:{{ x:{{ ticks:{{maxTicksLimit:10,color:"#64748b",font:{{size:10}}}}, grid:{{color:"rgba(255,255,255,0.03)"}} }}, y:{{ type:scaleType, ticks:{{color:"#64748b",font:{{size:10}}}}, grid:{{color:"rgba(255,255,255,0.03)"}} }} }}
-        }}
-      }});
-      }}
-      var first=json.data[0].c, last=json.data[json.data.length-1].c;
-      var change = last && first ? ((last-first)/first*100).toFixed(2) : 0;
-      var arrow = change>=0 ? "+" : ""; var clr = change>=0 ? "#34d399" : "#f87171";
-      status.innerHTML = "<span style='color:"+clr+";font-weight:600;font-family:var(--mono)'>"+arrow+change+"%</span> &middot; Latest: <strong style='font-family:var(--mono)'>$"+last.toLocaleString(undefined,{{minimumFractionDigits:2}})+"</strong>";
-    }})
-    .catch(function(e) {{ status.textContent = "Error: " + e; }});
-}}
-function _initMarketChartListeners() {{
-  var lmc = document.getElementById("load-market-chart");
-  if (lmc && !lmc._bound) {{
-    lmc._bound = true;
-    lmc.addEventListener("click", loadMarketChart);
-    document.getElementById("market-asset").addEventListener("change", loadMarketChart);
-    document.getElementById("market-period").addEventListener("change", loadMarketChart);
-    document.getElementById("chart-type").addEventListener("change", loadMarketChart);
-    document.getElementById("chart-scale").addEventListener("change", loadMarketChart);
-    document.getElementById("reset-zoom").addEventListener("click", function() {{ if(marketChart) marketChart.resetZoom(); }});
-  }}
-}}
-_initMarketChartListeners();
 
 /* ── Investment Tracker ── */
 function updateProgressBar(input) {{
@@ -2986,8 +2992,8 @@ function restoreAllPulseCards() {{
 /* ── Pulse Chart Modal ── */
 (function() {{
   var PCM_SYMBOL_MAP = {{
-    "gold": "GC=F", "silver": "SI=F", "au_ag": "AUAG-RATIO",
-    "dxy": "DX-Y.NYB", "vix": "^VIX", "oil": "CL=F", "copper": "HG=F",
+    "gold": "GC=F", "silver": "SI=F", "au_ag": "AUAG-RATIO", "gold_oil": "GOLDOIL-RATIO",
+    "dxy": "DX=F", "vix": "^VIX", "oil": "CL=F", "copper": "HG=F",
     "tnx_10y": "^TNX", "tnx_2y": "^IRX", "btc": "BTC", "spy": "SPY"
   }};
   var pcmChart = null;
@@ -3079,7 +3085,7 @@ function restoreAllPulseCards() {{
       var chg = lastPrice - firstPrice;
       var chgPct = firstPrice ? ((chg / firstPrice) * 100) : 0;
       var sign = chg >= 0 ? "+" : "";
-      var noDollar = ["AUAG-RATIO","^VIX","^TNX","^IRX","10Y2Y-SPREAD","DX-Y.NYB"].indexOf(pcmState.symbol) >= 0;
+      var noDollar = ["AUAG-RATIO","GOLDOIL-RATIO","^VIX","^TNX","^IRX","10Y2Y-SPREAD","DX=F"].indexOf(pcmState.symbol) >= 0;
       var prefix = noDollar ? "" : "$";
       document.getElementById("pcm-price").textContent = prefix + lastPrice.toLocaleString(undefined, {{minimumFractionDigits:2, maximumFractionDigits:2}})
         + "  " + sign + chg.toFixed(2) + " (" + sign + chgPct.toFixed(2) + "%)";
@@ -3194,7 +3200,7 @@ function restoreAllPulseCards() {{
                   return isIntraday ? dt.toLocaleString(undefined, {{month:"short", day:"numeric", hour:"numeric", minute:"2-digit"}}) : p.date;
                 }},
                 label: function(ctx) {{
-                  var noDollar = ["AUAG-RATIO","^VIX","^TNX","^IRX","10Y2Y-SPREAD","DX-Y.NYB"].indexOf(pcmState.symbol) >= 0;
+                  var noDollar = ["AUAG-RATIO","GOLDOIL-RATIO","^VIX","^TNX","^IRX","10Y2Y-SPREAD","DX=F"].indexOf(pcmState.symbol) >= 0;
                   var prefix = noDollar ? "" : "$";
                   var val = isIntraday ? ctx.raw : ctx.raw.y;
                   return pcmState.label + ": " + prefix + Number(val).toLocaleString(undefined, {{minimumFractionDigits:2, maximumFractionDigits:2}});
@@ -3320,6 +3326,7 @@ function applyLiveDataToDOM(d) {{
     "gold": {{val: d.gold, fmt: "dollar0"}},
     "silver": {{val: d.silver, fmt: "dollar2"}},
     "au_ag": {{val: d.gold_silver_ratio, fmt: "raw2"}},
+    "gold_oil": {{val: d.gold_oil_ratio, fmt: "raw2"}},
     "btc": {{val: d.btc, fmt: "dollar0"}},
     "spy": {{val: d.spy, fmt: "dollar2"}},
     "dxy": {{val: d.dxy, fmt: "nodollar2"}},
@@ -3344,20 +3351,23 @@ function applyLiveDataToDOM(d) {{
     else if (entry.fmt === "nodollar2") el.textContent = v.toFixed(2);
     else if (entry.fmt === "pct") el.textContent = v.toFixed(2) + "%";
     else if (entry.fmt === "raw2") el.textContent = v.toFixed(2);
+    else if (entry.fmt === "raw1") el.textContent = v.toFixed(1);
   }});
   // Update physical metals spot prices on holdings page
+  var metalsTotalVal = 0, metalsTotalCost = 0;
   var spotCells = document.querySelectorAll(".metal-spot-cell");
   spotCells.forEach(function(cell) {{
     var metal = cell.getAttribute("data-metal-spot");
     var newSpot = (metal === "gold") ? d.gold : d.silver;
     if (!newSpot || newSpot <= 0) return;
     cell.textContent = "$" + newSpot.toLocaleString(undefined, {{minimumFractionDigits:2, maximumFractionDigits:2}});
-    // Update value cell (next sibling) and G/L cell
     var qty = parseFloat(cell.getAttribute("data-metal-qty")) || 0;
     var cost = parseFloat(cell.getAttribute("data-metal-cost")) || 0;
+    var newVal = qty * newSpot;
+    metalsTotalVal += newVal;
+    metalsTotalCost += (cost > 0 ? qty * cost : 0);
     var valCell = cell.nextElementSibling;
     if (valCell) {{
-      var newVal = qty * newSpot;
       valCell.textContent = "$" + newVal.toLocaleString(undefined, {{minimumFractionDigits:2, maximumFractionDigits:2}});
       var glCell = valCell.nextElementSibling;
       if (glCell && cost > 0) {{
@@ -3367,6 +3377,51 @@ function applyLiveDataToDOM(d) {{
       }}
     }}
   }});
+  if (spotCells.length > 0 && metalsTotalVal > 0) {{
+    var mhTotal = document.getElementById("metals-header-total");
+    if (mhTotal) mhTotal.textContent = "$" + metalsTotalVal.toLocaleString(undefined, {{minimumFractionDigits:2, maximumFractionDigits:2}});
+    var mhGl = document.getElementById("metals-header-gl");
+    if (mhGl) {{
+      var gl = metalsTotalVal - metalsTotalCost;
+      mhGl.textContent = (gl >= 0 ? "$+" : "$") + Math.abs(gl).toLocaleString(undefined, {{minimumFractionDigits:2, maximumFractionDigits:2}});
+      if (gl < 0) mhGl.textContent = "-" + mhGl.textContent;
+      mhGl.style.color = gl >= 0 ? "var(--success)" : "var(--danger)";
+    }}
+  }}
+  // Update crypto holdings prices on holdings page
+  if (d.crypto_prices) {{
+    var cRows = document.querySelectorAll(".crypto-row");
+    var cryptoTotal = 0;
+    cRows.forEach(function(row) {{
+      var sym = row.getAttribute("data-crypto-sym");
+      var qty = parseFloat(row.getAttribute("data-crypto-qty")) || 0;
+      var price = d.crypto_prices[sym];
+      if (!price || price <= 0) return;
+      var val = qty * price;
+      cryptoTotal += val;
+      var priceCell = row.querySelector(".crypto-price-cell");
+      if (priceCell) priceCell.textContent = "$" + price.toLocaleString(undefined, {{minimumFractionDigits:2, maximumFractionDigits:2}});
+      var valCell = row.querySelector(".crypto-val-cell");
+      if (valCell) valCell.textContent = val >= 0.01 ? ("$" + val.toLocaleString(undefined, {{minimumFractionDigits:2, maximumFractionDigits:2}})) : "<$0.01";
+    }});
+    if (cryptoTotal > 0) {{
+      cRows.forEach(function(row) {{
+        var sym = row.getAttribute("data-crypto-sym");
+        var qty = parseFloat(row.getAttribute("data-crypto-qty")) || 0;
+        var price = d.crypto_prices[sym] || 0;
+        var val = qty * price;
+        var pct = (val / cryptoTotal * 100);
+        var pctCell = row.querySelector(".crypto-pct-cell");
+        if (pctCell) pctCell.textContent = pct.toFixed(1) + "%";
+        var bar = row.querySelector(".crypto-bar-fill");
+        if (bar) bar.style.width = Math.min(100, pct).toFixed(1) + "%";
+      }});
+      var ctv = document.getElementById("crypto-total-val");
+      if (ctv) ctv.textContent = "$" + cryptoTotal.toLocaleString(undefined, {{minimumFractionDigits:2, maximumFractionDigits:2}});
+      var cht = document.getElementById("crypto-header-total");
+      if (cht) cht.textContent = "$" + cryptoTotal.toLocaleString(undefined, {{minimumFractionDigits:2, maximumFractionDigits:2}});
+    }}
+  }}
 }}
 function startPeriodicLivePoll(intervalMin) {{
   if (window._periodicPollInterval) clearInterval(window._periodicPollInterval);
@@ -3397,7 +3452,7 @@ var cmdItems = [
   {{ label:"Budget", tab:"budget", keys:"" }},
   {{ label:"Holdings", tab:"holdings", keys:"" }},
   {{ label:"Import CSV", tab:"import", keys:"" }},
-  {{ label:"Market Charts", tab:"history", keys:"" }},
+  {{ label:"Technical Analysis", tab:"technical", keys:"" }},
   {{ label:"Economics", tab:"economics", keys:"" }},
   {{ label:"Refresh Prices", action:"refresh", keys:"" }},
 ];
@@ -4080,16 +4135,16 @@ function renderFredDebt(data) {{
   var latestSpendingPct = fredLatest(spendingPct);
   var latestInterestPct = fredLatest(interestPct);
   var debtPct = (latestGdp && latestDebt) ? (latestDebt / (latestGdp * 1e3) * 100).toFixed(1) : null;
-  var defPctStr = latestDeficitPct != null ? (latestDeficitPct < 0 ? (Math.abs(latestDeficitPct).toFixed(1) + '% deficit') : (latestDeficitPct.toFixed(1) + '% surplus')) : null;
+  var defPctStr = latestDeficitPct != null ? (Math.abs(latestDeficitPct).toFixed(1) + '% of GDP') : null;
   var el = document.getElementById("fred-debt-stats");
   var subStyle = 'style="font-size:0.7rem;color:var(--text-muted);font-family:var(--mono);margin-top:2px;"';
   if (el) el.innerHTML =
     (latestDebt != null ? '<div class="pulse-item"><span class="pulse-label">Total Debt</span><span class="pulse-price">$' + (latestDebt/1e6).toFixed(2) + 'T</span>' + (debtPct ? '<span ' + subStyle + '>' + debtPct + '% of GDP</span>' : '') + '</div>' : '')
     + (fredLatest(gdp) != null ? '<div class="pulse-item"><span class="pulse-label">GDP</span><span class="pulse-price">$' + (fredLatest(gdp)/1e3).toFixed(2) + 'T</span></div>' : '')
-    + (latestDeficit != null ? '<div class="pulse-item"><span class="pulse-label">Annual Deficit</span><span class="pulse-price">$' + (latestDeficit/1e6).toFixed(2) + 'T</span>' + (defPctStr ? '<span ' + subStyle + '>' + defPctStr + '</span>' : '') + '</div>' : '')
-    + (latestInterest != null ? '<div class="pulse-item"><span class="pulse-label">Interest (Q)</span><span class="pulse-price">$' + (latestInterest/1e3).toFixed(2) + 'T</span>' + (latestInterestPct != null ? '<span ' + subStyle + '>' + latestInterestPct.toFixed(1) + '% of GDP</span>' : '') + '</div>' : '')
+    + (latestSpendingPct != null && latestDeficitPct != null ? (function() {{ var revPct = latestSpendingPct + latestDeficitPct; var revDollar = latestGdp ? (latestGdp * 1e3 * revPct / 100 / 1e6).toFixed(2) : '?'; return '<div class="pulse-item"><span class="pulse-label">Gov Revenue</span><span class="pulse-price">$' + revDollar + 'T</span><span ' + subStyle + '>' + revPct.toFixed(1) + '% of GDP</span></div>'; }})() : '')
     + (latestSpendingPct != null ? '<div class="pulse-item"><span class="pulse-label">Gov Spending</span><span class="pulse-price">$' + (latestGdp ? (latestGdp * 1e3 * latestSpendingPct / 100 / 1e6).toFixed(2) : '?') + 'T</span><span ' + subStyle + '>' + latestSpendingPct.toFixed(1) + '% of GDP</span></div>' : '')
-    + (latestSpendingPct != null && latestDeficitPct != null ? (function() {{ var revPct = latestSpendingPct + latestDeficitPct; var revDollar = latestGdp ? (latestGdp * 1e3 * revPct / 100 / 1e6).toFixed(2) : '?'; return '<div class="pulse-item"><span class="pulse-label">Gov Revenue</span><span class="pulse-price">$' + revDollar + 'T</span><span ' + subStyle + '>' + revPct.toFixed(1) + '% of GDP</span></div>'; }})() : '');
+    + (latestDeficit != null ? '<div class="pulse-item"><span class="pulse-label">Annual Deficit</span><span class="pulse-price">$' + (latestDeficit/1e6).toFixed(2) + 'T</span>' + (defPctStr ? '<span ' + subStyle + '>' + defPctStr + '</span>' : '') + '</div>' : '')
+    + (latestInterest != null ? (function() {{ var intSpendPct = (latestSpendingPct != null && latestGdp && latestInterest) ? ((latestInterest * 4) / (latestGdp * 1e3 * latestSpendingPct / 100) * 100).toFixed(1) : null; return '<div class="pulse-item"><span class="pulse-label">Interest (Q)</span><span class="pulse-price">$' + (latestInterest/1e3).toFixed(2) + 'T</span>' + (intSpendPct ? '<span ' + subStyle + '>' + intSpendPct + '% of spending</span>' : '') + '</div>'; }})() : '');
   fredLineChart("fred-chart-debt", debt, "Debt", "billions");
   fredLineChart("fred-chart-debt-gdp", debtGdp, "Debt/GDP %", "pct");
   fredBarChart("fred-chart-deficit", deficit, "Deficit", function(v) {{ return v >= 0 ? "rgba(52,211,153,0.6)" : "rgba(248,113,113,0.6)"; }});
@@ -4239,6 +4294,254 @@ function renderFredGrowth(data) {{
   fredLineChart("fred-chart-gdp-growth", gdpGr, "Real GDP Growth %", "pct");
   fredLineChart("fred-chart-sentiment", sent, "Sentiment", null);
 }}
+/* ── FedWatch ── */
+var _fedwatchLoaded = false;
+var _fwData = null;
+var _fwChart = null;
+var _fwIdx = 0;
+function loadFedWatchData() {{
+  if (_fedwatchLoaded) return;
+  _fedwatchLoaded = true;
+  fetch("/api/fedwatch")
+    .then(function(r) {{ return r.json(); }})
+    .then(function(d) {{
+      _fwData = d;
+      _fwIdx = 0;
+      _fwBuildTabs();
+      _fwRender(0);
+    }})
+    .catch(function(e) {{ console.error("FedWatch fetch:", e); _fedwatchLoaded = false; }});
+}}
+function _fwBuildTabs() {{
+  var el = document.getElementById("fw-tabs");
+  if (!el || !_fwData || !_fwData.meetings) return;
+  var html = '';
+  _fwData.meetings.forEach(function(m, i) {{
+    html += '<button class="range-btn' + (i === 0 ? ' active' : '') + '" data-fwidx="' + i + '" style="font-size:0.72rem;padding:5px 10px;">' + m.label + '</button>';
+  }});
+  el.innerHTML = html;
+}}
+function _fwRender(idx) {{
+  if (!_fwData || !_fwData.meetings || !_fwData.meetings[idx]) return;
+  _fwIdx = idx;
+  var m = _fwData.meetings[idx];
+
+  // Highlight active tab
+  document.querySelectorAll("#fw-tabs .range-btn").forEach(function(b, i) {{
+    b.classList.toggle("active", i === idx);
+  }});
+
+  // Info row
+  var infoEl = document.getElementById("fw-info");
+  if (infoEl) {{
+    var sub = 'style="font-size:0.7rem;color:var(--text-muted);font-family:var(--mono);"';
+    infoEl.innerHTML =
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">' +
+      '<div class="pulse-bar" style="flex-wrap:wrap;gap:10px;">' +
+        '<div class="pulse-item"><span class="pulse-label">Meeting Date</span><span class="pulse-price" style="font-size:0.85rem;">' + m.date + '</span></div>' +
+        '<div class="pulse-item"><span class="pulse-label">Contract</span><span class="pulse-price" style="font-size:0.85rem;">' + m.contract + '</span></div>' +
+        (m.price != null ? '<div class="pulse-item"><span class="pulse-label">Mid Price</span><span class="pulse-price" style="font-size:0.85rem;">' + (100 - m.price).toFixed(4) + '</span></div>' : '') +
+      '</div>' +
+      '<div class="pulse-bar" style="flex-wrap:wrap;gap:10px;justify-content:flex-end;">' +
+        '<div class="pulse-item" style="text-align:center;"><span class="pulse-label">Ease</span><span class="pulse-price" style="font-size:0.85rem;color:rgba(52,211,153,0.9);">' + m.cut.toFixed(1) + ' %</span></div>' +
+        '<div class="pulse-item" style="text-align:center;"><span class="pulse-label">No Change</span><span class="pulse-price" style="font-size:0.85rem;">' + m.hold.toFixed(1) + ' %</span></div>' +
+        '<div class="pulse-item" style="text-align:center;"><span class="pulse-label">Hike</span><span class="pulse-price" style="font-size:0.85rem;color:rgba(239,68,68,0.9);">' + m.hike.toFixed(1) + ' %</span></div>' +
+      '</div></div>';
+  }}
+
+  var titleEl = document.getElementById("fw-title");
+  if (titleEl) titleEl.textContent = "Target Rate Probabilities for " + m.date + " Fed Meeting";
+  var subEl = document.getElementById("fw-subtitle");
+  if (subEl) subEl.textContent = "Current target rate is " + _fwData.current_range_bps;
+
+  // Bar chart
+  if (_fwChart) _fwChart.destroy();
+  var ctx = document.getElementById("fw-bar-chart");
+  if (!ctx || typeof Chart === "undefined" || !m.ranges || !m.ranges.length) return;
+
+  var labels = m.ranges.map(function(r) {{ return r.range; }});
+  var data = m.ranges.map(function(r) {{ return r.prob; }});
+  var currentBps = _fwData.current_range_bps;
+  var colors = m.ranges.map(function(r) {{
+    if (r.range === currentBps) return "rgba(99,102,241,0.85)";
+    if (r.lo < parseInt(currentBps)) return "rgba(52,211,153,0.7)";
+    return "rgba(239,68,68,0.7)";
+  }});
+
+  _fwChart = new Chart(ctx, {{
+    type: "bar",
+    data: {{
+      labels: labels,
+      datasets: [{{
+        data: data,
+        backgroundColor: colors,
+        borderRadius: 4,
+        maxBarThickness: 80
+      }}]
+    }},
+    options: {{
+      responsive: true, maintainAspectRatio: false,
+      plugins: {{
+        legend: {{ display: false }},
+        tooltip: {{
+          backgroundColor: "rgba(30,30,30,0.95)",
+          titleColor: "#e2e8f0", bodyColor: "#e2e8f0",
+          callbacks: {{
+            label: function(ctx) {{ return ctx.parsed.y.toFixed(1) + "%"; }}
+          }}
+        }},
+        datalabels: false
+      }},
+      scales: {{
+        x: {{
+          ticks: {{ color: "#94a3b8", font: {{ size: 11 }} }},
+          grid: {{ display: false }},
+          title: {{ display: true, text: "Target Rate (in bps)", color: "#64748b", font: {{ size: 11 }} }}
+        }},
+        y: {{
+          min: 0, max: 100,
+          ticks: {{ color: "#64748b", callback: function(v) {{ return v + "%"; }}, stepSize: 20 }},
+          grid: {{ color: "rgba(148,163,184,0.08)" }},
+          title: {{ display: true, text: "Probability", color: "#64748b", font: {{ size: 11 }} }}
+        }}
+      }}
+    }},
+    plugins: [{{
+      afterDatasetsDraw: function(chart) {{
+        var _ctx = chart.ctx;
+        chart.data.datasets[0].data.forEach(function(val, i) {{
+          if (val < 1) return;
+          var meta = chart.getDatasetMeta(0).data[i];
+          _ctx.save();
+          _ctx.fillStyle = "#e2e8f0";
+          _ctx.font = "bold 11px sans-serif";
+          _ctx.textAlign = "center";
+          _ctx.fillText(val.toFixed(1) + "%", meta.x, meta.y - 6);
+          _ctx.restore();
+        }});
+      }}
+    }}]
+  }});
+}}
+
+var _capeLoaded = false;
+function loadCapeData() {{
+  if (_capeLoaded) return;
+  _capeLoaded = true;
+  fetch("/api/cape").then(function(r) {{ return r.json(); }}).then(function(d) {{
+    renderCape(d);
+  }}).catch(function(e) {{ console.error("CAPE fetch error:", e); _capeLoaded = false; }});
+}}
+function renderCape(d) {{
+  var el = document.getElementById("cape-stats");
+  if (el) {{
+    var labelClass = "";
+    if (d.label === "Very Expensive") labelClass = "color:var(--danger);font-weight:600;";
+    else if (d.label === "Expensive") labelClass = "color:#f59e0b;font-weight:600;";
+    else if (d.label === "Above Average") labelClass = "color:#fbbf24;";
+    else if (d.label === "Below Average" || d.label === "Cheap") labelClass = "color:var(--success);font-weight:600;";
+    el.innerHTML = (d.current != null ? '<div class="pulse-item"><span class="pulse-label">Current CAPE</span><span class="pulse-price">' + d.current.toFixed(1) + '</span></div>' : '')
+      + '<div class="pulse-item"><span class="pulse-label">Historic Median</span><span class="pulse-price">' + d.median + '</span></div>'
+      + (d.label ? '<div class="pulse-item"><span class="pulse-label">Valuation</span><span class="pulse-price" style="' + labelClass + '">' + d.label + '</span></div>' : '');
+  }}
+  var pts = d.history || [];
+  if (!pts.length) return;
+  fredCharts["cape-chart"] && fredCharts["cape-chart"].destroy();
+  var ctx = document.getElementById("cape-chart");
+  if (!ctx || typeof Chart === "undefined") return;
+  var labels = pts.map(function(p) {{ return p.date; }});
+  var values = pts.map(function(p) {{ return p.value; }});
+  fredCharts["cape-chart"] = new Chart(ctx, {{
+    type: "line",
+    data: {{
+      labels: labels,
+      datasets: [
+        {{ label: "CAPE Ratio", data: values, borderColor: "rgba(99,102,241,0.9)", backgroundColor: "rgba(99,102,241,0.08)", fill: true, tension: 0.25, pointRadius: 0 }},
+        {{ label: "Median (16.8)", data: labels.map(function() {{ return 16.8; }}), borderColor: "rgba(248,113,113,0.5)", borderDash: [6,4], pointRadius: 0, fill: false }}
+      ]
+    }},
+    options: {{
+      responsive: true, maintainAspectRatio: false,
+      interaction: {{ mode: "index", intersect: false }},
+      plugins: {{
+        legend: {{ labels: {{ color: "#94a3b8" }} }},
+        tooltip: fredTooltipOpts
+      }},
+      scales: {{
+        x: {{ ticks: {{ color: "#64748b", maxTicksLimit: 10 }}, grid: {{ display: false }} }},
+        y: {{ ticks: {{ color: "#64748b" }}, grid: {{ color: "rgba(255,255,255,0.03)" }} }}
+      }}
+    }}
+  }});
+}}
+var _buffettLoaded = false;
+function loadBuffettData() {{
+  if (_buffettLoaded) return;
+  _buffettLoaded = true;
+  fetch("/api/buffett").then(function(r) {{ return r.json(); }}).then(function(d) {{
+    renderBuffett(d);
+  }}).catch(function(e) {{ console.error("Buffett fetch error:", e); _buffettLoaded = false; }});
+}}
+function renderBuffett(d) {{
+  var el = document.getElementById("buffett-stats");
+  if (el) {{
+    var labelClass = "";
+    if (d.label === "Significantly Overvalued") labelClass = "color:var(--danger);font-weight:600;";
+    else if (d.label === "Overvalued") labelClass = "color:#f59e0b;font-weight:600;";
+    else if (d.label === "Undervalued" || d.label === "Significantly Undervalued") labelClass = "color:var(--success);font-weight:600;";
+    el.innerHTML = (d.current != null ? '<div class="pulse-item"><span class="pulse-label">Current</span><span class="pulse-price">' + d.current.toFixed(0) + '%</span></div>' : '')
+      + '<div class="pulse-item"><span class="pulse-label">Historic Average</span><span class="pulse-price">' + d.median + '%</span></div>'
+      + (d.label ? '<div class="pulse-item"><span class="pulse-label">Valuation</span><span class="pulse-price" style="' + labelClass + '">' + d.label + '</span></div>' : '');
+  }}
+  var pts = d.history || [];
+  if (!pts.length) return;
+  fredCharts["buffett-chart"] && fredCharts["buffett-chart"].destroy();
+  var ctx = document.getElementById("buffett-chart");
+  if (!ctx || typeof Chart === "undefined") return;
+  var labels = pts.map(function(p) {{ return p.date; }});
+  var values = pts.map(function(p) {{ return p.value; }});
+  fredCharts["buffett-chart"] = new Chart(ctx, {{
+    type: "line",
+    data: {{
+      labels: labels,
+      datasets: [
+        {{ label: "Buffett Indicator %", data: values, borderColor: "rgba(52,211,153,0.9)", backgroundColor: "rgba(52,211,153,0.08)", fill: true, tension: 0.25, pointRadius: 0 }},
+        {{ label: "Average (120%)", data: labels.map(function() {{ return 120; }}), borderColor: "rgba(248,113,113,0.5)", borderDash: [6,4], pointRadius: 0, fill: false }}
+      ]
+    }},
+    options: {{
+      responsive: true, maintainAspectRatio: false,
+      interaction: {{ mode: "index", intersect: false }},
+      plugins: {{
+        legend: {{ labels: {{ color: "#94a3b8" }} }},
+        tooltip: {{ yAlign: "bottom", caretPadding: 8, backgroundColor: "rgba(30,30,30,0.95)", titleColor: "#e2e8f0", bodyColor: "#e2e8f0", borderColor: "rgba(52,211,153,0.4)", borderWidth: 1, callbacks: {{ label: function(ctx) {{ return ctx.dataset.label + ": " + (ctx.parsed.y != null ? ctx.parsed.y.toFixed(1) + "%" : "N/A"); }} }} }}
+      }},
+      scales: {{
+        x: {{ ticks: {{ color: "#64748b", maxTicksLimit: 10 }}, grid: {{ display: false }} }},
+        y: {{ ticks: {{ color: "#64748b", callback: function(v) {{ return v + "%"; }} }}, grid: {{ color: "rgba(255,255,255,0.03)" }} }}
+      }}
+    }}
+  }});
+}}
+function renderFredWui(data) {{
+  var wui = fredSeries(data, "WUIGLOBALWEIGHTAVG");
+  var el = document.getElementById("fred-wui-stats");
+  var latest = fredLatest(wui);
+  if (el) {{
+    var cls = latest != null && latest > 30000 ? "neg" : "pos";
+    el.innerHTML = (latest != null ? '<div class="pulse-item"><span class="pulse-label">Current</span><span class="pulse-price ' + cls + '">' + latest.toLocaleString(undefined, {{maximumFractionDigits: 0}}) + '</span></div>' : '');
+  }}
+  fredCharts["fred-chart-wui"] && fredCharts["fred-chart-wui"].destroy();
+  var ctx = document.getElementById("fred-chart-wui");
+  if (!ctx || !wui.length) return;
+  var labels = wui.map(function(p) {{ return p.date; }});
+  var values = wui.map(function(p) {{ return p.value; }});
+  fredCharts["fred-chart-wui"] = new Chart(ctx, {{
+    type: "line",
+    data: {{ labels: labels, datasets: [{{ label: "World Uncertainty Index", data: values, borderColor: "rgba(251,146,60,0.9)", backgroundColor: "rgba(251,146,60,0.1)", fill: true, tension: 0.25, pointRadius: 0 }}] }},
+    options: {{ responsive: true, maintainAspectRatio: false, interaction: {{ mode: "index", intersect: false }}, plugins: {{ legend: {{ labels: {{ color: "#94a3b8" }} }}, tooltip: fredTooltipOpts }}, scales: {{ x: {{ ticks: {{ color: "#64748b", maxTicksLimit: 10 }}, grid: {{ display: false }} }}, y: {{ ticks: {{ color: "#64748b", callback: function(v) {{ return (v/1000).toFixed(0) + "K"; }} }}, grid: {{ color: "rgba(255,255,255,0.03)" }} }} }} }}
+  }});
+}}
 function renderFredHousing(data) {{
   var cs = fredSeries(data, "CSUSHPINSA");
   var mort = fredSeries(data, "MORTGAGE30US");
@@ -4260,7 +4563,8 @@ var FRED_SECTION_SERIES = {{
   sahm: "SAHMREALTIME",
   labor: "UNRATE,ICSA",
   growth: "A191RL1Q225SBEA,UMCSENT",
-  housing: "CSUSHPINSA,MORTGAGE30US"
+  housing: "CSUSHPINSA,MORTGAGE30US",
+  wui: "WUIGLOBALWEIGHTAVG"
 }};
 function fredMergeData(target, incoming) {{ for (var k in incoming) if (incoming[k] && incoming[k].data) target[k] = incoming[k]; }}
 function fredSafeJson(r) {{
@@ -4312,6 +4616,7 @@ function fredRenderAll(data) {{
   renderFredSahm(data);
   renderFredLabor(data);
   renderFredGrowth(data);
+  renderFredWui(data);
   renderFredHousing(data);
 }}
 var _fredObserver = null;
@@ -4322,6 +4627,9 @@ function loadFredData() {{
   function getHorizon() {{ return (horizonSelect && horizonSelect.value) || "1y"; }}
   if (_fredInited) {{
     if (Object.keys(fredDataCache).length > 0) fredRenderAll();
+    if (typeof loadFedWatchData === "function") loadFedWatchData();
+    if (typeof loadCapeData === "function") loadCapeData();
+    if (typeof loadBuffettData === "function") loadBuffettData();
     return;
   }}
   _fredInited = true;
@@ -4342,16 +4650,24 @@ function loadFredData() {{
       var m = e.target.id && e.target.id.match(/^fred-section-(.+)$/);
       if (!m) return;
       var sectionId = m[1];
+      if (sectionId === "econcal") {{ loadEconCalendar(); return; }}
+      if (sectionId === "fedwatch") {{ loadFedWatchData(); return; }}
+      if (sectionId === "cape") {{ loadCapeData(); return; }}
+      if (sectionId === "buffett") {{ loadBuffettData(); return; }}
       if (fredSectionsLoaded[sectionId]) return;
       fredFetchSection(sectionId, getHorizon()).then(function() {{
         fredRenderAll();
       }}).catch(function() {{}});
     }});
   }}, {{ rootMargin: "100px", threshold: 0.1 }});
-  ["debt","inflation","monetary","credit","realyields","fedbs","sahm","labor","growth","housing"].forEach(function(id) {{
+  ["econcal","debt","inflation","monetary","fedwatch","credit","realyields","fedbs","sahm","labor","growth","cape","buffett","wui","housing"].forEach(function(id) {{
     var el = document.getElementById("fred-section-" + id);
     if (el) _fredObserver.observe(el);
   }});
+  // Explicitly load standalone sections that don't depend on FRED data
+  setTimeout(function() {{
+    if (typeof loadFedWatchData === "function") loadFedWatchData();
+  }}, 500);
   document.querySelectorAll(".fred-period-select").forEach(function(sel) {{
     sel.addEventListener("change", function() {{
       var section = this.getAttribute("data-section");
@@ -4399,7 +4715,183 @@ function loadFredData() {{
     }}).catch(function(err) {{ if (status) status.textContent = "Load failed: " + (err.message || err); }});
   }};
 }}
+/* ── Economic Calendar ── */
+var _econCalLoaded = false;
+var _econCalOffset = 0;
+function loadEconCalendar(offset) {{
+  if (typeof offset === "undefined") offset = 0;
+  _econCalOffset = offset;
+  var body = document.getElementById("econcal-body");
+  if (body && !_econCalLoaded) body.innerHTML = '<p class="hint">Loading economic events&hellip;</p>';
+  _econCalLoaded = true;
+  _updateEconCalButtons();
+  fetch("/api/economic-calendar?offset=" + offset)
+    .then(function(r) {{ return r.json(); }})
+    .then(function(d) {{ renderEconCalendar(d); }})
+    .catch(function(e) {{
+      console.error("[EconCal]", e);
+      if (body) body.innerHTML = '<p class="hint">Failed to load calendar.</p>';
+    }});
+}}
+function _updateEconCalButtons() {{
+  var prev = document.getElementById("econcal-prev");
+  var thisBtn = document.getElementById("econcal-this");
+  var next = document.getElementById("econcal-next");
+  var active = "border:1px solid rgba(99,102,241,0.5);background:rgba(99,102,241,0.15);color:#a5b4fc;font-weight:600;";
+  var normal = "border:1px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.06);color:#e2e8f0;font-weight:400;";
+  if (prev) prev.style.cssText = "padding:5px 10px;font-size:0.82rem;border-radius:6px;cursor:pointer;" + (_econCalOffset < 0 ? active : normal);
+  if (thisBtn) thisBtn.style.cssText = "padding:5px 10px;font-size:0.82rem;border-radius:6px;cursor:pointer;" + (_econCalOffset === 0 ? active : normal);
+  if (next) next.style.cssText = "padding:5px 10px;font-size:0.82rem;border-radius:6px;cursor:pointer;" + (_econCalOffset > 0 ? active : normal);
+  if (prev) prev.disabled = _econCalOffset <= -8;
+  if (next) next.disabled = _econCalOffset >= 1;
+}}
+(function() {{
+  document.addEventListener("click", function(ev) {{
+    if (ev.target.id === "econcal-prev") loadEconCalendar(_econCalOffset - 1);
+    else if (ev.target.id === "econcal-this") loadEconCalendar(0);
+    else if (ev.target.id === "econcal-next") loadEconCalendar(_econCalOffset + 1);
+  }});
+}})();
+function renderEconCalendar(d) {{
+  var body = document.getElementById("econcal-body");
+  if (!body) return;
+  var weekEl = document.getElementById("econcal-week");
+  if (weekEl) weekEl.textContent = d.week_label ? d.week_label : "";
+  if (!d || !d.events || !d.events.length) {{
+    body.innerHTML = '<p class="hint">' + (_econCalOffset === 0 ? "No US economic events available." : "No cached data for this week.") + '</p>';
+    return;
+  }}
+  var today = new Date().toISOString().slice(0, 10);
+  var impactColor = {{ high: "#ef4444", medium: "#f59e0b", low: "#64748b" }};
+  var grouped = {{}};
+  d.events.forEach(function(e) {{
+    if (!grouped[e.date]) grouped[e.date] = [];
+    grouped[e.date].push(e);
+  }});
+  var dates = Object.keys(grouped).sort();
+  var html = '<table style="width:100%;border-collapse:collapse;font-size:0.85rem;">';
+  html += '<thead><tr style="border-bottom:1px solid rgba(255,255,255,0.08);text-align:left;">';
+  html += '<th style="padding:6px 8px;color:#94a3b8;font-weight:600;width:32px;"></th>';
+  html += '<th style="padding:6px 8px;color:#94a3b8;font-weight:600;">Time</th>';
+  html += '<th style="padding:6px 8px;color:#94a3b8;font-weight:600;">Event</th>';
+  html += '<th style="padding:6px 4px;color:#94a3b8;font-weight:600;text-align:right;">Actual</th>';
+  html += '<th style="padding:6px 4px;color:#94a3b8;font-weight:600;text-align:right;">Forecast</th>';
+  html += '<th style="padding:6px 4px;color:#94a3b8;font-weight:600;text-align:right;">Previous</th>';
+  html += '</tr></thead><tbody>';
+  dates.forEach(function(dt) {{
+    var dayLabel = new Date(dt + "T12:00:00").toLocaleDateString("en-US", {{ weekday: "short", month: "short", day: "numeric" }});
+    var isToday = dt === today;
+    html += '<tr><td colspan="6" style="padding:8px 8px 4px;font-weight:700;color:' + (isToday ? "var(--gold)" : "#e2e8f0") + ';font-size:0.82rem;border-top:1px solid rgba(255,255,255,0.06);">' + dayLabel + (isToday ? " (Today)" : "") + '</td></tr>';
+    grouped[dt].forEach(function(e) {{
+      var ic = impactColor[e.impact] || "#64748b";
+      var actualVal = e.actual || "-";
+      var actualColor = "#94a3b8";
+      if (e.actual && e.actual !== "-") {{
+        actualColor = "#22c55e";
+        if (e.forecast && e.forecast !== "-") {{
+          var af = parseFloat(e.actual.replace(/[%KMB,]/g, ""));
+          var ff = parseFloat(e.forecast.replace(/[%KMB,]/g, ""));
+          if (!isNaN(af) && !isNaN(ff) && af < ff) actualColor = "#ef4444";
+        }}
+      }}
+      html += '<tr style="border-bottom:1px solid rgba(255,255,255,0.03);">';
+      html += '<td style="padding:4px 8px;"><span style="display:inline-block;width:8px;height:8px;background:' + ic + ';border-radius:50%;"></span></td>';
+      html += '<td style="padding:4px 8px;color:#94a3b8;white-space:nowrap;">' + (e.time || "-") + '</td>';
+      html += '<td style="padding:4px 8px;color:#e2e8f0;">' + e.event + '</td>';
+      html += '<td style="padding:4px 4px;text-align:right;color:' + actualColor + ';font-weight:' + (e.actual ? "600" : "400") + ';">' + actualVal + '</td>';
+      html += '<td style="padding:4px 4px;text-align:right;color:#94a3b8;">' + (e.forecast || "-") + '</td>';
+      html += '<td style="padding:4px 4px;text-align:right;color:#64748b;">' + (e.previous || "-") + '</td>';
+      html += '</tr>';
+    }});
+  }});
+  html += '</tbody></table>';
+  body.innerHTML = html;
+}}
 /* FRED_JS_END */
+
+/* ── Technical Analysis (TradingView) ── */
+var _tvScriptLoaded = false;
+var _tvInitDone = false;
+var _tvCurrentSymbol = "SPY";
+var TA_TICKERS = {ta_tickers_json};
+
+function initTechnicalTab() {{
+  if (!_tvInitDone) {{
+    _buildTATickerButtons();
+    _tvInitDone = true;
+  }}
+  if (!document.getElementById("tv_chart_container")) return;
+  if (!_tvScriptLoaded) {{
+    var s = document.createElement("script");
+    s.src = "https://s3.tradingview.com/tv.js";
+    s.onload = function() {{
+      _tvScriptLoaded = true;
+      _createTVWidget(_tvCurrentSymbol);
+    }};
+    s.onerror = function() {{
+      document.getElementById("tv_chart_container").innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-muted);">Failed to load TradingView. Check your internet connection.</div>';
+    }};
+    document.head.appendChild(s);
+  }} else {{
+    _createTVWidget(_tvCurrentSymbol);
+  }}
+}}
+
+function _createTVWidget(symbol) {{
+  var container = document.getElementById("tv_chart_container");
+  if (!container || typeof TradingView === "undefined") return;
+  container.innerHTML = '<div id="tv_chart" style="height:100%;"></div>';
+  _tvCurrentSymbol = symbol;
+  _highlightTABtn(symbol);
+  new TradingView.widget({{
+    "autosize": true,
+    "symbol": symbol,
+    "interval": "D",
+    "timezone": "America/New_York",
+    "theme": document.documentElement.classList.contains("light") ? "light" : "dark",
+    "style": "1",
+    "locale": "en",
+    "enable_publishing": false,
+    "allow_symbol_change": true,
+    "hide_side_toolbar": false,
+    "details": true,
+    "hotlist": false,
+    "calendar": false,
+    "studies": [],
+    "show_popup_button": true,
+    "popup_width": "1200",
+    "popup_height": "800",
+    "withdateranges": true,
+    "save_image": true,
+    "hide_volume": false,
+    "container_id": "tv_chart"
+  }});
+}}
+
+function _buildTATickerButtons() {{
+  var wrap = document.getElementById("ta-ticker-btns");
+  if (!wrap) return;
+  var html = "";
+  TA_TICKERS.forEach(function(t) {{
+    html += '<button type="button" class="ta-tkr" data-symbol="' + t + '" style="padding:3px 8px;font-size:0.75rem;border:1px solid rgba(255,255,255,0.15);border-radius:4px;background:rgba(255,255,255,0.04);color:#94a3b8;cursor:pointer;transition:all 0.15s;">' + t + '</button>';
+  }});
+  wrap.innerHTML = html;
+  wrap.addEventListener("click", function(ev) {{
+    var btn = ev.target.closest(".ta-tkr");
+    if (!btn) return;
+    _createTVWidget(btn.getAttribute("data-symbol"));
+  }});
+}}
+
+function _highlightTABtn(symbol) {{
+  document.querySelectorAll(".ta-tkr").forEach(function(b) {{
+    var isActive = b.getAttribute("data-symbol") === symbol;
+    b.style.background = isActive ? "rgba(99,102,241,0.2)" : "rgba(255,255,255,0.04)";
+    b.style.borderColor = isActive ? "rgba(99,102,241,0.5)" : "rgba(255,255,255,0.15)";
+    b.style.color = isActive ? "#a5b4fc" : "#94a3b8";
+    b.style.fontWeight = isActive ? "600" : "400";
+  }});
+}}
 
 /* ── Phase 3: Price Alerts ── */
 var PRICE_ALERTS = {alerts_json};
@@ -5177,6 +5669,175 @@ function drawGauge(canvasId, value) {{
   ctx.fillStyle = "rgba(255,255,255,0.9)";
   ctx.fill();
 }}
+
+/* ── Sentiment History (click-to-expand) ── */
+var _sentHistCache = {{}};  // keyed by range: {{ "1y": data, "3y": data, ... }}
+var _sentHistChart = null;
+var _sentHistActive = null;
+var _sentHistRange = "1y";
+var _sentGaugeNames = {{
+  stock: "Stocks (CNN Fear & Greed)",
+  crypto: "Crypto Fear & Greed",
+  gold: "Gold Sentiment",
+  vix: "VIX Sentiment",
+  yield_curve: "Yield Curve Sentiment"
+}};
+var _sentGaugeColors = {{
+  stock: "rgba(99,102,241,0.9)",
+  crypto: "rgba(245,158,11,0.9)",
+  gold: "rgba(234,179,8,0.9)",
+  vix: "rgba(239,68,68,0.9)",
+  yield_curve: "rgba(52,211,153,0.9)"
+}};
+
+function _sentFetchAndRender(key, range) {{
+  var panel = document.getElementById("sentiment-detail");
+  var titleEl = document.getElementById("sentiment-detail-title");
+  if (_sentHistCache[range]) {{
+    _sentRender(key, _sentHistCache[range]);
+    if (panel) panel.classList.add("open");
+    return;
+  }}
+  if (titleEl) titleEl.textContent = (_sentGaugeNames[key] || key) + " — loading…";
+  fetch("/api/sentiment-history?range=" + range)
+    .then(function(r) {{ return r.json(); }})
+    .then(function(d) {{
+      _sentHistCache[range] = d;
+      if (titleEl) titleEl.textContent = _sentGaugeNames[key] || key;
+      _sentRender(key, d);
+      if (panel) panel.classList.add("open");
+    }})
+    .catch(function(e) {{
+      console.error("Sentiment history fetch:", e);
+      if (titleEl) titleEl.textContent = "Failed to load history";
+      if (panel) panel.classList.add("open");
+    }});
+}}
+
+function _sentToggle(key) {{
+  var panel = document.getElementById("sentiment-detail");
+  if (!panel) return;
+
+  if (_sentHistActive === key) {{
+    panel.classList.remove("open");
+    document.querySelectorAll(".sentiment-gauge").forEach(function(g) {{ g.classList.remove("active"); }});
+    _sentHistActive = null;
+    return;
+  }}
+
+  document.querySelectorAll(".sentiment-gauge").forEach(function(g) {{
+    g.classList.toggle("active", g.getAttribute("data-gauge") === key);
+  }});
+  _sentHistActive = key;
+
+  var titleEl = document.getElementById("sentiment-detail-title");
+  if (titleEl) titleEl.textContent = _sentGaugeNames[key] || key;
+
+  _sentFetchAndRender(key, _sentHistRange);
+}}
+
+function _sentRender(key, data) {{
+  var pts = (data && data[key]) || [];
+  if (!pts.length) return;
+  if (_sentHistChart) _sentHistChart.destroy();
+  var ctx = document.getElementById("sentiment-history-chart");
+  if (!ctx || typeof Chart === "undefined") return;
+  var labels = pts.map(function(p) {{ return p.date; }});
+  var values = pts.map(function(p) {{ return p.value; }});
+  var baseColor = _sentGaugeColors[key] || "rgba(99,102,241,0.9)";
+  var fillColor = baseColor.replace("0.9)", "0.1)");
+
+  _sentHistChart = new Chart(ctx, {{
+    type: "line",
+    data: {{
+      labels: labels,
+      datasets: [{{
+        label: _sentGaugeNames[key] || key,
+        data: values,
+        borderColor: baseColor,
+        backgroundColor: fillColor,
+        fill: true,
+        tension: 0.3,
+        pointRadius: 0,
+        borderWidth: 2
+      }}]
+    }},
+    options: {{
+      responsive: true, maintainAspectRatio: false,
+      interaction: {{ mode: "index", intersect: false }},
+      plugins: {{
+        legend: {{ display: false }},
+        tooltip: {{
+          yAlign: "bottom", caretPadding: 8,
+          backgroundColor: "rgba(30,30,30,0.95)",
+          titleColor: "#e2e8f0", bodyColor: "#e2e8f0",
+          borderColor: baseColor.replace("0.9)", "0.4)"), borderWidth: 1,
+          callbacks: {{
+            label: function(ctx) {{ return (ctx.parsed.y != null ? ctx.parsed.y.toFixed(0) : "N/A") + " / 100"; }}
+          }}
+        }}
+      }},
+      scales: {{
+        x: {{
+          ticks: {{ color: "#64748b", maxTicksLimit: 10 }},
+          grid: {{ display: false }}
+        }},
+        y: {{
+          min: 0, max: 100,
+          ticks: {{
+            color: "#64748b",
+            stepSize: 25,
+            callback: function(v) {{
+              if (v === 0) return "Extreme Fear";
+              if (v === 25) return "Fear";
+              if (v === 50) return "Neutral";
+              if (v === 75) return "Greed";
+              if (v === 100) return "Extreme Greed";
+              return "";
+            }}
+          }},
+          grid: {{ color: "rgba(255,255,255,0.04)" }}
+        }}
+      }}
+    }}
+  }});
+}}
+
+// Wire up click handlers via event delegation (gauges are lazy-loaded)
+document.addEventListener("click", function(e) {{
+  var gauge = e.target.closest(".sentiment-gauge");
+  if (gauge) {{
+    var key = gauge.getAttribute("data-gauge");
+    if (key) _sentToggle(key);
+    return;
+  }}
+  var fwTab = e.target.closest("#fw-tabs .range-btn");
+  if (fwTab) {{
+    var idx = parseInt(fwTab.getAttribute("data-fwidx"), 10);
+    if (!isNaN(idx)) _fwRender(idx);
+    return;
+  }}
+  var rangeBtn = e.target.closest("#sent-range-btns .range-btn");
+  if (rangeBtn) {{
+    var newRange = rangeBtn.getAttribute("data-range");
+    if (newRange && newRange !== _sentHistRange) {{
+      _sentHistRange = newRange;
+      document.querySelectorAll("#sent-range-btns .range-btn").forEach(function(b) {{
+        b.classList.toggle("active", b.getAttribute("data-range") === newRange);
+      }});
+      if (_sentHistActive) {{
+        _sentFetchAndRender(_sentHistActive, newRange);
+      }}
+    }}
+    return;
+  }}
+  if (e.target.id === "sentiment-detail-close" || e.target.closest("#sentiment-detail-close")) {{
+    var panel = document.getElementById("sentiment-detail");
+    if (panel) panel.classList.remove("open");
+    document.querySelectorAll(".sentiment-gauge").forEach(function(g) {{ g.classList.remove("active"); }});
+    _sentHistActive = null;
+  }}
+}});
 
 </script>
 </body>

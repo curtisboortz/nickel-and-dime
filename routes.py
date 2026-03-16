@@ -5,6 +5,7 @@ import os
 from datetime import datetime
 from pathlib import Path
 from urllib.parse import quote
+import pandas as pd
 from flask import Blueprint, request, redirect
 
 bp = Blueprint("main", __name__)
@@ -58,13 +59,22 @@ def get_dashboard_data(base, config, **kwargs):
     return _deps["get_dashboard_data"](base, config, **kwargs)
 
 def load_price_cache(base):
-    """Load cached prices from price_cache.json."""
+    """Load cached prices from price_cache.json (tolerant of partial writes)."""
     path = Path(base) / "price_cache.json"
     if not path.exists():
         return {}
     try:
         with open(path, "r", encoding="utf-8") as f:
-            return json.load(f)
+            raw = f.read()
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        # File may have been partially written — try to salvage first JSON object
+        try:
+            decoder = json.JSONDecoder()
+            obj, _ = decoder.raw_decode(raw)
+            return obj
+        except Exception:
+            return {}
     except Exception:
         return {}
 
@@ -174,6 +184,7 @@ def run_price_update(config, fetch_metals=True):
 @bp.route("/history")
 @bp.route("/charts")
 @bp.route("/economics")
+@bp.route("/technical")
 def index():
     config = load_config(CONFIG_PATH)
     # Use cached data for instant page load (no network calls)
@@ -182,7 +193,7 @@ def index():
     saved = request.args.get("saved", "")
     # Determine active tab from URL path or query param
     path_tab = request.path.strip("/")
-    tab_map = {"balances": "balances", "budget": "budget", "holdings": "holdings", "import": "import", "history": "history", "charts": "history", "economics": "economics"}
+    tab_map = {"balances": "balances", "budget": "budget", "holdings": "holdings", "import": "import", "history": "history", "charts": "history", "economics": "economics", "technical": "technical"}
     active = tab_map.get(path_tab, request.args.get("tab", "summary"))
     return render_dashboard(data, saved=saved, active_tab=active)
 
@@ -237,11 +248,12 @@ def api_live_data():
         "gold": data.get("metals_prices", {}).get("GOLD", 0),
         "silver": data.get("metals_prices", {}).get("SILVER", 0),
         "gold_silver_ratio": data.get("gold_silver_ratio"),
+        "gold_oil_ratio": round(data.get("metals_prices", {}).get("GOLD", 0) / stock_prices_raw.get("CL=F", 1), 1) if data.get("metals_prices", {}).get("GOLD") and stock_prices_raw.get("CL=F") else None,
         "tnx_10y": data.get("treasury_yields", {}).get("tnx_10y"),
         "tnx_2y": data.get("treasury_yields", {}).get("tnx_2y"),
         "btc": data.get("crypto_prices", {}).get("BTC", 0),
         "spy": stock_prices_raw.get("SPY", 0),
-        "dxy": stock_prices_raw.get("DX-Y.NYB", 0),
+        "dxy": stock_prices_raw.get("DX=F", 0),
         "vix": stock_prices_raw.get("^VIX", 0),
         "oil": stock_prices_raw.get("CL=F", 0),
         "copper": stock_prices_raw.get("HG=F", 0),
@@ -254,6 +266,9 @@ def api_live_data():
         ptype = cp.get("type", "stock")
         src = crypto_prices if ptype == "crypto" else stock_prices
         result[f"custom_{t}"] = src.get(t) or 0
+    # Full crypto + stock price maps for holdings page live updates
+    result["crypto_prices"] = crypto_prices
+    result["stock_prices"] = stock_prices
     return jsonify(result)
 
 @bp.route("/api/pulse-order", methods=["POST"])
@@ -358,9 +373,20 @@ def api_sparklines():
         sym = sym.strip()
         yf_sym = (_CRYPTO_YF_MAP.get(sym.upper()) or sym + "-USD") if sym.upper() in crypto_set else sym
         try:
-            t = yf.Ticker(yf_sym)
-            # Try intraday first (5-min intervals over 1 day)
-            h = t.history(period="1d", interval="5m")
+            h = None
+            # DXY: prefer spot index over futures for accurate intraday sparkline
+            if yf_sym == "DX=F":
+                try:
+                    dl = yf.download("DX-Y.NYB", period="1d", interval="5m", progress=False)
+                    if dl is not None and not dl.empty:
+                        if isinstance(dl.columns, pd.MultiIndex):
+                            dl.columns = dl.columns.droplevel("Ticker")
+                        h = dl
+                except Exception:
+                    pass
+            if h is None:
+                t = yf.Ticker(yf_sym)
+                h = t.history(period="1d", interval="5m")
             if h is not None and len(h) > 5:
                 points = [round(float(row["Close"]), 2) for _, row in h.iterrows()]
                 # Downsample to TARGET_POINTS if too many (futures/crypto have extended hours)
@@ -370,6 +396,7 @@ def api_sparklines():
                 result[sym] = points
             else:
                 # Fallback to 5-day daily
+                t = yf.Ticker(yf_sym)
                 h = t.history(period="5d")
                 if h is not None and len(h) > 0:
                     result[sym] = [round(float(row["Close"]), 2) for _, row in h.iterrows()]
@@ -436,44 +463,60 @@ def api_historical():
                     data.append({"date": date_str, "o": o, "h": h, "l": l, "c": c})
             return jsonify({"symbol": symbol, "period": period, "interval": interval, "data": data})
 
-        if symbol == "AUAG-RATIO":
-            tg = yf.Ticker("GC=F")
-            ts = yf.Ticker("SI=F")
+        if symbol in ("AUAG-RATIO", "GOLDOIL-RATIO"):
+            num_ticker = "GC=F"
+            den_ticker = "SI=F" if symbol == "AUAG-RATIO" else "CL=F"
+            tn = yf.Ticker(num_ticker)
+            td = yf.Ticker(den_ticker)
             kw = {"period": period}
             if interval:
                 kw["interval"] = interval
-            hg = tg.history(**kw)
-            hs = ts.history(**kw)
-            if hg is None or hs is None or len(hg) == 0 or len(hs) == 0:
+            hn = tn.history(**kw)
+            hd = td.history(**kw)
+            if hn is None or hd is None or len(hn) == 0 or len(hd) == 0:
                 return jsonify({"error": "No data for ratio", "symbol": symbol, "period": period}), 404
-            hg = hg.copy()
-            hs = hs.copy()
-            hg["date_str"] = hg.index.strftime(date_fmt)
-            hs["date_str"] = hs.index.strftime(date_fmt)
-            hg_dict = hg.set_index("date_str").to_dict("index")
-            hs_dict = hs.set_index("date_str").to_dict("index")
+            hn = hn.copy()
+            hd = hd.copy()
+            hn["date_str"] = hn.index.strftime(date_fmt)
+            hd["date_str"] = hd.index.strftime(date_fmt)
+            hn_dict = hn.set_index("date_str").to_dict("index")
+            hd_dict = hd.set_index("date_str").to_dict("index")
             data = []
             prev_c = None
-            for date_str in sorted(hg_dict.keys()):
-                if date_str in hs_dict:
-                    gc, sc = float(hg_dict[date_str]["Close"]), float(hs_dict[date_str]["Close"])
-                    go, so = float(hg_dict[date_str]["Open"]), float(hs_dict[date_str]["Open"])
-                    if sc > 0 and so > 0:
-                        c = round(gc / sc, 2)
-                        o = round(go / so, 2)
-                        h = round(gc / sc * 1.01, 2)
-                        l = round(gc / sc * 0.99, 2)
+            for date_str in sorted(hn_dict.keys()):
+                if date_str in hd_dict:
+                    nc, dc = float(hn_dict[date_str]["Close"]), float(hd_dict[date_str]["Close"])
+                    no, do_ = float(hn_dict[date_str]["Open"]), float(hd_dict[date_str]["Open"])
+                    if dc > 0 and do_ > 0:
+                        c = round(nc / dc, 2)
+                        o = round(no / do_, 2)
+                        h = max(c, o)
+                        l = min(c, o)
                         if is_intraday and prev_c is not None and o == c == h == l == prev_c:
                             continue
                         prev_c = c
                         data.append({"date": date_str, "o": o, "h": h, "l": l, "c": c})
             return jsonify({"symbol": symbol, "period": period, "interval": interval, "data": data})
 
-        ticker = yf.Ticker(yf_symbol)
-        kw = {"period": period}
-        if interval:
-            kw["interval"] = interval
-        hist = ticker.history(**kw)
+        # DXY: prefer spot index (DX-Y.NYB) over futures (DX=F) for intraday;
+        # DX=F fast_info returns stale settlement values, DX-Y.NYB via download is accurate.
+        hist = None
+        if yf_symbol == "DX=F" and period in ("1d", "5d"):
+            try:
+                dl = yf.download("DX-Y.NYB", period=period, interval=interval or "5m", progress=False)
+                if dl is not None and not dl.empty:
+                    if isinstance(dl.columns, pd.MultiIndex):
+                        dl.columns = dl.columns.droplevel("Ticker")
+                    hist = dl
+            except Exception:
+                pass
+
+        if hist is None:
+            ticker = yf.Ticker(yf_symbol)
+            kw = {"period": period}
+            if interval:
+                kw["interval"] = interval
+            hist = ticker.history(**kw)
         if hist is None or len(hist) == 0:
             return jsonify({"error": "No data", "symbol": symbol, "period": period}), 404
         data = []
@@ -1515,7 +1558,8 @@ def api_sentiment():
         })
 
     now = time.time()
-    if _sentiment_cache["data"] and (now - _sentiment_cache["ts"]) < _SENTIMENT_TTL:
+    refresh = request.args.get("refresh", "").lower() in ("1", "true")
+    if not refresh and _sentiment_cache["data"] and (now - _sentiment_cache["ts"]) < _SENTIMENT_TTL:
         return jsonify(_sentiment_cache["data"])
 
     result = {}
@@ -1541,6 +1585,24 @@ def api_sentiment():
         return {"value": round(score), "label": _fg_label(score)}
 
     def _fetch_crypto():
+        config = load_config(CONFIG_PATH)
+        cmc_key = get_effective_api_keys(config).get("cmc_api_key", "")
+        if cmc_key:
+            try:
+                req = urllib.request.Request(
+                    "https://pro-api.coinmarketcap.com/v3/fear-and-greed/latest",
+                    headers={
+                        "X-CMC_PRO_API_KEY": cmc_key,
+                        "Accept": "application/json",
+                    }
+                )
+                with urllib.request.urlopen(req, timeout=8) as resp:
+                    body = json.loads(resp.read().decode())
+                val = int(body["data"]["value"])
+                cls = body["data"].get("value_classification", _fg_label(val))
+                return {"value": val, "label": cls, "source": "cmc"}
+            except Exception as e:
+                print(f"[Sentiment] CMC F&G failed, falling back to alternative.me: {e}")
         req = urllib.request.Request(
             "https://api.alternative.me/fng/?limit=1",
             headers={"User-Agent": "Mozilla/5.0"}
@@ -1549,7 +1611,7 @@ def api_sentiment():
             alt = json.loads(resp.read().decode())
         entry = alt.get("data", [{}])[0]
         val = int(entry.get("value", 50))
-        return {"value": val, "label": entry.get("value_classification", _fg_label(val))}
+        return {"value": val, "label": entry.get("value_classification", _fg_label(val)), "source": "alt"}
 
     with ThreadPoolExecutor(max_workers=2) as pool:
         cnn_fut = pool.submit(_fetch_cnn)
@@ -1580,7 +1642,7 @@ def api_sentiment():
     # --- 4) Gold sentiment (computed) ---
     try:
         gold_price = (cache.get("metals", {}).get("GOLD") or 0)
-        dxy = stocks.get("DX-Y.NYB") or 0
+        dxy = stocks.get("DX=F") or 0
         gvz = stocks.get("^GVZ") or 0
         gold_score = _compute_gold_sentiment(gold_price, vix_val, dxy, gvz)
         result["gold"] = {"value": gold_score, "label": _fg_label(gold_score)}
@@ -1680,4 +1742,982 @@ def _yield_curve_to_score(spread):
         return int(55 + (spread - 0.5) * 35)
     else:
         return min(100, int(90 + (spread - 1.5) * 10))
+
+
+# ── Sentiment History ────────────────────────────────────────────────
+_sent_hist_cache = {}          # keyed by range string, e.g. {"1y": {"data":…, "ts":…}}
+_SENT_HIST_TTL = 3600 * 6     # 6 hours
+
+_SENT_RANGE_MAP = {
+    "1y":  {"yf_period": "1y",  "crypto_limit": 365,  "yc_days": 252},
+    "3y":  {"yf_period": "3y",  "crypto_limit": 1095, "yc_days": 756},
+    "5y":  {"yf_period": "5y",  "crypto_limit": 1825, "yc_days": 1260},
+    "max": {"yf_period": "max", "crypto_limit": 0,    "yc_days": 0},
+}
+
+
+@bp.route("/api/sentiment-history")
+def api_sentiment_history():
+    """Return daily history for each sentiment gauge. ?range=1y|3y|5y|max"""
+    from flask import jsonify, request as flask_request
+    import time
+    now = time.time()
+
+    rng = flask_request.args.get("range", "1y")
+    if rng not in _SENT_RANGE_MAP:
+        rng = "1y"
+    params = _SENT_RANGE_MAP[rng]
+
+    cached = _sent_hist_cache.get(rng)
+    if cached and cached.get("data") and (now - cached.get("ts", 0)) < _SENT_HIST_TTL:
+        return jsonify(cached["data"])
+
+    from concurrent.futures import ThreadPoolExecutor
+    import urllib.request
+    from datetime import datetime
+
+    result = {}
+
+    def _hist_cnn():
+        """CNN Fear & Greed historical data, extended with VIX-derived scores for ranges > 1Y.
+        CNN only provides ~1 year of history, so for 3Y/5Y/Max we backfill with
+        a multi-factor stock sentiment proxy (VIX + S&P 500 momentum)."""
+        cnn_data = {}
+        try:
+            req = urllib.request.Request(
+                "https://production.dataviz.cnn.io/index/fearandgreed/graphdata",
+                headers={
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                    "Accept": "application/json, text/plain, */*",
+                    "Referer": "https://edition.cnn.com/markets/fear-and-greed",
+                    "Origin": "https://edition.cnn.com",
+                }
+            )
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                cnn = json.loads(resp.read().decode())
+            for pt in cnn.get("fear_and_greed_historical", {}).get("data", []):
+                ts = pt.get("x")
+                val = pt.get("y")
+                if ts is not None and val is not None:
+                    dt = datetime.utcfromtimestamp(ts / 1000).strftime("%Y-%m-%d")
+                    cnn_data[dt] = round(val)
+        except Exception as e:
+            print(f"[SentHist] CNN fetch error: {e}")
+
+        if rng == "1y" and cnn_data:
+            return [{"date": d, "value": v} for d, v in sorted(cnn_data.items())]
+
+        try:
+            import yfinance as yf
+            import math
+            period = params["yf_period"]
+            data = yf.download(["^VIX", "SPY"], period=period, progress=False, threads=False)
+            if data is None or data.empty:
+                return [{"date": d, "value": v} for d, v in sorted(cnn_data.items())]
+
+            spy_close = data[("Close", "SPY")].dropna()
+            spy_ma125 = spy_close.rolling(125).mean()
+
+            out_map = {}
+            for dt_idx in data.index:
+                dt = dt_idx.strftime("%Y-%m-%d")
+                if dt in cnn_data:
+                    out_map[dt] = cnn_data[dt]
+                    continue
+                try:
+                    vix = float(data[("Close", "^VIX")].loc[dt_idx])
+                    if math.isnan(vix):
+                        continue
+                    score = _vix_to_score(vix)
+                    spy_val = float(spy_close.loc[dt_idx]) if dt_idx in spy_close.index else 0
+                    spy_ma = float(spy_ma125.loc[dt_idx]) if dt_idx in spy_ma125.index and not math.isnan(spy_ma125.loc[dt_idx]) else 0
+                    if spy_val and spy_ma:
+                        momentum = (spy_val - spy_ma) / spy_ma
+                        score += max(-15, min(15, momentum * 100))
+                    out_map[dt] = max(0, min(100, round(score)))
+                except Exception:
+                    continue
+            return [{"date": d, "value": v} for d, v in sorted(out_map.items())]
+        except Exception as e:
+            print(f"[SentHist] Stock extended history error: {e}")
+            return [{"date": d, "value": v} for d, v in sorted(cnn_data.items())]
+
+    def _hist_crypto():
+        """Crypto F&G history — CMC Pro API (if key available), else alternative.me."""
+        config = load_config(CONFIG_PATH)
+        cmc_key = get_effective_api_keys(config).get("cmc_api_key", "")
+        if cmc_key:
+            try:
+                limit = params["crypto_limit"] or 2000
+                url = f"https://pro-api.coinmarketcap.com/v3/fear-and-greed/historical?limit={limit}"
+                req = urllib.request.Request(url, headers={
+                    "X-CMC_PRO_API_KEY": cmc_key,
+                    "Accept": "application/json",
+                })
+                with urllib.request.urlopen(req, timeout=15) as resp:
+                    body = json.loads(resp.read().decode())
+                out = []
+                for entry in body.get("data", []):
+                    ts = entry.get("timestamp", "")
+                    val = entry.get("value")
+                    if ts and val is not None:
+                        dt = datetime.utcfromtimestamp(int(ts)).strftime("%Y-%m-%d")
+                        out.append({"date": dt, "value": int(val)})
+                out.sort(key=lambda x: x["date"])
+                if out:
+                    return out
+            except Exception as e:
+                print(f"[SentHist] CMC historical failed, falling back: {e}")
+        try:
+            limit = params["crypto_limit"]
+            url = "https://api.alternative.me/fng/?limit=0" if limit == 0 else f"https://api.alternative.me/fng/?limit={limit}"
+            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                data = json.loads(resp.read().decode())
+            out = []
+            for entry in data.get("data", []):
+                ts = entry.get("timestamp")
+                val = entry.get("value")
+                if ts and val:
+                    dt = datetime.utcfromtimestamp(int(ts)).strftime("%Y-%m-%d")
+                    out.append({"date": dt, "value": int(val)})
+            out.sort(key=lambda x: x["date"])
+            return out
+        except Exception as e:
+            print(f"[SentHist] Crypto error: {e}")
+            return []
+
+    def _hist_vix():
+        """VIX history from yfinance, mapped to 0-100 score."""
+        try:
+            import yfinance as yf
+            tk = yf.Ticker("^VIX")
+            hist = tk.history(period=params["yf_period"])
+            out = []
+            for dt_idx, row in hist.iterrows():
+                dt = dt_idx.strftime("%Y-%m-%d")
+                vix = float(row["Close"])
+                out.append({"date": dt, "value": _vix_to_score(vix)})
+            return out
+        except Exception as e:
+            print(f"[SentHist] VIX error: {e}")
+            return []
+
+    def _hist_gold():
+        """Gold sentiment history computed from GC=F, DXY, GVZ via yfinance."""
+        try:
+            import yfinance as yf
+            data = yf.download(["GC=F", "DX=F", "^VIX", "^GVZ"],
+                               period=params["yf_period"], progress=False, threads=False)
+            if data is None or data.empty:
+                return []
+            out = []
+            for dt_idx in data.index:
+                dt = dt_idx.strftime("%Y-%m-%d")
+                try:
+                    gold = float(data[("Close", "GC=F")].loc[dt_idx])
+                    dxy = float(data[("Close", "DX=F")].loc[dt_idx]) if ("Close", "DX=F") in data.columns else 0
+                    vix = float(data[("Close", "^VIX")].loc[dt_idx]) if ("Close", "^VIX") in data.columns else 0
+                    gvz = float(data[("Close", "^GVZ")].loc[dt_idx]) if ("Close", "^GVZ") in data.columns else 0
+                    import math
+                    if math.isnan(gold):
+                        continue
+                    dxy = 0 if math.isnan(dxy) else dxy
+                    vix = 0 if math.isnan(vix) else vix
+                    gvz = 0 if math.isnan(gvz) else gvz
+                    score = _compute_gold_sentiment(gold, vix, dxy, gvz)
+                    out.append({"date": dt, "value": score})
+                except Exception:
+                    continue
+            return out
+        except Exception as e:
+            print(f"[SentHist] Gold error: {e}")
+            return []
+
+    def _hist_yield_curve():
+        """Yield curve spread history from FRED cache (DGS10, DGS2)."""
+        try:
+            import fred_manager
+            config = load_config(CONFIG_PATH)
+            api_keys = get_effective_api_keys(config)
+            fred_key = os.environ.get("FRED_API_KEY") or api_keys.get("fred_api_key") or ""
+            dgs10 = fred_manager.get_series_cached("DGS10", fred_key, BASE, max_age_hours=48)
+            dgs2 = fred_manager.get_series_cached("DGS2", fred_key, BASE, max_age_hours=48)
+            if not dgs10 or not dgs2:
+                return []
+            d2_map = {pt["date"]: pt["value"] for pt in dgs2 if pt.get("value") is not None}
+            out = []
+            for pt in dgs10:
+                d = pt["date"]
+                v10 = pt.get("value")
+                v2 = d2_map.get(d)
+                if v10 is not None and v2 is not None:
+                    spread = v10 - v2
+                    out.append({"date": d, "value": _yield_curve_to_score(spread)})
+            yc_days = params["yc_days"]
+            return out[-yc_days:] if yc_days > 0 else out
+        except Exception as e:
+            print(f"[SentHist] Yield curve error: {e}")
+            return []
+
+    with ThreadPoolExecutor(max_workers=5) as pool:
+        f_cnn = pool.submit(_hist_cnn)
+        f_crypto = pool.submit(_hist_crypto)
+        f_vix = pool.submit(_hist_vix)
+        f_gold = pool.submit(_hist_gold)
+        f_yc = pool.submit(_hist_yield_curve)
+
+    result["stock"] = f_cnn.result(timeout=20)
+    result["crypto"] = f_crypto.result(timeout=20)
+    result["vix"] = f_vix.result(timeout=20)
+    result["gold"] = f_gold.result(timeout=30)
+    result["yield_curve"] = f_yc.result(timeout=20)
+
+    _sent_hist_cache[rng] = {"data": result, "ts": now}
+    return jsonify(result)
+
+
+# ── CAPE / Shiller P/E ──────────────────────────────────────────────
+_cape_cache = {"data": None, "ts": 0}
+_CAPE_TTL = 3600 * 6  # 6 hours — CAPE barely changes day-to-day
+
+
+@bp.route("/api/cape")
+def api_cape():
+    """Return current + historical CAPE (Shiller P/E) ratio."""
+    from flask import jsonify
+    import time
+    now = time.time()
+    if _cape_cache["data"] and (now - _cape_cache["ts"]) < _CAPE_TTL:
+        return jsonify(_cape_cache["data"])
+
+    result = _fetch_cape_data()
+    if result and result.get("history"):
+        _cape_cache["data"] = result
+        _cape_cache["ts"] = now
+    return jsonify(result or {"current": None, "history": []})
+
+
+def _fetch_cape_data():
+    """Scrape CAPE ratio (current + monthly history) from multpl.com."""
+    import urllib.request
+    import re
+
+    url = "https://www.multpl.com/shiller-pe/table/by-month"
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml",
+    }
+    try:
+        req = urllib.request.Request(url, headers=headers)
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            html = resp.read().decode("utf-8", errors="replace")
+    except Exception as e:
+        print(f"[CAPE] fetch error: {e}")
+        return None
+
+    # Parse the HTML table — rows have <td>date</td><td>  value  </td>
+    row_pat = re.compile(
+        r'<tr[^>]*>\s*<td[^>]*>(.*?)</td>\s*<td[^>]*>(.*?)</td>',
+        re.DOTALL,
+    )
+    from datetime import datetime
+
+    import html as htmlmod
+
+    history = []
+    for m in row_pat.finditer(html):
+        raw_date = re.sub(r"<[^>]+>", "", m.group(1)).strip()
+        try:
+            dt = datetime.strptime(raw_date, "%b %d, %Y")
+            date_str = dt.strftime("%Y-%m-%d")
+        except ValueError:
+            continue
+        clean_val = htmlmod.unescape(re.sub(r"<[^>]+>", "", m.group(2))).strip()
+        try:
+            val = round(float(clean_val), 2)
+        except ValueError:
+            continue
+        history.append({"date": date_str, "value": val})
+
+    history.sort(key=lambda x: x["date"])
+
+    current = history[-1]["value"] if history else None
+
+    # Compute context: long-term median is ~16.8
+    median = 16.8
+    label = "Average"
+    if current:
+        if current > 30:
+            label = "Very Expensive"
+        elif current > 25:
+            label = "Expensive"
+        elif current > 20:
+            label = "Above Average"
+        elif current > 15:
+            label = "Average"
+        elif current > 10:
+            label = "Below Average"
+        else:
+            label = "Cheap"
+
+    return {
+        "current": current,
+        "median": median,
+        "label": label,
+        "history": history,
+    }
+
+
+# ── Buffett Indicator (Market Cap / GDP) ────────────────────────────
+_buffett_cache = {"data": None, "ts": 0}
+_BUFFETT_TTL = 3600 * 6
+
+
+@bp.route("/api/buffett")
+def api_buffett():
+    """Return current + historical Buffett Indicator (market cap / GDP %)."""
+    from flask import jsonify
+    import time
+    now = time.time()
+    if _buffett_cache["data"] and (now - _buffett_cache["ts"]) < _BUFFETT_TTL:
+        return jsonify(_buffett_cache["data"])
+
+    result = _fetch_buffett_data()
+    if result and result.get("history"):
+        _buffett_cache["data"] = result
+        _buffett_cache["ts"] = now
+    return jsonify(result or {"current": None, "history": []})
+
+
+def _fetch_buffett_data():
+    """Compute Buffett Indicator: total market cap / GDP.
+
+    Uses yfinance Wilshire 5000 + FRED-cached GDP, calibrated with a
+    known reference point (Dec 2025: 230%, per currentmarketvaluation.com).
+    """
+    import json
+    from pathlib import Path
+
+    # 1. GDP from FRED cache
+    cache_path = Path(BASE) / "price_cache.json"
+    gdp_data = []
+    if cache_path.exists():
+        try:
+            with open(cache_path) as f:
+                cache = json.load(f)
+            gdp_data = cache.get("fred", {}).get("GDP", {}).get("data", [])
+        except Exception:
+            pass
+
+    if not gdp_data:
+        # Try fetching GDP fresh if we have a key
+        import fred_manager
+        config = load_config(CONFIG_PATH)
+        api_keys = get_effective_api_keys(config)
+        fred_key = os.environ.get("FRED_API_KEY") or api_keys.get("fred_api_key") or ""
+        gdp_data = fred_manager.get_series_cached("GDP", fred_key, BASE, max_age_hours=168)
+
+    if not gdp_data:
+        print("[Buffett] no GDP data available")
+        return None
+
+    # 2. Wilshire 5000 from yfinance (weekly for smoother history)
+    try:
+        import yfinance as yf
+        w = yf.download("^W5000", period="max", interval="1wk", progress=False)
+        if w.empty:
+            print("[Buffett] yfinance returned no Wilshire data")
+            return None
+    except Exception as e:
+        print(f"[Buffett] yfinance error: {e}")
+        return None
+
+    # Build lookup maps
+    gdp_quarters = []
+    gdp_map = {}
+    for pt in gdp_data:
+        d, v = pt.get("date"), pt.get("value")
+        if d and v:
+            gdp_map[d[:10]] = v
+            gdp_quarters.append(d[:10])
+    gdp_quarters.sort()
+
+    wilshire_data = {}
+    for dt_idx, row in w.iterrows():
+        dt_str = dt_idx.strftime("%Y-%m-%d") if hasattr(dt_idx, "strftime") else str(dt_idx)[:10]
+        close = row["Close"]
+        if hasattr(close, "values"):
+            close = close.values[0]
+        val = float(close)
+        if val > 0:
+            wilshire_data[dt_str] = val
+
+    w_dates = sorted(wilshire_data.keys())
+
+    def closest_gdp(target):
+        """Find the most recent GDP quarter at or before target date."""
+        best = None
+        for gd in gdp_quarters:
+            if gd <= target:
+                best = gd
+            else:
+                break
+        return gdp_map.get(best) if best else None
+
+    # 3. Compute raw ratio for each Wilshire data point using most recent GDP
+    raw = []
+    for wd in w_dates:
+        w_val = wilshire_data[wd]
+        gdp_val = closest_gdp(wd)
+        if gdp_val and gdp_val > 0:
+            raw_ratio = w_val / gdp_val * 100
+            raw.append({"date": wd, "raw": raw_ratio})
+
+    if not raw:
+        return None
+
+    # Add a current-day estimate using latest Wilshire price + latest GDP
+    try:
+        import yfinance as yf
+        tk = yf.Ticker("^W5000")
+        latest_w = tk.fast_info.last_price
+        if latest_w and latest_w > 0:
+            latest_gdp = gdp_map.get(gdp_quarters[-1]) if gdp_quarters else None
+            if latest_gdp and latest_gdp > 0:
+                from datetime import date as _date
+                today_str_local = _date.today().strftime("%Y-%m-%d")
+                raw.append({"date": today_str_local, "raw": latest_w / latest_gdp * 100})
+    except Exception:
+        pass
+
+    # 4. Calibrate: known reference Dec 2025 ≈ 230%
+    ref_raw = None
+    for r in reversed(raw):
+        if r["date"] <= "2025-12-31":
+            ref_raw = r["raw"]
+            break
+    scale = (230.0 / ref_raw) if ref_raw and ref_raw > 0 else 1.0
+
+    history = []
+    seen = set()
+    for r in raw:
+        if r["date"] not in seen:
+            history.append({"date": r["date"], "value": round(r["raw"] * scale, 1)})
+            seen.add(r["date"])
+
+    current = history[-1]["value"] if history else None
+
+    median = 120
+    label = "Fair Value"
+    if current:
+        if current > 180:
+            label = "Significantly Overvalued"
+        elif current > 140:
+            label = "Overvalued"
+        elif current > 100:
+            label = "Fair Value"
+        elif current > 70:
+            label = "Undervalued"
+        else:
+            label = "Significantly Undervalued"
+
+    return {
+        "current": current,
+        "median": median,
+        "label": label,
+        "history": history,
+    }
+
+
+# ── CME FedWatch (rate probabilities from Fed Funds Futures) ─────────
+_fedwatch_cache = {"data": None, "ts": 0}
+_FEDWATCH_TTL = 3600 * 2
+
+_FOMC_DATES_2026 = [
+    "2026-01-29", "2026-03-18", "2026-05-06", "2026-06-17",
+    "2026-07-29", "2026-09-16", "2026-10-28", "2026-12-16",
+]
+
+_FF_MONTH_CODES = {
+    1: "F", 2: "G", 3: "H", 4: "J", 5: "K", 6: "M",
+    7: "N", 8: "Q", 9: "U", 10: "V", 11: "X", 12: "Z",
+}
+
+
+@bp.route("/api/fedwatch")
+def api_fedwatch():
+    """Compute FedWatch-style rate probabilities from Fed Funds Futures."""
+    from flask import jsonify
+    import time as _time
+    now = _time.time()
+    if _fedwatch_cache["data"] and (now - _fedwatch_cache["ts"]) < _FEDWATCH_TTL:
+        return jsonify(_fedwatch_cache["data"])
+
+    result = _compute_fedwatch()
+    if result and result.get("meetings"):
+        _fedwatch_cache["data"] = result
+        _fedwatch_cache["ts"] = now
+    return jsonify(result or {"meetings": [], "current_rate": None, "error": "Failed to fetch data"})
+
+
+def _compute_fedwatch():
+    """Build a probability tree across FOMC meetings using CME methodology."""
+    import yfinance as yf
+    from datetime import datetime, date
+    import calendar
+    import math
+
+    today = date.today()
+    today_str = today.strftime("%Y-%m-%d")
+
+    # ── 1. Current effective Fed Funds Rate from FRED ──
+    effr = None
+    try:
+        import fred_manager
+        config = load_config(CONFIG_PATH)
+        api_keys = get_effective_api_keys(config)
+        fred_key = os.environ.get("FRED_API_KEY") or api_keys.get("fred_api_key") or ""
+        dff = fred_manager.get_series_cached("DFF", fred_key, BASE, max_age_hours=24)
+        if dff:
+            for pt in reversed(dff):
+                if pt.get("value") is not None:
+                    effr = pt["value"]
+                    break
+    except Exception as e:
+        print(f"[FedWatch] FRED EFFR error: {e}")
+
+    if effr is None:
+        return None
+
+    current_upper = math.ceil(effr * 4) / 4
+    current_lower = current_upper - 0.25
+    current_mid = (current_upper + current_lower) / 2
+
+    upcoming = [m for m in _FOMC_DATES_2026 if m > today_str]
+    if not upcoming:
+        return {"meetings": [], "current_rate": effr,
+                "current_range_bps": f"{int(current_lower * 100)}-{int(current_upper * 100)}"}
+
+    # ── 2. Fetch Fed Funds Futures prices from yfinance ──
+    last_md = datetime.strptime(upcoming[-1], "%Y-%m-%d").date()
+    tickers, month_keys = [], []
+    m, y = today.month, today.year
+    end_m, end_y = last_md.month + 1, last_md.year
+    if end_m > 12:
+        end_m, end_y = 1, end_y + 1
+
+    while (y, m) <= (end_y, end_m):
+        code = _FF_MONTH_CODES[m]
+        tickers.append(f"ZQ{code}{str(y)[2:]}.CBT")
+        month_keys.append((y, m))
+        m += 1
+        if m > 12:
+            m, y = 1, y + 1
+
+    implied = {}
+    for i, ticker in enumerate(tickers):
+        try:
+            tk = yf.Ticker(ticker)
+            p = tk.fast_info.last_price if tk.fast_info else None
+            if p and 80 < p < 105:
+                implied[month_keys[i]] = round(100.0 - float(p), 4)
+        except Exception:
+            pass
+
+    if not implied:
+        return {"meetings": [], "current_rate": effr,
+                "current_range_bps": f"{int(current_lower * 100)}-{int(current_upper * 100)}",
+                "error": "Could not fetch futures prices"}
+
+    # ── 3. Compute isolated cut probability at each meeting ──
+    meeting_months = {}
+    for ms in upcoming:
+        md_ = datetime.strptime(ms, "%Y-%m-%d").date()
+        meeting_months[(md_.year, md_.month)] = md_
+
+    def _next_month(y, m):
+        return (y, m + 1) if m < 12 else (y + 1, 1)
+
+    prev_rate = effr
+    prev_meeting_month = (today.year, today.month)
+    isolated = []
+
+    for meeting_str in upcoming:
+        md = datetime.strptime(meeting_str, "%Y-%m-%d").date()
+        mkey = (md.year, md.month)
+        imp = implied.get(mkey)
+        if imp is None:
+            isolated.append({"date": meeting_str, "md": md, "p_cut": 0.0, "ok": False})
+            prev_meeting_month = mkey
+            continue
+
+        # Find a non-meeting month between prev meeting and this one for reference
+        ref = None
+        ry, rm = _next_month(*prev_meeting_month)
+        while (ry, rm) < mkey:
+            if (ry, rm) not in meeting_months and (ry, rm) in implied:
+                ref = implied[(ry, rm)]
+            ry, rm = _next_month(ry, rm)
+        pre_rate = ref if ref is not None else prev_rate
+
+        days_in = calendar.monthrange(md.year, md.month)[1]
+        days_after = days_in - md.day
+
+        if days_after <= 3:
+            ny, nm = _next_month(md.year, md.month)
+            next_imp = implied.get((ny, nm))
+            post = next_imp if next_imp is not None else imp
+        else:
+            post = (imp * days_in - pre_rate * md.day) / days_after
+
+        change = pre_rate - post  # positive = easing
+        if abs(change) > 0.50:
+            isolated.append({"date": meeting_str, "md": md, "p_cut": 0.0, "ok": False})
+            prev_meeting_month = mkey
+            continue
+
+        p_cut = max(0.0, min(1.0, change / 0.25))
+        isolated.append({"date": meeting_str, "md": md, "p_cut": p_cut, "post": post, "ok": True})
+        prev_rate = post
+        prev_meeting_month = mkey
+
+    # ── 4. Build probability tree ──
+    dist = {round(current_mid, 4): 100.0}
+    meetings_out = []
+
+    for iso in isolated:
+        md = iso["md"]
+        p_cut = iso["p_cut"] if iso["ok"] else 0.0
+        p_hold = 1.0 - p_cut
+
+        new_dist = {}
+        for rate, prob in dist.items():
+            new_dist[rate] = new_dist.get(rate, 0.0) + prob * p_hold
+            cut_rate = round(rate - 0.25, 4)
+            if cut_rate >= 0:
+                new_dist[cut_rate] = new_dist.get(cut_rate, 0.0) + prob * p_cut
+        dist = new_dist
+
+        ranges = []
+        cut_t, hold_t, hike_t = 0.0, 0.0, 0.0
+        for rate in sorted(dist.keys()):
+            prob = dist[rate]
+            if prob < 0.05:
+                continue
+            lo = int(round((rate - 0.125) * 100))
+            hi = int(round((rate + 0.125) * 100))
+            ranges.append({"range": f"{lo}-{hi}", "lo": lo, "prob": round(prob, 1)})
+            if rate < current_mid - 0.001:
+                cut_t += prob
+            elif rate > current_mid + 0.001:
+                hike_t += prob
+            else:
+                hold_t += prob
+
+        contract_code = f"ZQ{_FF_MONTH_CODES[md.month]}{str(md.year)[2:]}"
+        imp_price = implied.get((md.year, md.month))
+
+        meetings_out.append({
+            "date": iso["date"],
+            "label": md.strftime("%d %b%y").lstrip("0"),
+            "contract": contract_code,
+            "price": round(imp_price, 4) if imp_price else None,
+            "cut": round(cut_t, 1),
+            "hold": round(hold_t, 1),
+            "hike": round(hike_t, 1),
+            "ranges": ranges,
+        })
+
+    return {
+        "current_rate": effr,
+        "current_range_bps": f"{int(current_lower * 100)}-{int(current_upper * 100)}",
+        "meetings": meetings_out,
+    }
+
+
+# ── Economic Calendar (upcoming data releases) ──────────────────────
+_econ_cal_cache = {}
+_ECON_CAL_TTL = 1800  # 30 min so actuals refresh reasonably fast
+_ECON_CAL_DISK_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "econ_calendar_cache.json")
+
+_HIGH_IMPACT_KEYWORDS = [
+    "cpi", "gdp", "nonfarm", "payroll", "fomc", "fed funds", "interest rate",
+    "pce price", "core pce", "unemployment rate", "retail sales",
+]
+_MEDIUM_IMPACT_KEYWORDS = [
+    "ppi", "consumer confidence", "ism", "pmi", "housing starts",
+    "building permits", "durable goods", "trade balance", "jolts",
+    "initial claims", "jobless claims", "industrial production",
+    "consumer sentiment", "michigan", "existing home", "new home",
+    "cpi mm", "cpi yy", "core cpi", "personal income", "personal spending",
+    "adp", "empire state", "philly fed", "chicago pmi",
+]
+
+_MW_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Accept-Encoding": "identity",
+    "DNT": "1",
+    "Connection": "keep-alive",
+    "Upgrade-Insecure-Requests": "1",
+    "Sec-Fetch-Dest": "document",
+    "Sec-Fetch-Mode": "navigate",
+    "Sec-Fetch-Site": "none",
+    "Sec-Fetch-User": "?1",
+    "Cache-Control": "max-age=0",
+}
+
+
+def _classify_impact(event_name: str) -> str:
+    low = event_name.lower()
+    for kw in _HIGH_IMPACT_KEYWORDS:
+        if kw in low:
+            return "high"
+    for kw in _MEDIUM_IMPACT_KEYWORDS:
+        if kw in low:
+            return "medium"
+    return "low"
+
+
+def _week_range(offset: int = 0):
+    """Return (monday, friday) dates for the week at *offset* from current."""
+    from datetime import timedelta
+    today = datetime.now().date()
+    monday = today - timedelta(days=today.weekday()) + timedelta(weeks=offset)
+    friday = monday + timedelta(days=4)
+    return monday, friday
+
+
+def _load_econ_disk_cache():
+    try:
+        if os.path.exists(_ECON_CAL_DISK_FILE):
+            with open(_ECON_CAL_DISK_FILE, "r") as f:
+                return json.load(f)
+    except Exception as e:
+        print(f"[EconCal] Disk cache read error: {e}")
+    return {}
+
+
+def _save_econ_disk_cache(cache_data):
+    try:
+        import tempfile
+        fd, tmp = tempfile.mkstemp(suffix=".json", dir=os.path.dirname(_ECON_CAL_DISK_FILE))
+        with os.fdopen(fd, "w") as f:
+            json.dump(cache_data, f)
+        os.replace(tmp, _ECON_CAL_DISK_FILE)
+    except Exception as e:
+        print(f"[EconCal] Disk cache write error: {e}")
+
+
+# ── MarketWatch scraper (this week only, provides actuals) ──────────
+
+_MONTH_MAP = {
+    "january": "01", "february": "02", "march": "03", "april": "04",
+    "may": "05", "june": "06", "july": "07", "august": "08",
+    "september": "09", "october": "10", "november": "11", "december": "12",
+}
+
+
+def _fetch_marketwatch_calendar():
+    """Scrape MarketWatch economic calendar for this week (with actuals)."""
+    import urllib.request
+    import re
+    import html as html_mod
+    try:
+        req = urllib.request.Request(
+            "https://www.marketwatch.com/economy-politics/calendar",
+            headers=_MW_HEADERS,
+        )
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            raw = resp.read().decode("utf-8")
+    except Exception as e:
+        print(f"[EconCal] MarketWatch fetch error: {e}")
+        return []
+
+    # Extract the <table>…</table>
+    start = raw.find("<table")
+    if start < 0:
+        return []
+    end = raw.find("</table>", start)
+    if end < 0:
+        return []
+    table_html = raw[start:end + 8]
+
+    tag_re = re.compile(r"<[^>]+>")
+    row_re = re.compile(r"<tr[^>]*>(.*?)</tr>", re.DOTALL)
+    td_re = re.compile(r"<td[^>]*>(.*?)</td>", re.DOTALL)
+    bold_re = re.compile(r"<b>(.*?)</b>", re.DOTALL | re.IGNORECASE)
+    day_header_re = re.compile(
+        r"(MONDAY|TUESDAY|WEDNESDAY|THURSDAY|FRIDAY|SATURDAY|SUNDAY),?\s+"
+        r"(JANUARY|FEBRUARY|MARCH|APRIL|MAY|JUNE|JULY|AUGUST|SEPTEMBER|OCTOBER|NOVEMBER|DECEMBER)\s+(\d{1,2})",
+        re.IGNORECASE,
+    )
+
+    events = []
+    current_date = ""
+    year = datetime.now().year
+
+    for row_m in row_re.finditer(table_html):
+        row_content = row_m.group(1)
+        cells = td_re.findall(row_content)
+        if not cells:
+            continue
+
+        # Check for day header row (bold text in first cell)
+        bold_m = bold_re.search(cells[0])
+        if bold_m:
+            day_m = day_header_re.search(bold_m.group(1))
+            if day_m:
+                month_num = _MONTH_MAP.get(day_m.group(2).lower(), "01")
+                day_num = day_m.group(3).zfill(2)
+                current_date = f"{year}-{month_num}-{day_num}"
+            continue
+
+        if not current_date or len(cells) < 6:
+            continue
+
+        def _clean(s):
+            return html_mod.unescape(tag_re.sub("", s)).strip()
+
+        time_raw = _clean(cells[0])
+        event_name = _clean(cells[1])
+        actual_val = _clean(cells[3])
+        forecast_val = _clean(cells[4])
+        previous_val = _clean(cells[5])
+
+        if not event_name or event_name.lower() == "none scheduled":
+            continue
+
+        # Convert "8:30 am" -> "08:30", "2:00 pm" -> "14:00"
+        time_str = ""
+        tm = re.match(r"(\d{1,2}):(\d{2})\s*(am|pm)", time_raw, re.IGNORECASE)
+        if tm:
+            h = int(tm.group(1))
+            m_val = tm.group(2)
+            if tm.group(3).lower() == "pm" and h != 12:
+                h += 12
+            elif tm.group(3).lower() == "am" and h == 12:
+                h = 0
+            time_str = f"{h:02d}:{m_val}"
+
+        events.append({
+            "date": current_date,
+            "time": time_str,
+            "event": event_name,
+            "impact": _classify_impact(event_name),
+            "actual": actual_val if actual_val else "",
+            "forecast": forecast_val if forecast_val else "-",
+            "previous": previous_val if previous_val else "-",
+        })
+
+    impact_order = {"high": 0, "medium": 1, "low": 2}
+    events.sort(key=lambda e: (e["date"], e["time"], impact_order.get(e["impact"], 3)))
+    return events
+
+
+# ── Faireconomy fallback (schedule only, no actuals) ────────────────
+
+def _parse_faireconomy_events(data):
+    events = []
+    for item in data:
+        if item.get("country") != "USD":
+            continue
+        impact_raw = (item.get("impact") or "").strip()
+        if impact_raw == "Holiday":
+            continue
+        date_str = (item.get("date") or "")[:10]
+        time_str = (item.get("date") or "")[11:16]
+        actual_raw = (item.get("actual") or "").strip()
+        events.append({
+            "date": date_str,
+            "time": time_str,
+            "event": item.get("title", ""),
+            "impact": _classify_impact(item.get("title", "")) if impact_raw == "Low" else impact_raw.lower(),
+            "actual": actual_raw if actual_raw else "",
+            "forecast": item.get("forecast", "") or "-",
+            "previous": item.get("previous", "") or "-",
+        })
+    impact_order = {"high": 0, "medium": 1, "low": 2}
+    events.sort(key=lambda e: (e["date"], e["time"], impact_order.get(e["impact"], 3)))
+    return events
+
+
+def _fetch_faireconomy_calendar(week: str = "thisweek"):
+    import urllib.request
+    url = f"https://nfs.faireconomy.media/ff_calendar_{week}.json"
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read().decode())
+    except Exception as e:
+        print(f"[EconCal] Faireconomy fetch error ({week}): {e}")
+        return []
+    return _parse_faireconomy_events(data)
+
+
+# ── Unified fetcher ─────────────────────────────────────────────────
+
+def _get_econ_week(offset: int):
+    """Get events for a given week offset. 0=this, negative=past, 1=next."""
+    monday, friday = _week_range(offset)
+    monday_key = monday.isoformat()
+    week_label = f"{monday.strftime('%b %d')} – {friday.strftime('%b %d, %Y')}"
+
+    if offset == 0:
+        # Primary: MarketWatch (has actuals). Fallback: faireconomy.
+        events = _fetch_marketwatch_calendar()
+        if not events:
+            events = _fetch_faireconomy_calendar("thisweek")
+        if events:
+            disk = _load_econ_disk_cache()
+            disk[monday_key] = {"events": events, "week_label": week_label}
+            _save_econ_disk_cache(disk)
+        return events, week_label
+
+    # Past or future weeks: disk cache first
+    disk = _load_econ_disk_cache()
+    cached_week = disk.get(monday_key)
+    if cached_week:
+        return cached_week.get("events", []), cached_week.get("week_label", week_label)
+
+    # For next week, try faireconomy (no actuals, but gives the schedule)
+    if offset == 1:
+        events = _fetch_faireconomy_calendar("nextweek")
+        if events:
+            disk[monday_key] = {"events": events, "week_label": week_label}
+            _save_econ_disk_cache(disk)
+            return events, week_label
+
+    return [], week_label
+
+
+@bp.route("/api/economic-calendar")
+def api_economic_calendar():
+    from flask import jsonify, request as flask_request
+    import time as _time
+    now = _time.time()
+
+    try:
+        offset = int(flask_request.args.get("offset", "0"))
+    except (ValueError, TypeError):
+        offset = 0
+    offset = max(-8, min(1, offset))
+
+    cache_key = str(offset)
+    cached = _econ_cal_cache.get(cache_key)
+    if cached and cached.get("data") and (now - cached.get("ts", 0)) < _ECON_CAL_TTL:
+        return jsonify(cached["data"])
+
+    events, week_label = _get_econ_week(offset)
+    result = {
+        "events": events or [],
+        "week_label": week_label,
+        "offset": offset,
+        "updated": datetime.now().isoformat(),
+    }
+    if events:
+        _econ_cal_cache[cache_key] = {"data": result, "ts": now}
+    return jsonify(result)
 

@@ -3,34 +3,11 @@ FRED (Federal Reserve Economic Data) API integration with caching.
 Fetches macroeconomic series and caches in price_cache.json under key "fred".
 """
 
-import json
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Optional
 
-
-def _price_cache_path(base: Path) -> Path:
-    return base / "price_cache.json"
-
-
-def load_price_cache(base: Path) -> dict:
-    """Load full price cache (includes 'fred' key)."""
-    path = _price_cache_path(base)
-    if not path.exists():
-        return {}
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except (json.JSONDecodeError, OSError):
-        return {}
-
-
-def save_price_cache(base: Path, cache: dict) -> None:
-    """Write full price cache to disk."""
-    path = _price_cache_path(base)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(cache, f, indent=2)
+from finance_manager import load_price_cache, save_price_cache_full
 
 
 def get_fred_cache(base: Path) -> dict:
@@ -40,15 +17,17 @@ def get_fred_cache(base: Path) -> dict:
 
 
 def set_fred_series(base: Path, series_id: str, data: list[dict]) -> None:
-    """Update cache with one series; merge into existing cache."""
-    cache = load_price_cache(base)
-    fred = cache.get("fred", {})
-    fred[series_id] = {
-        "updated": datetime.now().isoformat(),
-        "data": data,
-    }
-    cache["fred"] = fred
-    save_price_cache(base, cache)
+    """Update cache with one series; merge into existing cache atomically."""
+    from finance_manager import _price_cache_lock
+    with _price_cache_lock:
+        cache = load_price_cache(base)
+        fred = cache.get("fred", {})
+        fred[series_id] = {
+            "updated": datetime.now().isoformat(),
+            "data": data,
+        }
+        cache["fred"] = fred
+        save_price_cache_full(base, cache)
 
 
 def is_cache_stale(updated_iso: Optional[str], max_age_hours: float = 24) -> bool:
@@ -149,6 +128,7 @@ CREDIT_SERIES = ["BAMLH0A0HYM2"]  # ICE BofA US High Yield OAS
 REAL_YIELDS_SERIES = ["DFII10", "T5YIE", "T10YIE"]  # 10Y TIPS yield, 5Y/10Y breakeven inflation
 RECESSION_SERIES = ["SAHMREALTIME"]  # Sahm Rule Recession Indicator
 HOUSING_SERIES = ["CSUSHPINSA", "MORTGAGE30US"]
+WUI_SERIES = ["WUIGLOBALWEIGHTAVG"]
 
 ALL_FRED_SERIES = (
     DEBT_SERIES
@@ -161,4 +141,5 @@ ALL_FRED_SERIES = (
     + LABOR_SERIES
     + GROWTH_SENTIMENT_SERIES
     + HOUSING_SERIES
+    + WUI_SERIES
 )

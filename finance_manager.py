@@ -79,6 +79,10 @@ def get_effective_api_keys(config: dict) -> dict:
         keys["coinbase_key_name"] = os.environ.get("COINBASE_KEY_NAME", "")
     if os.environ.get("COINBASE_PRIVATE_KEY"):
         keys["coinbase_private_key"] = os.environ.get("COINBASE_PRIVATE_KEY", "")
+    if os.environ.get("CMC_API_KEY"):
+        keys["cmc_api_key"] = os.environ.get("CMC_API_KEY", "")
+    if os.environ.get("FMP_API_KEY"):
+        keys["fmp_api_key"] = os.environ.get("FMP_API_KEY", "")
     return keys
 
 
@@ -95,34 +99,53 @@ def is_market_hours():
 
 
 def fetch_stock_prices(tickers):
-    """Fetch current prices for stocks/ETFs via yfinance."""
+    """Fetch current prices for stocks/ETFs via yfinance.
+
+    Uses fast_info.last_price for real-time quotes, with batch download as
+    fallback for any tickers that fail the fast path.
+    """
     prices = {}
     if not tickers:
         return prices
-    # Batch download first
+
+    # 1) Real-time quotes via fast_info (most current price available)
+    failed = []
+    for t in tickers:
+        try:
+            tk = yf.Ticker(t)
+            lp = tk.fast_info.last_price
+            if lp and lp > 0:
+                prices[t] = float(lp)
+            else:
+                failed.append(t)
+        except Exception:
+            failed.append(t)
+
+    if not failed:
+        return prices
+
+    # 2) Batch download fallback for tickers that failed fast_info
     try:
-        data = yf.download(tickers, group_by="ticker", auto_adjust=True, progress=False, threads=False)
+        data = yf.download(failed, group_by="ticker", auto_adjust=True, progress=False, threads=False)
         if data is not None and not data.empty:
-            if len(tickers) == 1:
-                # Single ticker: data is a simple DataFrame
+            if len(failed) == 1:
                 if "Close" in data.columns:
                     close = data["Close"].dropna()
                     if len(close) > 0:
-                        prices[tickers[0]] = float(close.iloc[-1])
+                        prices[failed[0]] = float(close.iloc[-1])
             elif isinstance(data.columns, pd.MultiIndex):
-                # Multi-ticker: MultiIndex columns (ticker, field)
-                for t in tickers:
+                for t in failed:
                     try:
                         close = data[t]["Close"].dropna() if t in data.columns.get_level_values(0) else None
                         if close is not None and len(close) > 0:
                             prices[t] = float(close.iloc[-1])
                     except (KeyError, TypeError):
                         pass
-            # If batch returned flat columns, skip — fallback below will handle it
     except Exception:
         pass
-    # Individual fallback for any missing tickers
-    for t in tickers:
+
+    # 3) Individual history fallback for anything still missing
+    for t in failed:
         if t not in prices:
             try:
                 ticker = yf.Ticker(t)
@@ -256,32 +279,47 @@ def _metals_sane(prices: dict) -> dict:
 
 
 def fetch_metals_prices(gold_api_key: Optional[str], verbose: bool = False) -> dict:
-    """Fetch gold and silver spot prices.
-    Priority: yfinance batch download (free, no key, no quota) -> yfinance
-    individual ticker fallback -> GoldAPI.io (if key provided).
+    """Fetch gold and silver prices from futures.
+    Priority: yfinance fast_info (real-time) -> yfinance batch download ->
+    yfinance individual ticker -> GoldAPI.io (if key provided).
     Returns only prices that pass sanity checks."""
     prices = {}
 
-    # 1) yfinance batch download (fastest, free, unlimited)
-    try:
-        data = yf.download(["GC=F", "SI=F"], group_by="ticker", auto_adjust=True,
-                           progress=False, threads=False)
-        if data is not None and not data.empty:
-            if isinstance(data.columns, pd.MultiIndex):
-                for sym, key in [("GC=F", "GOLD"), ("SI=F", "SILVER")]:
-                    try:
-                        close = data[sym]["Close"].dropna()
-                        if len(close) > 0:
-                            prices[key] = float(close.iloc[-1])
-                    except (KeyError, TypeError):
-                        pass
-        if verbose and prices:
-            print(f"  Metals: yfinance batch ({len(prices)}/2)")
-    except Exception as e:
-        if verbose:
-            print(f"  Metals yfinance batch: {e}")
+    # 1) Real-time quotes via fast_info
+    for sym, key in [("GC=F", "GOLD"), ("SI=F", "SILVER")]:
+        try:
+            tk = yf.Ticker(sym)
+            lp = tk.fast_info.last_price
+            if lp and lp > 0:
+                prices[key] = float(lp)
+        except Exception:
+            pass
+    if verbose and prices:
+        print(f"  Metals: yfinance real-time ({len(prices)}/2)")
 
-    # 2) yfinance individual ticker fallback for any still missing
+    # 2) Batch download fallback for any still missing
+    if "GOLD" not in prices or "SILVER" not in prices:
+        try:
+            data = yf.download(["GC=F", "SI=F"], group_by="ticker", auto_adjust=True,
+                               progress=False, threads=False)
+            if data is not None and not data.empty:
+                if isinstance(data.columns, pd.MultiIndex):
+                    for sym, key in [("GC=F", "GOLD"), ("SI=F", "SILVER")]:
+                        if key in prices:
+                            continue
+                        try:
+                            close = data[sym]["Close"].dropna()
+                            if len(close) > 0:
+                                prices[key] = float(close.iloc[-1])
+                        except (KeyError, TypeError):
+                            pass
+            if verbose and prices:
+                print(f"  Metals: yfinance batch ({len(prices)}/2)")
+        except Exception as e:
+            if verbose:
+                print(f"  Metals yfinance batch: {e}")
+
+    # 3) Individual ticker fallback for any still missing
     if "GOLD" not in prices or "SILVER" not in prices:
         for sym, key in [("GC=F", "GOLD"), ("SI=F", "SILVER")]:
             if key in prices:
@@ -376,8 +414,8 @@ def compute_holdings_values(
         total += val
 
     # Crypto
-    gold_price = metals_prices.get("GOLD") or 5000  # fallback
-    silver_price = metals_prices.get("SILVER") or 80  # fallback
+    gold_price = metals_prices.get("GOLD", 0)
+    silver_price = metals_prices.get("SILVER", 0)
 
     for c in config.get("crypto_holdings", []):
         sym = c.get("symbol", "")
@@ -490,8 +528,8 @@ def generate_dashboard_html(
     """Generate the HTML dashboard."""
     targets = config.get("targets", {}).get("tactical", {})
     next_buys = get_next_buys(config, 0)
-    gold_price = metals_prices.get("GOLD") or 5000
-    silver_price = metals_prices.get("SILVER") or 80
+    gold_price = metals_prices.get("GOLD", 0)
+    silver_price = metals_prices.get("SILVER", 0)
 
     alloc_rows = ""
     for bucket, value in buckets.items():
@@ -781,38 +819,75 @@ def _price_cache_path(base: Path) -> Path:
     return base / "price_cache.json"
 
 
+import threading as _threading
+_price_cache_lock = _threading.RLock()
+
+
 def load_price_cache(base: Path) -> dict:
-    """Load cached prices (metals, crypto). Used when API fails."""
+    """Load cached prices (metals, crypto). Tolerant of partial writes."""
     path = _price_cache_path(base)
     if not path.exists():
         return {}
     try:
         with open(path, "r", encoding="utf-8") as f:
-            return json.load(f)
+            raw = f.read()
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        try:
+            decoder = json.JSONDecoder()
+            obj, _ = decoder.raw_decode(raw)
+            return obj
+        except Exception:
+            return {}
     except Exception:
         return {}
 
 
 def save_price_cache(base: Path, metals: dict = None, crypto: dict = None,
                      stocks: dict = None, treasury: dict = None) -> None:
-    """Save prices to cache. Merges with existing cache."""
-    path = _price_cache_path(base)
-    cache = load_price_cache(base)
-    if metals:
-        cache["metals"] = metals
-        cache["metals_updated"] = datetime.now().isoformat()
-    if crypto:
-        cache["crypto"] = crypto
-        cache["crypto_updated"] = datetime.now().isoformat()
-    if stocks:
-        cache["stocks"] = stocks
-        cache["stocks_updated"] = datetime.now().isoformat()
-    if treasury:
-        cache["treasury"] = treasury
-        cache["treasury_updated"] = datetime.now().isoformat()
+    """Save prices to cache atomically. Merges with existing cache."""
+    with _price_cache_lock:
+        path = _price_cache_path(base)
+        cache = load_price_cache(base)
+        if metals:
+            cache["metals"] = metals
+            cache["metals_updated"] = datetime.now().isoformat()
+        if crypto:
+            cache["crypto"] = crypto
+            cache["crypto_updated"] = datetime.now().isoformat()
+        if stocks:
+            cache["stocks"] = stocks
+            cache["stocks_updated"] = datetime.now().isoformat()
+        if treasury:
+            cache["treasury"] = treasury
+            cache["treasury_updated"] = datetime.now().isoformat()
+        _atomic_json_write(path, cache)
+
+
+def save_price_cache_full(base: Path, cache: dict) -> None:
+    """Write full price cache atomically (used by fred_manager)."""
+    with _price_cache_lock:
+        path = _price_cache_path(base)
+        _atomic_json_write(path, cache)
+
+
+def _atomic_json_write(path: Path, data: dict) -> None:
+    """Write JSON to file atomically via temp file + rename."""
+    import tempfile
     try:
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(cache, f, indent=2)
+        tmp_fd, tmp_path = tempfile.mkstemp(
+            dir=str(path.parent), suffix=".tmp", prefix=".price_cache_"
+        )
+        try:
+            with os.fdopen(tmp_fd, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=2)
+            os.replace(tmp_path, str(path))
+        except Exception:
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+            raise
     except Exception:
         pass
 
@@ -894,11 +969,14 @@ def append_price_history(
 
         if history and history[-1].get("date", "")[:10] == today:
             entry = history[-1]
+            day_open = entry.get("open", rounded_total)
+            # Clamp high/low to 3% of the day's open to reject intraday glitches
+            max_wick = day_open * 0.03
             entry["close"] = rounded_total
             entry["total"] = rounded_total
-            if rounded_total > entry.get("high", rounded_total):
+            if rounded_total > entry.get("high", rounded_total) and rounded_total <= day_open + max_wick:
                 entry["high"] = rounded_total
-            if rounded_total < entry.get("low", rounded_total):
+            if rounded_total < entry.get("low", rounded_total) and rounded_total >= day_open - max_wick:
                 entry["low"] = rounded_total
             entry["last_update"] = now_time
             entry["gold"] = round(gold, 2) if gold is not None else entry.get("gold")
@@ -1109,11 +1187,9 @@ def get_dashboard_data_cached(base: Path, config: dict) -> dict:
     Returns instantly for snappy initial page load.
     """
     price_cache = load_price_cache(base)
-    metals_prices = price_cache.get("metals", {"GOLD": 5000, "SILVER": 80})
-    if not metals_prices:
-        metals_prices = {"GOLD": 5000, "SILVER": 80}
-    gold = metals_prices.get("GOLD") or 5000
-    silver = metals_prices.get("SILVER") or 80
+    metals_prices = price_cache.get("metals", {})
+    gold = metals_prices.get("GOLD", 0)
+    silver = metals_prices.get("SILVER", 0)
     gold_silver_ratio = round(gold / silver, 2) if silver and silver > 0 else None
 
     crypto_prices = price_cache.get("crypto", {})
@@ -1177,16 +1253,14 @@ def get_dashboard_data(base: Path, config: dict, verbose: bool = False) -> dict:
 
     crypto_symbols = [c["symbol"] for c in config.get("crypto_holdings", [])]
 
-    # Metals: fetch live, fallback to cache, then hardcoded
+    # Metals: fetch live, fallback to cache
     metals_prices = fetch_metals_prices(gold_key, verbose=verbose)
     if metals_prices:
         save_price_cache(base, metals=metals_prices)
     else:
         metals_prices = price_cache.get("metals", {})
-    if not metals_prices:
-        metals_prices = {"GOLD": 5000, "SILVER": 80}
-    gold = metals_prices.get("GOLD") or 5000
-    silver = metals_prices.get("SILVER") or 80
+    gold = metals_prices.get("GOLD", 0)
+    silver = metals_prices.get("SILVER", 0)
     gold_silver_ratio = round(gold / silver, 2) if silver and silver > 0 else None
     treasury_yields = fetch_treasury_yields(verbose=verbose)
     if treasury_yields:
@@ -1196,22 +1270,28 @@ def get_dashboard_data(base: Path, config: dict, verbose: bool = False) -> dict:
 
     tickers = list({h["ticker"] for h in config.get("holdings", []) if h.get("ticker") and h["ticker"] != "SPAXX"})
     # Always include SPY, DXY, VIX, Oil, Copper, and metals futures for pulse bar / market display
-    for sym in ("SPY", "DX-Y.NYB", "^VIX", "CL=F", "HG=F", "GC=F", "SI=F", "^GVZ"):
+    for sym in ("SPY", "DX=F", "DX-Y.NYB", "^VIX", "CL=F", "HG=F", "GC=F", "SI=F", "^GVZ"):
         if sym not in tickers:
             tickers.append(sym)
     # Fetch stock prices (even outside market hours to get latest close)
     stock_prices = fetch_stock_prices(tickers)
     if stock_prices:
+        # Prefer DX-Y.NYB (spot DXY) over DX=F (futures) which can return stale settlement values
+        if stock_prices.get("DX-Y.NYB") and stock_prices["DX-Y.NYB"] > 0:
+            stock_prices["DX=F"] = stock_prices["DX-Y.NYB"]
         save_price_cache(base, stocks=stock_prices)
-        # Cross-fill metals from futures if dedicated metals fetch missed
-        if not metals_prices.get("GOLD") and stock_prices.get("GC=F"):
+        # Always prefer fresh futures prices for metals display
+        if stock_prices.get("GC=F"):
             metals_prices["GOLD"] = stock_prices["GC=F"]
-        if not metals_prices.get("SILVER") and stock_prices.get("SI=F"):
+        if stock_prices.get("SI=F"):
             metals_prices["SILVER"] = stock_prices["SI=F"]
         if metals_prices:
             save_price_cache(base, metals=metals_prices)
     else:
         stock_prices = price_cache.get("stocks", {})
+
+    gold = metals_prices.get("GOLD", 0)
+    silver = metals_prices.get("SILVER", 0)
 
     # Crypto prices: fetch live, fallback to cache
     crypto_prices = fetch_crypto_prices(crypto_symbols)
@@ -1283,15 +1363,13 @@ def run_update(base, config, tickers, crypto_symbols, gold_key, metals_prices=No
             save_price_cache(base, metals=metals_prices)
         else:
             metals_prices = price_cache.get("metals", {})
-        if not metals_prices:
-            metals_prices = {"GOLD": 5000, "SILVER": 80}
         if verbose:
-            status = "live" if metals_prices.get("GOLD", 0) > 0 else "fallback"
+            status = "live" if metals_prices.get("GOLD", 0) > 0 else "cache"
             print(f"  Metals: {status}")
-    if metals_prices is None:
-        metals_prices = {"GOLD": 5000, "SILVER": 80}
-    gold = metals_prices.get("GOLD") or 5000
-    silver = metals_prices.get("SILVER") or 80
+    if not metals_prices:
+        metals_prices = price_cache.get("metals", {})
+    gold = metals_prices.get("GOLD", 0)
+    silver = metals_prices.get("SILVER", 0)
     gold_silver_ratio = round(gold / silver, 2) if silver and silver > 0 else None
     treasury_yields = fetch_treasury_yields(verbose=verbose)
     if treasury_yields:
@@ -1300,19 +1378,22 @@ def run_update(base, config, tickers, crypto_symbols, gold_key, metals_prices=No
         treasury_yields = price_cache.get("treasury", {})
 
     # Always include SPY, DXY, VIX, Oil, Copper, and metals futures for pulse bar / market display
-    for sym in ("SPY", "DX-Y.NYB", "^VIX", "CL=F", "HG=F", "GC=F", "SI=F", "^GVZ"):
+    for sym in ("SPY", "DX=F", "DX-Y.NYB", "^VIX", "CL=F", "HG=F", "GC=F", "SI=F", "^GVZ"):
         if sym not in tickers:
             tickers.append(sym)
     # Fetch stock prices (even outside market hours to get latest close)
     stock_prices = fetch_stock_prices(tickers)
     if stock_prices:
+        # Prefer DX-Y.NYB (spot DXY) over DX=F (futures) which can return stale settlement values
+        if stock_prices.get("DX-Y.NYB") and stock_prices["DX-Y.NYB"] > 0:
+            stock_prices["DX=F"] = stock_prices["DX-Y.NYB"]
         save_price_cache(base, stocks=stock_prices)
         if verbose:
             print(f"  Stocks: {len(stock_prices)} prices")
-        # Cross-fill metals from futures if dedicated metals fetch missed
-        if not metals_prices.get("GOLD") and stock_prices.get("GC=F"):
+        # Always prefer fresh futures prices for metals
+        if stock_prices.get("GC=F"):
             metals_prices["GOLD"] = stock_prices["GC=F"]
-        if not metals_prices.get("SILVER") and stock_prices.get("SI=F"):
+        if stock_prices.get("SI=F"):
             metals_prices["SILVER"] = stock_prices["SI=F"]
         if metals_prices:
             save_price_cache(base, metals=metals_prices)
@@ -1320,6 +1401,9 @@ def run_update(base, config, tickers, crypto_symbols, gold_key, metals_prices=No
         stock_prices = price_cache.get("stocks", {})
         if verbose:
             print(f"  Stocks: using cached prices ({len(stock_prices)})")
+
+    gold = metals_prices.get("GOLD", 0)
+    silver = metals_prices.get("SILVER", 0)
 
     # Crypto prices: fetch live, fallback to cache
     crypto_prices = fetch_crypto_prices(crypto_symbols)

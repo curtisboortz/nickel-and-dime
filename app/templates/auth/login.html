@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block title %}Log In — Nickel&amp;Dime{% endblock %}
+
+{% block body %}
+<div class="auth-screen">
+  <div class="auth-box">
+    <div style="margin-bottom:24px;">
+      <img src="/icon-192.png" alt="Nickel&amp;Dime" style="width:56px;height:56px;border-radius:14px;margin-bottom:16px;">
+      <h1>Welcome back</h1>
+      <p style="color:var(--text-muted);font-size:0.88rem;">Sign in to your dashboard</p>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    {% for category, message in messages %}
+    <div style="margin-bottom:12px;padding:10px 14px;border-radius:8px;font-size:0.85rem;
+      {% if category == 'error' %}background:rgba(248,113,113,0.1);color:var(--danger);border:1px solid rgba(248,113,113,0.2);
+      {% elif category == 'success' %}background:rgba(52,211,153,0.1);color:var(--success);border:1px solid rgba(52,211,153,0.2);
+      {% else %}background:rgba(99,102,241,0.1);color:var(--text-secondary);border:1px solid rgba(99,102,241,0.2);{% endif %}">
+      {{ message }}
+    </div>
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
+
+    <form method="POST" action="{{ url_for('auth.login') }}" style="text-align:left;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+      <label class="label" for="email">Email</label>
+      <input type="email" id="email" name="email" required autofocus
+             placeholder="you@example.com"
+             style="margin-bottom:14px;text-align:left;letter-spacing:normal;font-size:0.92rem;">
+
+      <label class="label" for="password">Password</label>
+      <input type="password" id="password" name="password" required
+             placeholder="Your password"
+             style="margin-bottom:14px;text-align:left;letter-spacing:normal;font-size:0.92rem;">
+
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+        <label style="display:flex;align-items:center;gap:6px;font-size:0.82rem;color:var(--text-muted);cursor:pointer;">
+          <input type="checkbox" name="remember" style="width:auto;accent-color:var(--accent-primary);">
+          Remember me
+        </label>
+        <a href="{{ url_for('auth.forgot_password') }}" style="font-size:0.82rem;color:var(--accent-primary);text-decoration:none;">Forgot password?</a>
+      </div>
+
+      <button type="submit" style="width:100%;padding:12px;">Sign In</button>
+    </form>
+
+    <p style="margin-top:20px;font-size:0.85rem;color:var(--text-muted);">
+      Don't have an account?
+      <a href="{{ url_for('auth.register') }}" style="color:var(--accent-primary);text-decoration:none;font-weight:600;">Create one</a>
+    </p>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block title %}Account — Nickel&amp;Dime{% endblock %}
+
+{% block body %}
+<div class="auth-screen" style="gap:16px;">
+  <div class="auth-box" style="max-width:440px;text-align:left;">
+    <h1 style="text-align:center;margin-bottom:20px;">Account Settings</h1>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    {% for category, message in messages %}
+    <div style="margin-bottom:12px;padding:10px 14px;border-radius:8px;font-size:0.85rem;
+      {% if category == 'success' %}background:rgba(52,211,153,0.1);color:var(--success);border:1px solid rgba(52,211,153,0.2);
+      {% else %}background:rgba(99,102,241,0.1);color:var(--text-secondary);border:1px solid rgba(99,102,241,0.2);{% endif %}">
+      {{ message }}
+    </div>
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
+
+    <!-- Plan Info -->
+    <div style="padding:16px;background:var(--bg-input);border-radius:10px;margin-bottom:20px;">
+      <div class="label">Current Plan</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <span style="font-size:1.1rem;font-weight:700;color:var(--text-primary);text-transform:capitalize;">{{ user.plan }}</span>
+        {% if user.plan == 'free' %}
+        <a href="{{ url_for('pages.pricing') }}" style="font-size:0.82rem;color:var(--accent-primary);text-decoration:none;font-weight:600;">Upgrade &rarr;</a>
+        {% endif %}
+      </div>
+      <div id="sub-details" style="margin-top:8px;font-size:0.8rem;color:var(--text-muted);"></div>
+      {% if user.plan == 'pro' %}
+      <p style="font-size:0.8rem;color:var(--text-muted);margin-top:6px;">
+        <button onclick="openBillingPortal()" style="background:none;border:none;color:var(--accent-primary);cursor:pointer;font-size:0.8rem;padding:0;font-weight:600;box-shadow:none;">Manage billing &rarr;</button>
+      </p>
+      {% endif %}
+    </div>
+
+    <!-- Account Info -->
+    <div style="padding:16px;background:var(--bg-input);border-radius:10px;margin-bottom:20px;">
+      <div class="label">Email</div>
+      <p style="font-size:0.92rem;color:var(--text-primary);">{{ user.email }}</p>
+      <div class="label" style="margin-top:12px;">Member Since</div>
+      <p style="font-size:0.85rem;color:var(--text-secondary);">{{ user.created_at.strftime('%B %d, %Y') if user.created_at else 'N/A' }}</p>
+    </div>
+
+    <!-- Actions -->
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      <a href="{{ url_for('pages.dashboard_page') }}" style="text-align:center;padding:10px;background:var(--accent-primary);color:#09090b;border-radius:8px;font-weight:600;text-decoration:none;font-size:0.92rem;">Back to Dashboard</a>
+      <a href="{{ url_for('auth.logout') }}" style="text-align:center;padding:10px;background:transparent;color:var(--text-secondary);border:1px solid var(--border-subtle);border-radius:8px;text-decoration:none;font-size:0.92rem;">Sign Out</a>
+    </div>
+  </div>
+</div>
+
+<script>
+function openBillingPortal() {
+  fetch("/api/billing-portal", { method: "POST", headers: { "Content-Type": "application/json" } })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (d.url) window.location.href = d.url;
+      else alert(d.error || "Could not open billing portal.");
+    })
+    .catch(function() { alert("Something went wrong. Please try again."); });
+}
+
+fetch("/api/subscription-status")
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    var el = document.getElementById("sub-details");
+    if (!el) return;
+    var lines = [];
+    if (d.status === "trialing" && d.trial_end) {
+      lines.push("Trial ends " + new Date(d.trial_end).toLocaleDateString());
+    } else if (d.status === "active" && d.period_end) {
+      lines.push("Renews " + new Date(d.period_end).toLocaleDateString());
+    } else if (d.status === "past_due") {
+      lines.push('<span style="color:var(--danger);">Payment past due — please update your card.</span>');
+    }
+    if (d.cancel_at_period_end && d.period_end) {
+      lines.push('<span style="color:var(--warning);">Cancels at end of period (' + new Date(d.period_end).toLocaleDateString() + ')</span>');
+    }
+    el.innerHTML = lines.join("<br>");
+  })
+  .catch(function() {});
+</script>
+{% endblock %}

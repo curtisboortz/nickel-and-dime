@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+
+{% block title %}Nickel&amp;Dime — Your Macro-Financial Command Center{% endblock %}
+{% block meta_description %}Track markets, monitor the economy, and manage your portfolio — all in one place. Free to start.{% endblock %}
+
+{% block head_extra %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/landing.css') }}">
+{% endblock %}
+
+{% block body_class %}landing-body{% endblock %}
+
+{% block body %}
+<!-- Nav -->
+<nav class="landing-nav">
+  <a href="/" class="landing-brand">
+    <img src="/icon-192.png" alt="N&amp;D">
+    Nickel&amp;Dime
+  </a>
+  <div class="landing-nav-links">
+    <a href="#features">Features</a>
+    <a href="#pricing">Pricing</a>
+    {% if current_user and current_user.is_authenticated %}
+    <a href="{{ url_for('pages.dashboard_page') }}" class="landing-cta-sm">Dashboard</a>
+    {% else %}
+    <a href="{{ url_for('auth.login') }}">Log In</a>
+    <a href="{{ url_for('auth.register') }}" class="landing-cta-sm">Get Started</a>
+    {% endif %}
+  </div>
+</nav>
+
+<!-- Hero -->
+<section class="landing-hero">
+  <h1>Your <span>macro-financial</span> command center</h1>
+  <p>
+    Real-time market pulse, economic calendars, portfolio tracking, and budgeting
+    — everything a self-directed investor needs, in one clean dashboard.
+  </p>
+  <div class="landing-hero-ctas">
+    <a href="{{ url_for('auth.register') }}" class="landing-cta-lg primary">
+      Start Free
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+    </a>
+    <a href="#features" class="landing-cta-lg secondary">See Features</a>
+  </div>
+  <p class="landing-hero-note">No credit card required. Free tier always available.</p>
+</section>
+
+<!-- Features -->
+<section class="landing-features" id="features">
+  <p class="landing-section-label">Features</p>
+  <h2 class="landing-section-title">Everything you need in one place</h2>
+
+  <div class="features-grid">
+    <!-- Market Pulse -->
+    <div class="feature-card">
+      <div class="feature-icon">
+        <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      </div>
+      <h3>Market Pulse</h3>
+      <p>Live prices for gold, silver, Bitcoin, yields, DXY, and equities — updated every 5 minutes with interactive charts.</p>
+    </div>
+
+    <!-- Economic Calendar -->
+    <div class="feature-card">
+      <div class="feature-icon">
+        <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      </div>
+      <h3>Economic Calendar</h3>
+      <p>Upcoming and past economic events with actual vs. forecast data, Fed Watch, and impact filtering.</p>
+    </div>
+
+    <!-- Portfolio Tracker -->
+    <div class="feature-card">
+      <div class="feature-icon">
+        <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+      </div>
+      <h3>Portfolio Tracker</h3>
+      <p>Track stocks, ETFs, crypto, and physical metals. See allocation drift, daily snapshots, and contribution progress.</p>
+    </div>
+
+    <!-- Sentiment Dashboard -->
+    <div class="feature-card">
+      <div class="feature-icon">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+      </div>
+      <h3>Sentiment Gauges</h3>
+      <p>Fear &amp; Greed index, crypto sentiment, CAPE ratio, and Buffett Indicator — all in visual gauges.</p>
+    </div>
+
+    <!-- Budget -->
+    <div class="feature-card">
+      <div class="feature-icon">
+        <svg viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+      </div>
+      <h3>Budget Manager</h3>
+      <p>Monthly income, expense categories, spending breakdown, debt payoff tracking, and savings rate insights.</p>
+    </div>
+
+    <!-- Technical Analysis (Pro) -->
+    <div class="feature-card">
+      <div class="feature-icon">
+        <svg viewBox="0 0 24 24"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+      </div>
+      <h3>Technical Analysis <span style="font-size:0.7rem;color:var(--accent-primary);font-weight:700;">PRO</span></h3>
+      <p>Full TradingView charts with indicators, log scale, and multi-timeframe analysis for any ticker.</p>
+    </div>
+  </div>
+</section>
+
+<!-- Pricing -->
+<section class="landing-pricing" id="pricing">
+  <p class="landing-section-label">Pricing</p>
+  <h2 class="landing-section-title">Simple, transparent pricing</h2>
+
+  <div class="pricing-grid">
+    <!-- Free -->
+    <div class="price-card">
+      <h3>Free</h3>
+      <p class="price-desc">For casual market watchers</p>
+      <div class="price-amount">$0<span>/mo</span></div>
+      <ul class="price-features">
+        <li>Market pulse (gold, silver, BTC, yields, DXY, SPY)</li>
+        <li>Economic calendar (current &amp; next week)</li>
+        <li>Sentiment gauges</li>
+        <li>Basic portfolio tracker (up to 15 holdings)</li>
+        <li>Monthly budget planner</li>
+        <li class="locked">Technical analysis charts</li>
+        <li class="locked">FRED economic data</li>
+        <li class="locked">Unlimited holdings &amp; history</li>
+      </ul>
+      <a href="{{ url_for('auth.register') }}" class="price-cta secondary">Get Started Free</a>
+    </div>
+
+    <!-- Pro -->
+    <div class="price-card featured">
+      <div class="price-badge">Most Popular</div>
+      <h3>Pro</h3>
+      <p class="price-desc">For serious self-directed investors</p>
+      <div class="price-amount">$10<span>/mo</span></div>
+      <ul class="price-features">
+        <li>Everything in Free</li>
+        <li>Full technical analysis (TradingView)</li>
+        <li>FRED economic data series</li>
+        <li>Unlimited holdings &amp; history</li>
+        <li>Custom pulse cards</li>
+        <li>Price alerts</li>
+        <li>CSV/Excel data import &amp; export</li>
+        <li>Priority support</li>
+      </ul>
+      <a href="{{ url_for('auth.register') }}" class="price-cta primary">Start 14-Day Free Trial</a>
+    </div>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer class="landing-footer">
+  <p>&copy; {{ now.year if now else 2026 }} Nickel&amp;Dime. All rights reserved.</p>
+  <p style="margin-top:8px;">
+    <a href="#">Privacy</a> &middot; <a href="#">Terms</a> &middot; <a href="mailto:support@nickeldime.io">Contact</a>
+  </p>
+</footer>
+{% endblock %}

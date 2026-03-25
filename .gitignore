@@ -19,6 +19,9 @@ tmp_*.pdf
 # Runtime caches
 econ_calendar_cache.json
 
+# Development database
+*.db
+
 # Backups
 *.bak
 server_backup.py

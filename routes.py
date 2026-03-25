@@ -2456,17 +2456,13 @@ _MEDIUM_IMPACT_KEYWORDS = [
 
 _MW_HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
     "Accept-Language": "en-US,en;q=0.9",
     "Accept-Encoding": "identity",
+    "Referer": "https://www.google.com/",
     "DNT": "1",
     "Connection": "keep-alive",
     "Upgrade-Insecure-Requests": "1",
-    "Sec-Fetch-Dest": "document",
-    "Sec-Fetch-Mode": "navigate",
-    "Sec-Fetch-Site": "none",
-    "Sec-Fetch-User": "?1",
-    "Cache-Control": "max-age=0",
 }
 
 
@@ -2520,8 +2516,10 @@ _MONTH_MAP = {
 }
 
 
-def _fetch_marketwatch_calendar():
-    """Scrape MarketWatch economic calendar for this week (with actuals)."""
+def _fetch_marketwatch_calendar(**_kwargs):
+    """Scrape MarketWatch economic calendar (returns whatever week MW is currently showing).
+    MW ignores dateRange params and always shows the upcoming week, so we parse
+    whatever they return and let the caller decide which week it belongs to."""
     import urllib.request
     import re
     import html as html_mod
@@ -2657,39 +2655,233 @@ def _fetch_faireconomy_calendar(week: str = "thisweek"):
     return _parse_faireconomy_events(data)
 
 
+# ── Investing.com fallback (supports date ranges, has actuals) ──────
+
+_INVESTING_BULL_MAP = {"bull1": "low", "bull2": "medium", "bull3": "high"}
+
+def _fetch_investing_calendar(date_from: str, date_to: str):
+    """Fetch US economic calendar from Investing.com for an arbitrary date range.
+    date_from / date_to: 'YYYY-MM-DD' strings."""
+    import urllib.request
+    import re
+    import html as html_mod
+    try:
+        post_data = (
+            f"dateFrom={date_from}&dateTo={date_to}"
+            "&country%5B%5D=5"
+            "&importance%5B%5D=1&importance%5B%5D=2&importance%5B%5D=3"
+        ).encode()
+        req = urllib.request.Request(
+            "https://www.investing.com/economic-calendar/Service/getCalendarFilteredData",
+            data=post_data,
+            headers={
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                              "AppleWebKit/537.36 (KHTML, like Gecko) "
+                              "Chrome/131.0.0.0 Safari/537.36",
+                "X-Requested-With": "XMLHttpRequest",
+                "Referer": "https://www.investing.com/economic-calendar/",
+                "Content-Type": "application/x-www-form-urlencoded",
+            },
+        )
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            body = resp.read().decode("utf-8")
+    except Exception as e:
+        print(f"[EconCal] Investing.com fetch error: {e}")
+        return []
+
+    try:
+        parsed = json.loads(body)
+        html_data = parsed.get("data", "")
+    except (json.JSONDecodeError, ValueError):
+        html_data = body
+
+    tag_re = re.compile(r"<[^>]+>")
+    row_re = re.compile(
+        r'<tr[^>]*class="[^"]*js-event-item[^"]*"[^>]*>(.*?)</tr>', re.DOTALL
+    )
+    td_re = re.compile(r"<td[^>]*>(.*?)</td>", re.DOTALL)
+    dt_re = re.compile(r'data-event-datetime="(\d{4}/\d{2}/\d{2}\s+\d{2}:\d{2})')
+    bull_re = re.compile(r'data-img_key="(bull[123])"')
+
+    events = []
+    for row_m in row_re.finditer(html_data):
+        row_html = row_m.group(0)
+        cells = td_re.findall(row_m.group(1))
+        if len(cells) < 7:
+            continue
+
+        def _clean(s):
+            return html_mod.unescape(tag_re.sub("", s)).strip()
+
+        dt_m = dt_re.search(row_html)
+        if not dt_m:
+            continue
+        raw_dt = dt_m.group(1)
+        date_str = raw_dt[:10].replace("/", "-")
+        time_str = raw_dt[11:16]
+
+        event_name = _clean(cells[3])
+        if not event_name:
+            continue
+
+        actual_val = _clean(cells[4])
+        forecast_val = _clean(cells[5])
+        previous_val = _clean(cells[6])
+
+        bull_m = bull_re.search(row_html)
+        impact = _INVESTING_BULL_MAP.get(bull_m.group(1), "low") if bull_m else "low"
+
+        events.append({
+            "date": date_str,
+            "time": time_str,
+            "event": event_name,
+            "impact": impact,
+            "actual": actual_val if actual_val and actual_val != "\u00a0" else "",
+            "forecast": forecast_val if forecast_val else "-",
+            "previous": previous_val if previous_val else "-",
+        })
+
+    impact_order = {"high": 0, "medium": 1, "low": 2}
+    events.sort(key=lambda e: (e["date"], e["time"], impact_order.get(e["impact"], 3)))
+    return events
+
+
 # ── Unified fetcher ─────────────────────────────────────────────────
 
+def _mw_events_week_key(events):
+    """Detect which Monday an event list belongs to based on earliest event date."""
+    from datetime import timedelta
+    for e in events:
+        d = e.get("date", "")
+        if len(d) >= 10:
+            try:
+                dt = datetime.strptime(d[:10], "%Y-%m-%d").date()
+                mon = dt - timedelta(days=dt.weekday())
+                return mon.isoformat()
+            except ValueError:
+                continue
+    return None
+
+
+def _merge_actuals(new_events, cached_events):
+    """Merge actuals from cached events into new events so we never lose
+    previously captured actual values when a fallback source lacks them."""
+    if not cached_events:
+        return new_events
+    cached_map = {}
+    for e in cached_events:
+        key = (e.get("date", ""), e.get("time", ""), e.get("event", ""))
+        if e.get("actual"):
+            cached_map[key] = e["actual"]
+    for e in new_events:
+        if not e.get("actual"):
+            key = (e.get("date", ""), e.get("time", ""), e.get("event", ""))
+            if key in cached_map:
+                e["actual"] = cached_map[key]
+    return new_events
+
+
+def _has_actuals(events):
+    """True if at least one event in the list has a non-empty actual value."""
+    return any(e.get("actual") for e in events)
+
+
 def _get_econ_week(offset: int):
-    """Get events for a given week offset. 0=this, negative=past, 1=next."""
+    """Get events for a given week offset. 0=this, negative=past, positive=next."""
+    from datetime import timedelta
     monday, friday = _week_range(offset)
     monday_key = monday.isoformat()
     week_label = f"{monday.strftime('%b %d')} – {friday.strftime('%b %d, %Y')}"
+    disk = _load_econ_disk_cache()
+    existing_events = (disk.get(monday_key) or {}).get("events", [])
 
     if offset == 0:
-        # Primary: MarketWatch (has actuals). Fallback: faireconomy.
-        events = _fetch_marketwatch_calendar()
-        if not events:
-            events = _fetch_faireconomy_calendar("thisweek")
-        if events:
-            disk = _load_econ_disk_cache()
-            disk[monday_key] = {"events": events, "week_label": week_label}
+        # Current week: try MarketWatch first (best for actuals during the week).
+        mw_events = _fetch_marketwatch_calendar()
+        if mw_events:
+            actual_key = _mw_events_week_key(mw_events)
+            if actual_key == monday_key:
+                mw_events = _merge_actuals(mw_events, existing_events)
+                disk[monday_key] = {"events": mw_events, "week_label": week_label}
+                _save_econ_disk_cache(disk)
+                return mw_events, week_label
+            else:
+                # MW returned a different week (likely next) -- cache it for later
+                if actual_key:
+                    actual_monday = datetime.strptime(actual_key, "%Y-%m-%d").date()
+                    actual_friday = actual_monday + timedelta(days=4)
+                    lbl = f"{actual_monday.strftime('%b %d')} – {actual_friday.strftime('%b %d, %Y')}"
+                    existing_for_key = (disk.get(actual_key) or {}).get("events", [])
+                    mw_events = _merge_actuals(mw_events, existing_for_key)
+                    disk[actual_key] = {"events": mw_events, "week_label": lbl}
+                    _save_econ_disk_cache(disk)
+
+        # MW didn't have current week -- try Investing.com (has actuals + date ranges)
+        inv_events = _fetch_investing_calendar(monday.isoformat(), friday.isoformat())
+        if inv_events:
+            inv_events = _merge_actuals(inv_events, existing_events)
+            disk[monday_key] = {"events": inv_events, "week_label": week_label}
             _save_econ_disk_cache(disk)
-        return events, week_label
+            return inv_events, week_label
 
-    # Past or future weeks: disk cache first
-    disk = _load_econ_disk_cache()
-    cached_week = disk.get(monday_key)
-    if cached_week:
-        return cached_week.get("events", []), cached_week.get("week_label", week_label)
-
-    # For next week, try faireconomy (no actuals, but gives the schedule)
-    if offset == 1:
-        events = _fetch_faireconomy_calendar("nextweek")
+        # Then try Faireconomy (schedule only, no actuals)
+        events = _fetch_faireconomy_calendar("thisweek")
         if events:
+            events = _merge_actuals(events, existing_events)
             disk[monday_key] = {"events": events, "week_label": week_label}
             _save_econ_disk_cache(disk)
             return events, week_label
 
+        if existing_events:
+            return existing_events, week_label
+        return [], week_label
+
+    if offset == 1:
+        # Next week: check MW cache, then try live sources.
+        if existing_events and _has_actuals(existing_events):
+            return existing_events, week_label
+
+        mw_events = _fetch_marketwatch_calendar()
+        if mw_events:
+            actual_key = _mw_events_week_key(mw_events)
+            if actual_key == monday_key:
+                mw_events = _merge_actuals(mw_events, existing_events)
+                disk[monday_key] = {"events": mw_events, "week_label": week_label}
+                _save_econ_disk_cache(disk)
+                return mw_events, week_label
+
+        # Investing.com supports arbitrary date ranges
+        inv_events = _fetch_investing_calendar(monday.isoformat(), friday.isoformat())
+        if inv_events:
+            inv_events = _merge_actuals(inv_events, existing_events)
+            disk[monday_key] = {"events": inv_events, "week_label": week_label}
+            _save_econ_disk_cache(disk)
+            return inv_events, week_label
+
+        events = _fetch_faireconomy_calendar("nextweek")
+        if events:
+            events = _merge_actuals(events, existing_events)
+            disk[monday_key] = {"events": events, "week_label": week_label}
+            _save_econ_disk_cache(disk)
+            return events, week_label
+
+        if existing_events:
+            return existing_events, week_label
+        return [], week_label
+
+    # Past weeks or offset > 1: check cache first, backfill from Investing.com if needed
+    if existing_events and _has_actuals(existing_events):
+        return existing_events, week_label
+
+    inv_events = _fetch_investing_calendar(monday.isoformat(), friday.isoformat())
+    if inv_events:
+        inv_events = _merge_actuals(inv_events, existing_events)
+        disk[monday_key] = {"events": inv_events, "week_label": week_label}
+        _save_econ_disk_cache(disk)
+        return inv_events, week_label
+
+    if existing_events:
+        return existing_events, week_label
     return [], week_label
 
 
@@ -2703,7 +2895,7 @@ def api_economic_calendar():
         offset = int(flask_request.args.get("offset", "0"))
     except (ValueError, TypeError):
         offset = 0
-    offset = max(-8, min(1, offset))
+    offset = max(-8, min(4, offset))
 
     cache_key = str(offset)
     cached = _econ_cal_cache.get(cache_key)

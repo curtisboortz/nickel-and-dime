@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+
+{% block title %}Plans &amp; Pricing — Nickel&amp;Dime{% endblock %}
+
+{% block head_extra %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/landing.css') }}">
+{% endblock %}
+
+{% block body_class %}landing-body{% endblock %}
+
+{% block body %}
+<nav class="landing-nav">
+  <a href="{{ url_for('pages.dashboard_page') }}" class="landing-brand">
+    <img src="/icon-192.png" alt="N&amp;D">
+    Nickel&amp;Dime
+  </a>
+  <div class="landing-nav-links">
+    <a href="{{ url_for('pages.dashboard_page') }}">Back to Dashboard</a>
+    {% if user and user.plan == 'pro' %}
+    <span style="color:var(--accent-primary);font-weight:600;font-size:0.85rem;">Pro Member</span>
+    {% endif %}
+  </div>
+</nav>
+
+<div style="padding:120px 40px 80px;max-width:800px;margin:0 auto;">
+  <p class="landing-section-label">Pricing</p>
+  <h2 class="landing-section-title">Choose your plan</h2>
+
+  {% if user and user.plan == 'pro' %}
+  <div style="text-align:center;margin-bottom:32px;padding:16px;background:rgba(52,211,153,0.1);border:1px solid rgba(52,211,153,0.2);border-radius:12px;">
+    <p style="color:var(--success);font-weight:600;">You're on the Pro plan</p>
+    <p style="color:var(--text-muted);font-size:0.85rem;margin-top:4px;">Thank you for supporting Nickel&amp;Dime!</p>
+    <a href="{{ url_for('pages.billing_account') }}" style="color:var(--accent-primary);font-size:0.85rem;">Manage subscription &rarr;</a>
+  </div>
+  {% endif %}
+
+  <div class="pricing-grid">
+    <!-- Free -->
+    <div class="price-card">
+      <h3>Free</h3>
+      <p class="price-desc">For casual market watchers</p>
+      <div class="price-amount">$0<span>/mo</span></div>
+      <ul class="price-features">
+        <li>Market pulse (gold, silver, BTC, yields, DXY, SPY)</li>
+        <li>Economic calendar (current &amp; next week)</li>
+        <li>Sentiment gauges</li>
+        <li>Basic portfolio tracker (up to 15 holdings)</li>
+        <li>Monthly budget planner</li>
+        <li class="locked">Technical analysis charts</li>
+        <li class="locked">FRED economic data</li>
+        <li class="locked">Unlimited holdings &amp; history</li>
+      </ul>
+      {% if user and user.plan == 'free' %}
+      <span class="price-cta secondary" style="text-align:center;cursor:default;">Current Plan</span>
+      {% else %}
+      <a href="#" class="price-cta secondary">Downgrade</a>
+      {% endif %}
+    </div>
+
+    <!-- Pro -->
+    <div class="price-card featured">
+      <div class="price-badge">Most Popular</div>
+      <h3>Pro</h3>
+      <p class="price-desc">For serious self-directed investors</p>
+      <div class="price-amount">$10<span>/mo</span></div>
+      <ul class="price-features">
+        <li>Everything in Free</li>
+        <li>Full technical analysis (TradingView)</li>
+        <li>FRED economic data series</li>
+        <li>Unlimited holdings &amp; history</li>
+        <li>Custom pulse cards</li>
+        <li>Price alerts</li>
+        <li>CSV/Excel data import &amp; export</li>
+        <li>Priority support</li>
+      </ul>
+      {% if user and user.plan == 'pro' %}
+      <span class="price-cta primary" style="text-align:center;cursor:default;">Current Plan</span>
+      {% else %}
+      <button class="price-cta primary" onclick="startCheckout()">Start 14-Day Free Trial</button>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<script>
+function startCheckout() {
+  fetch("/api/create-checkout", { method: "POST", headers: { "Content-Type": "application/json" } })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (d.url) window.location.href = d.url;
+      else alert(d.error || "Something went wrong.");
+    })
+    .catch(function() { alert("Could not start checkout. Please try again."); });
+}
+</script>
+{% endblock %}

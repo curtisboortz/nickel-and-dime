@@ -1,0 +1,240 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard — Nickel&amp;Dime{% endblock %}
+
+{% block head_extra %}
+<!-- Chart.js + Luxon + Financial charts + Zoom -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/luxon@3.4.4/build/global/luxon.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1.3.1/dist/chartjs-adapter-luxon.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial@0.2.1/dist/chartjs-chart-financial.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
+{% endblock %}
+
+{% block body %}
+{% if demo_mode %}
+<div style="position:fixed;top:0;left:0;right:0;z-index:999;background:linear-gradient(135deg,#d4a017,#f5c842);color:#09090b;text-align:center;padding:8px 16px;font-size:0.82rem;font-weight:600;">
+  Demo Mode — <a href="{{ url_for('auth.register') }}" style="color:#09090b;text-decoration:underline;">Create a free account</a> to save your data
+</div>
+<style>.sidebar{top:36px !important;height:calc(100vh - 36px) !important;}
+.main-content{padding-top:36px !important;}</style>
+{% endif %}
+
+<!-- Sidebar Navigation -->
+<nav class="sidebar">
+  <div class="sidebar-logo"><img src="/icon-192.png" alt="Nickel&amp;Dime"></div>
+  <div class="sidebar-nav">
+    {% set tabs = [
+      ("summary",   "Summary",   '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>'),
+      ("balances",  "Balances",  '<rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/>'),
+      ("holdings",  "Holdings",  '<rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a4 4 0 00-8 0v2"/>'),
+      ("budget",    "Budget",    '<line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>'),
+      ("import",    "Import",    '<path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>'),
+      ("history",   "Portfolio", '<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>'),
+      ("economics", "Economics", '<path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/>'),
+      ("technical", "Technical", '<line x1="7" y1="2" x2="7" y2="8"/><rect x="5" y="8" width="4" height="7"/><line x1="7" y1="15" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="6"/><rect x="15" y="6" width="4" height="10"/><line x1="17" y1="16" x2="17" y2="22"/>'),
+    ] %}
+    {% for tab_id, tab_label, tab_icon in tabs %}
+    <a class="nav-item{% if active_tab == tab_id %} active{% endif %}" data-tab="{{ tab_id }}" href="#">
+      <svg viewBox="0 0 24 24">{{ tab_icon|safe }}</svg>
+      <span class="tooltip">{{ tab_label }}</span>
+    </a>
+    {% endfor %}
+  </div>
+  <div class="sidebar-bottom">
+    <button type="button" class="theme-toggle" onclick="toggleTheme()" title="Toggle light/dark">
+      <svg viewBox="0 0 24 24" id="theme-icon"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+    </button>
+    <button type="button" class="refresh-btn" id="refresh-btn" onclick="refreshData()" title="Refresh Prices">
+      <svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+    </button>
+    <div class="auto-refresh-indicator" id="auto-refresh-indicator" onclick="toggleAutoRefreshSettings()" title="Auto-refresh settings">
+      <span class="auto-dot on" id="auto-dot"></span>
+      <span class="auto-label" id="auto-label">5m</span>
+      <div id="auto-refresh-popover" class="auto-popover" style="display:none;" onclick="event.stopPropagation()">
+        <div class="auto-popover-title">Auto-Refresh</div>
+        <label class="auto-toggle-row">
+          <span>Enabled</span>
+          <input type="checkbox" id="auto-enabled" checked onchange="saveAutoRefresh()">
+        </label>
+        <label class="auto-toggle-row">
+          <span>Interval</span>
+          <select id="auto-interval" onchange="saveAutoRefresh()">
+            <option value="5" selected>5 min</option>
+            <option value="10">10 min</option>
+            <option value="15">15 min</option>
+            <option value="30">30 min</option>
+            <option value="60">1 hour</option>
+            <option value="120">2 hours</option>
+            <option value="240">4 hours</option>
+          </select>
+        </label>
+        <div style="font-size:0.65rem;color:var(--text-muted);margin-top:6px;line-height:1.4;">
+          Runs 24/7 while server is active.<br>Captures portfolio OHLC daily.
+        </div>
+      </div>
+    </div>
+    {% if user %}
+    <a href="{{ url_for('pages.pricing') }}" class="nav-item" title="Account" style="margin-top:4px;">
+      <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <span class="tooltip">{{ user.email }}</span>
+    </a>
+    {% endif %}
+  </div>
+</nav>
+
+<!-- Mobile Bottom Nav -->
+<nav class="mobile-nav">
+  <div class="mobile-nav-inner">
+    {% set mobile_tabs = [
+      ("summary",   "Home",     '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>'),
+      ("holdings",  "Holdings", '<rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a4 4 0 00-8 0v2"/>'),
+      ("budget",    "Budget",   '<line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>'),
+      ("history",   "Portfolio",'<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>'),
+      ("economics", "Econ",     '<path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/>'),
+      ("technical", "TA",       '<line x1="7" y1="2" x2="7" y2="8"/><rect x="5" y="8" width="4" height="7"/><line x1="7" y1="15" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="6"/><rect x="15" y="6" width="4" height="10"/><line x1="17" y1="16" x2="17" y2="22"/>'),
+    ] %}
+    {% for tab_id, tab_label, tab_icon in mobile_tabs %}
+    <button class="mob-item{% if active_tab == tab_id %} active{% endif %}" data-tab="{{ tab_id }}">
+      <svg viewBox="0 0 24 24">{{ tab_icon|safe }}</svg>{{ tab_label }}
+    </button>
+    {% endfor %}
+  </div>
+</nav>
+
+<!-- Main Content -->
+<div class="main-content">
+  {% block dashboard_content %}
+  <!-- Tab containers - populated by JS via API calls -->
+
+  <!-- Summary Tab -->
+  <div id="tab-summary" class="tab{% if active_tab == 'summary' %} active{% endif %}">
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 20px;color:var(--text-muted);">
+      <div class="loading-spinner"></div>
+      <p style="margin-top:16px;">Loading dashboard&hellip;</p>
+    </div>
+  </div>
+
+  <!-- Balances Tab -->
+  <div id="tab-balances" class="tab{% if active_tab == 'balances' %} active{% endif %}">
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 20px;color:var(--text-muted);">
+      <div class="loading-spinner"></div>
+      <p style="margin-top:16px;">Loading balances&hellip;</p>
+    </div>
+  </div>
+
+  <!-- Holdings Tab -->
+  <div id="tab-holdings" class="tab{% if active_tab == 'holdings' %} active{% endif %}">
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 20px;color:var(--text-muted);">
+      <div class="loading-spinner"></div>
+      <p style="margin-top:16px;">Loading holdings&hellip;</p>
+    </div>
+  </div>
+
+  <!-- Budget Tab -->
+  <div id="tab-budget" class="tab{% if active_tab == 'budget' %} active{% endif %}">
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 20px;color:var(--text-muted);">
+      <div class="loading-spinner"></div>
+      <p style="margin-top:16px;">Loading budget&hellip;</p>
+    </div>
+  </div>
+
+  <!-- Import Tab -->
+  <div id="tab-import" class="tab{% if active_tab == 'import' %} active{% endif %}">
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 20px;color:var(--text-muted);">
+      <div class="loading-spinner"></div>
+      <p style="margin-top:16px;">Loading import tools&hellip;</p>
+    </div>
+  </div>
+
+  <!-- Portfolio History Tab -->
+  <div id="tab-history" class="tab{% if active_tab == 'history' %} active{% endif %}">
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 20px;color:var(--text-muted);">
+      <div class="loading-spinner"></div>
+      <p style="margin-top:16px;">Loading portfolio analytics&hellip;</p>
+    </div>
+  </div>
+
+  <!-- Economics Tab (lazy loaded) -->
+  <div id="tab-economics" class="tab{% if active_tab == 'economics' %} active{% endif %}">
+    <div data-lazy-tab="economics" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 20px;color:var(--text-muted);">
+      <div class="loading-spinner"></div>
+      <p style="margin-top:16px;">Loading economics data&hellip;</p>
+    </div>
+  </div>
+
+  <!-- Technical Analysis Tab -->
+  <div id="tab-technical" class="tab{% if active_tab == 'technical' %} active{% endif %}">
+    {% if not is_pro %}
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 20px;text-align:center;">
+      <div style="font-size:2.5rem;margin-bottom:16px;">📊</div>
+      <h2 style="font-size:1.2rem;margin-bottom:8px;">Technical Analysis is a Pro feature</h2>
+      <p style="color:var(--text-muted);margin-bottom:20px;max-width:400px;">
+        Get full TradingView charts with indicators, log scale, and multi-timeframe analysis.
+      </p>
+      <a href="{{ url_for('pages.pricing') }}" style="padding:12px 28px;background:linear-gradient(135deg,var(--accent-primary),var(--accent-secondary));color:#09090b;border-radius:8px;font-weight:600;text-decoration:none;box-shadow:0 2px 8px var(--accent-glow);">Upgrade to Pro</a>
+    </div>
+    {% else %}
+    <div style="padding:10px 16px 0;">
+      <div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-bottom:10px;">
+        <span style="font-weight:600;font-size:0.85rem;color:var(--text-secondary);white-space:nowrap;">Quick access:</span>
+        <div id="ta-ticker-btns" style="display:flex;flex-wrap:wrap;gap:4px;"></div>
+      </div>
+      <div id="tv_chart_container" style="height:calc(100vh - 130px);border-radius:8px;overflow:hidden;background:#131722;"></div>
+    </div>
+    {% endif %}
+  </div>
+
+</div><!-- /main-content -->
+
+<!-- Command Palette -->
+<div class="cmd-overlay" id="cmd-overlay">
+  <div class="cmd-box">
+    <input class="cmd-input" id="cmd-input" type="text" placeholder="Search holdings, assets, pages..." autocomplete="off">
+    <div class="cmd-results" id="cmd-results"></div>
+    <div class="cmd-hint">Navigate with &uarr;&darr; &middot; Enter to select &middot; Esc to close</div>
+  </div>
+</div>
+
+<!-- Pulse Chart Modal -->
+<div class="pcm-overlay" id="pcm-overlay" onclick="if(event.target===this)closePulseChart()">
+  <div class="pcm-box">
+    <div class="pcm-header">
+      <div style="display:flex;align-items:center;gap:4px;">
+        <span class="pcm-title" id="pcm-title"></span>
+        <span class="pcm-price" id="pcm-price"></span>
+      </div>
+      <button type="button" class="pcm-close" onclick="closePulseChart()">&times;</button>
+    </div>
+    <div class="pcm-controls" id="pcm-controls">
+      <button type="button" class="pcm-pill active" data-pcm-p="1d" data-pcm-i="1m">1D</button>
+      <button type="button" class="pcm-pill" data-pcm-p="5d" data-pcm-i="5m">5D</button>
+      <button type="button" class="pcm-pill" data-pcm-p="1mo" data-pcm-i="15m">1M</button>
+      <button type="button" class="pcm-pill" data-pcm-p="3mo" data-pcm-i="1d">3M</button>
+      <button type="button" class="pcm-pill" data-pcm-p="6mo" data-pcm-i="1d">6M</button>
+      <button type="button" class="pcm-pill" data-pcm-p="1y" data-pcm-i="1d">1Y</button>
+      <button type="button" class="pcm-pill" data-pcm-p="5y" data-pcm-i="1wk">5Y</button>
+      <button type="button" class="pcm-pill" data-pcm-p="max" data-pcm-i="1mo">Max</button>
+      <button type="button" class="pcm-type-toggle" id="pcm-type-toggle" onclick="togglePcmChartType()">Candlestick</button>
+    </div>
+    <div class="pcm-body">
+      <canvas id="pcm-canvas"></canvas>
+      <div class="pcm-spinner" id="pcm-spinner"></div>
+    </div>
+  </div>
+</div>
+
+{% endblock dashboard_content %}
+{% endblock body %}
+
+{% block scripts %}
+<script>
+var USER_PLAN = "{{ user.plan if user else 'free' }}";
+var IS_PRO = {{ 'true' if is_pro else 'false' }};
+var ACTIVE_TAB = "{{ active_tab }}";
+</script>
+<script src="{{ url_for('static', filename='js/theme.js') }}"></script>
+<script src="{{ url_for('static', filename='js/tabs.js') }}"></script>
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+{% endblock %}

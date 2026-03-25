@@ -2994,7 +2994,7 @@ function restoreAllPulseCards() {{
   var PCM_SYMBOL_MAP = {{
     "gold": "GC=F", "silver": "SI=F", "au_ag": "AUAG-RATIO", "gold_oil": "GOLDOIL-RATIO",
     "dxy": "DX=F", "vix": "^VIX", "oil": "CL=F", "copper": "HG=F",
-    "tnx_10y": "^TNX", "tnx_2y": "^IRX", "btc": "BTC", "spy": "SPY"
+    "tnx_10y": "^TNX", "tnx_2y": "2YY=F", "btc": "BTC", "spy": "SPY"
   }};
   var pcmChart = null;
   var pcmPollId = null;
@@ -3085,7 +3085,7 @@ function restoreAllPulseCards() {{
       var chg = lastPrice - firstPrice;
       var chgPct = firstPrice ? ((chg / firstPrice) * 100) : 0;
       var sign = chg >= 0 ? "+" : "";
-      var noDollar = ["AUAG-RATIO","GOLDOIL-RATIO","^VIX","^TNX","^IRX","10Y2Y-SPREAD","DX=F"].indexOf(pcmState.symbol) >= 0;
+      var noDollar = ["AUAG-RATIO","GOLDOIL-RATIO","^VIX","^TNX","2YY=F","10Y2Y-SPREAD","DX=F"].indexOf(pcmState.symbol) >= 0;
       var prefix = noDollar ? "" : "$";
       document.getElementById("pcm-price").textContent = prefix + lastPrice.toLocaleString(undefined, {{minimumFractionDigits:2, maximumFractionDigits:2}})
         + "  " + sign + chg.toFixed(2) + " (" + sign + chgPct.toFixed(2) + "%)";
@@ -3200,7 +3200,7 @@ function restoreAllPulseCards() {{
                   return isIntraday ? dt.toLocaleString(undefined, {{month:"short", day:"numeric", hour:"numeric", minute:"2-digit"}}) : p.date;
                 }},
                 label: function(ctx) {{
-                  var noDollar = ["AUAG-RATIO","GOLDOIL-RATIO","^VIX","^TNX","^IRX","10Y2Y-SPREAD","DX=F"].indexOf(pcmState.symbol) >= 0;
+                  var noDollar = ["AUAG-RATIO","GOLDOIL-RATIO","^VIX","^TNX","2YY=F","10Y2Y-SPREAD","DX=F"].indexOf(pcmState.symbol) >= 0;
                   var prefix = noDollar ? "" : "$";
                   var val = isIntraday ? ctx.raw : ctx.raw.y;
                   return pcmState.label + ": " + prefix + Number(val).toLocaleString(undefined, {{minimumFractionDigits:2, maximumFractionDigits:2}});
@@ -4743,7 +4743,7 @@ function _updateEconCalButtons() {{
   if (thisBtn) thisBtn.style.cssText = "padding:5px 10px;font-size:0.82rem;border-radius:6px;cursor:pointer;" + (_econCalOffset === 0 ? active : normal);
   if (next) next.style.cssText = "padding:5px 10px;font-size:0.82rem;border-radius:6px;cursor:pointer;" + (_econCalOffset > 0 ? active : normal);
   if (prev) prev.disabled = _econCalOffset <= -8;
-  if (next) next.disabled = _econCalOffset >= 1;
+  if (next) next.disabled = _econCalOffset >= 4;
 }}
 (function() {{
   document.addEventListener("click", function(ev) {{

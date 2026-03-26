@@ -36,11 +36,9 @@
     {% endfor %}
   </div>
   <div class="sidebar-bottom">
-    {% if is_pro %}
-    <button type="button" class="theme-toggle" onclick="openSettingsModal()" title="Settings &amp; Integrations">
+    <button type="button" class="theme-toggle" onclick="openSettingsModal()" title="Settings">
       <svg viewBox="0 0 24 24"><path d="M12 15a3 3 0 100-6 3 3 0 000 6z"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
     </button>
-    {% endif %}
     <button type="button" class="theme-toggle" onclick="toggleTheme()" title="Toggle light/dark">
       <svg viewBox="0 0 24 24" id="theme-icon"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
     </button>
@@ -844,7 +842,6 @@
 </div>
 
 <!-- Settings Modal -->
-{% if is_pro %}
 <div id="settings-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:1000;align-items:center;justify-content:center;" onclick="if(event.target===this)closeSettingsModal()">
   <div style="background:var(--bg-card);border:1px solid var(--border-accent);border-radius:var(--radius);padding:28px;max-width:560px;width:92%;max-height:85vh;overflow-y:auto;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
@@ -852,6 +849,7 @@
       <button type="button" onclick="closeSettingsModal()" style="background:none;border:none;font-size:1.4rem;color:var(--text-muted);cursor:pointer;">&times;</button>
     </div>
 
+    {% if is_pro %}
     <!-- Coinbase Integration -->
     <div style="border:1px solid var(--border-subtle);border-radius:var(--radius);padding:18px;margin-bottom:16px;">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
@@ -912,10 +910,25 @@
         </p>
       </div>
     </div>
+    {% endif %}
+
+    <!-- Account -->
+    <div style="border:1px solid var(--border-subtle);border-radius:var(--radius);padding:18px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+        <svg viewBox="0 0 24 24" style="width:24px;height:24px;fill:none;stroke:var(--text-secondary);stroke-width:2;"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        <div>
+          <div style="font-weight:600;font-size:0.95rem;">Account</div>
+          <div class="hint" style="margin:0;">{{ current_user.email }}</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <a href="{{ url_for('auth.logout') }}" style="padding:8px 18px;font-size:0.82rem;background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:var(--radius);color:var(--text-primary);text-decoration:none;text-align:center;cursor:pointer;transition:background 0.15s;">Log Out</a>
+        <a href="{{ url_for('pages.pricing') }}" style="padding:8px 18px;font-size:0.82rem;background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:var(--radius);color:var(--text-primary);text-decoration:none;text-align:center;cursor:pointer;transition:background 0.15s;">Manage Subscription</a>
+      </div>
+    </div>
 
   </div>
 </div>
-{% endif %}
 
 {% endblock body %}
 

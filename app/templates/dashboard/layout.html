@@ -941,11 +941,11 @@ var ACTIVE_TAB = "{{ active_tab }}";
 window.BUCKETS_DATA = {};
 window.PRICE_HISTORY_DATA = [];
 </script>
-<script src="{{ url_for('static', filename='js/theme.js') }}"></script>
-<script src="{{ url_for('static', filename='js/tabs.js') }}"></script>
-<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+<script src="{{ url_for('static', filename='js/theme.js') }}?v={{ v }}"></script>
+<script src="{{ url_for('static', filename='js/tabs.js') }}?v={{ v }}"></script>
+<script src="{{ url_for('static', filename='js/dashboard.js') }}?v={{ v }}"></script>
 {% if is_pro %}
-<script src="{{ url_for('static', filename='js/import.js') }}"></script>
+<script src="{{ url_for('static', filename='js/import.js') }}?v={{ v }}"></script>
 {% endif %}
 <script>
 (function() {

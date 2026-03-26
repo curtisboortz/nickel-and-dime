@@ -64,7 +64,8 @@ def live_data():
     if crypto_holdings:
         cp = {}
         for ch in crypto_holdings:
-            row = prices.get(f"CG:{ch.symbol}")
+            cg_key = f"CG:{ch.coingecko_id}" if ch.coingecko_id else f"CG:{ch.symbol.lower()}"
+            row = prices.get(cg_key)
             if row:
                 cp[ch.symbol] = row.price
         result["crypto_prices"] = cp

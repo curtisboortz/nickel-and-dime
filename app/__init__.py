@@ -117,10 +117,13 @@ def _register_template_globals(app):
     """Inject common variables into all templates."""
     from datetime import datetime, timezone
     from flask_login import current_user
+    import time
+
+    _boot_ts = str(int(time.time()))
 
     @app.context_processor
     def inject_globals():
-        ctx = {"now": datetime.now(timezone.utc), "trial_days_left": None}
+        ctx = {"now": datetime.now(timezone.utc), "trial_days_left": None, "v": _boot_ts}
 
         try:
             if current_user.is_authenticated and not getattr(current_user, "is_admin", False):

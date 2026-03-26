@@ -33,17 +33,40 @@ def compute_portfolio_value(user_id):
         breakdown[h.bucket or "Equities"] += value
 
     # Blended accounts
+    _ASSET_CLASS_TO_BUCKET = {
+        "ManagedBlend": "Equities",
+        "RetirementBlend": "Equities",
+        "RealEstate": "RealAssets",
+        "RealAssets": "RealAssets",
+        "Art": "Art",
+        "Cash": "Cash",
+        "Gold": "Gold",
+        "Silver": "Silver",
+        "Crypto": "Crypto",
+        "Equities": "Equities",
+    }
     blended = BlendedAccount.query.filter_by(user_id=user_id).all()
     for b in blended:
         total += b.value
-        for bucket, pct in (b.allocations or {}).items():
+        alloc = b.allocations or {}
+        if "asset_class" in alloc:
+            bucket = _ASSET_CLASS_TO_BUCKET.get(alloc["asset_class"], alloc["asset_class"])
             breakdown.setdefault(bucket, 0)
-            breakdown[bucket] += b.value * (pct / 100.0)
+            breakdown[bucket] += b.value
+        else:
+            for bucket, pct in alloc.items():
+                try:
+                    pct_val = float(pct)
+                except (TypeError, ValueError):
+                    continue
+                breakdown.setdefault(bucket, 0)
+                breakdown[bucket] += b.value * (pct_val / 100.0)
 
     # Crypto
     crypto = CryptoHolding.query.filter_by(user_id=user_id).all()
     for c in crypto:
-        price_row = PriceCache.query.get(f"CG:{c.symbol}")
+        cg_key = f"CG:{c.coingecko_id}" if c.coingecko_id else f"CG:{c.symbol.lower()}"
+        price_row = PriceCache.query.get(cg_key)
         price = price_row.price if price_row else 0
         value = c.quantity * price
         total += value
@@ -53,12 +76,12 @@ def compute_portfolio_value(user_id):
     # Physical metals
     metals = PhysicalMetal.query.filter_by(user_id=user_id).all()
     for m in metals:
-        sym = "GC=F" if m.metal == "gold" else "SI=F"
+        sym = "GC=F" if m.metal.lower() == "gold" else "SI=F"
         price_row = PriceCache.query.get(sym)
         price_per_oz = price_row.price if price_row else 0
         value = m.oz * price_per_oz
         total += value
-        bucket = "Gold" if m.metal == "gold" else "Silver"
+        bucket = "Gold" if m.metal.lower() == "gold" else "Silver"
         breakdown.setdefault(bucket, 0)
         breakdown[bucket] += value
 

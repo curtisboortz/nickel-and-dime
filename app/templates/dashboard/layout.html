@@ -126,10 +126,22 @@
 
   <!-- Holdings Tab -->
   <div id="tab-holdings" class="tab{% if active_tab == 'holdings' %} active{% endif %}">
+    {% if not is_pro %}
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 20px;text-align:center;">
+      <div style="font-size:2.5rem;margin-bottom:16px;">📈</div>
+      <h2 style="font-size:1.2rem;margin-bottom:8px;">Real-Time Holdings is a Pro feature</h2>
+      <p style="color:var(--text-muted);margin-bottom:20px;max-width:400px;">
+        Track stocks, ETFs, crypto, and physical metals with live prices, allocation drift, and daily snapshots.
+        Use the <strong>Balances</strong> tab for free manual account tracking.
+      </p>
+      <a href="{{ url_for('pages.pricing') }}" style="padding:12px 28px;background:linear-gradient(135deg,var(--accent-primary),var(--accent-secondary));color:#09090b;border-radius:8px;font-weight:600;text-decoration:none;box-shadow:0 2px 8px var(--accent-glow);">Upgrade to Pro</a>
+    </div>
+    {% else %}
     <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 20px;color:var(--text-muted);">
       <div class="loading-spinner"></div>
       <p style="margin-top:16px;">Loading holdings&hellip;</p>
     </div>
+    {% endif %}
   </div>
 
   <!-- Budget Tab -->
@@ -142,18 +154,40 @@
 
   <!-- Import Tab -->
   <div id="tab-import" class="tab{% if active_tab == 'import' %} active{% endif %}">
+    {% if not is_pro %}
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 20px;text-align:center;">
+      <div style="font-size:2.5rem;margin-bottom:16px;">📥</div>
+      <h2 style="font-size:1.2rem;margin-bottom:8px;">Data Import is a Pro feature</h2>
+      <p style="color:var(--text-muted);margin-bottom:20px;max-width:400px;">
+        Import holdings from CSV, brokerage exports, and more. Upgrade to Pro to unlock import tools.
+      </p>
+      <a href="{{ url_for('pages.pricing') }}" style="padding:12px 28px;background:linear-gradient(135deg,var(--accent-primary),var(--accent-secondary));color:#09090b;border-radius:8px;font-weight:600;text-decoration:none;box-shadow:0 2px 8px var(--accent-glow);">Upgrade to Pro</a>
+    </div>
+    {% else %}
     <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 20px;color:var(--text-muted);">
       <div class="loading-spinner"></div>
       <p style="margin-top:16px;">Loading import tools&hellip;</p>
     </div>
+    {% endif %}
   </div>
 
   <!-- Portfolio History Tab -->
   <div id="tab-history" class="tab{% if active_tab == 'history' %} active{% endif %}">
+    {% if not is_pro %}
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 20px;text-align:center;">
+      <div style="font-size:2.5rem;margin-bottom:16px;">📊</div>
+      <h2 style="font-size:1.2rem;margin-bottom:8px;">Portfolio Analytics is a Pro feature</h2>
+      <p style="color:var(--text-muted);margin-bottom:20px;max-width:400px;">
+        View historical portfolio value, daily OHLC snapshots, gold/silver overlays, and performance tracking.
+      </p>
+      <a href="{{ url_for('pages.pricing') }}" style="padding:12px 28px;background:linear-gradient(135deg,var(--accent-primary),var(--accent-secondary));color:#09090b;border-radius:8px;font-weight:600;text-decoration:none;box-shadow:0 2px 8px var(--accent-glow);">Upgrade to Pro</a>
+    </div>
+    {% else %}
     <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 20px;color:var(--text-muted);">
       <div class="loading-spinner"></div>
       <p style="margin-top:16px;">Loading portfolio analytics&hellip;</p>
     </div>
+    {% endif %}
   </div>
 
   <!-- Economics Tab (lazy loaded) -->

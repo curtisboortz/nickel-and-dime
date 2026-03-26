@@ -1,7 +1,7 @@
 """Portfolio API routes: holdings, balances, metals, quick-update.
 
-Portfolio tracking is available on Free (up to 15 holdings).
-Pro unlocks unlimited holdings, export, and quick-update.
+Holdings, metals, and portfolio history are Pro features.
+Balances (manual account values) remain available to all tiers.
 """
 
 from flask import Blueprint, jsonify, request as flask_request
@@ -15,13 +15,12 @@ from ..models.snapshot import PortfolioSnapshot
 
 api_portfolio_bp = Blueprint("api_portfolio", __name__)
 
-FREE_HOLDING_LIMIT = 15
-
 
 @api_portfolio_bp.route("/holdings")
 @login_required
+@requires_pro
 def get_holdings():
-    """Return all holdings for the current user."""
+    """Return all holdings for the current user. Pro only."""
     holdings = Holding.query.filter_by(user_id=current_user.id).all()
     crypto = CryptoHolding.query.filter_by(user_id=current_user.id).all()
     metals = PhysicalMetal.query.filter_by(user_id=current_user.id).all()
@@ -35,22 +34,18 @@ def get_holdings():
         "metals": [{"id": m.id, "metal": m.metal, "oz": m.oz,
                      "purchase_price": m.purchase_price, "description": m.description}
                     for m in metals],
-        "limit": None if is_pro() else FREE_HOLDING_LIMIT,
+        "limit": None,
         "total_count": len(holdings) + len(crypto),
     })
 
 
 @api_portfolio_bp.route("/holdings", methods=["POST"])
 @login_required
+@requires_pro
 @csrf.exempt
 def save_holdings():
-    """Add or update a holding. Free users limited to 15."""
+    """Add or update a holding. Pro only."""
     data = flask_request.get_json(silent=True) or {}
-    if not is_pro():
-        current_count = (Holding.query.filter_by(user_id=current_user.id).count() +
-                         CryptoHolding.query.filter_by(user_id=current_user.id).count())
-        if current_count >= FREE_HOLDING_LIMIT and not data.get("id"):
-            return jsonify({"error": f"Free plan limited to {FREE_HOLDING_LIMIT} holdings. Upgrade to Pro for unlimited."}), 403
 
     holding_id = data.get("id")
     if holding_id:
@@ -80,6 +75,7 @@ def save_holdings():
 
 @api_portfolio_bp.route("/holdings/<int:holding_id>", methods=["DELETE"])
 @login_required
+@requires_pro
 @csrf.exempt
 def delete_holding(holding_id):
     """Delete a holding."""
@@ -118,6 +114,7 @@ def save_balances():
 
 @api_portfolio_bp.route("/portfolio-history")
 @login_required
+@requires_pro
 def portfolio_history():
     """Return portfolio OHLC snapshots for the history chart."""
     snapshots = (PortfolioSnapshot.query
@@ -134,6 +131,7 @@ def portfolio_history():
 
 @api_portfolio_bp.route("/physical-metals", methods=["GET", "POST", "DELETE"])
 @login_required
+@requires_pro
 @csrf.exempt
 def physical_metals():
     """CRUD for physical metal holdings."""

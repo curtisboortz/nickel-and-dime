@@ -74,8 +74,8 @@
       <div class="feature-icon">
         <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
       </div>
-      <h3>Portfolio Tracker</h3>
-      <p>Track stocks, ETFs, crypto, and physical metals. See allocation drift, daily snapshots, and contribution progress.</p>
+      <h3>Portfolio Tracker <span style="font-size:0.7rem;color:var(--accent-primary);font-weight:700;">PRO</span></h3>
+      <p>Track stocks, ETFs, crypto, and physical metals with live prices. See allocation drift, daily snapshots, and contribution progress.</p>
     </div>
 
     <!-- Sentiment Dashboard -->
@@ -120,13 +120,14 @@
       <div class="price-amount">$0<span>/mo</span></div>
       <ul class="price-features">
         <li>Market pulse (gold, silver, BTC, yields, DXY, SPY)</li>
-        <li>Economic calendar (current &amp; next week)</li>
+        <li>Economic calendar</li>
         <li>Sentiment gauges</li>
-        <li>Basic portfolio tracker (up to 15 holdings)</li>
+        <li>Manual account balances</li>
         <li>Monthly budget planner</li>
+        <li class="locked">Real-time holdings tracker</li>
+        <li class="locked">Portfolio history &amp; analytics</li>
         <li class="locked">Technical analysis charts</li>
-        <li class="locked">FRED economic data</li>
-        <li class="locked">Unlimited holdings &amp; history</li>
+        <li class="locked">Full FRED economic data</li>
       </ul>
       <a href="{{ url_for('auth.register') }}" class="price-cta secondary">Get Started Free</a>
     </div>
@@ -139,12 +140,12 @@
       <div class="price-amount">$10<span>/mo</span></div>
       <ul class="price-features">
         <li>Everything in Free</li>
+        <li>Real-time holdings (stocks, ETFs, crypto, metals)</li>
+        <li>Portfolio history &amp; daily snapshots</li>
         <li>Full technical analysis (TradingView)</li>
         <li>FRED economic data series</li>
-        <li>Unlimited holdings &amp; history</li>
-        <li>Custom pulse cards</li>
-        <li>Price alerts</li>
         <li>CSV/Excel data import &amp; export</li>
+        <li>Custom pulse cards &amp; price alerts</li>
         <li>Priority support</li>
       </ul>
       <a href="{{ url_for('auth.register') }}" class="price-cta primary">Start 14-Day Free Trial</a>

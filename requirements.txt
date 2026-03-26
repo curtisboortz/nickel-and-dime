@@ -25,12 +25,9 @@ yfinance>=0.2.40
 requests>=2.31.0
 pandas>=2.0.0
 fredapi>=0.5.0
-coinbase-advanced-py>=1.0.0
 
 # Background tasks
 apscheduler>=3.10.0
 
 # Utilities
-openpyxl>=3.1.2
-pdfplumber>=0.10.0
 python-dateutil>=2.8.0

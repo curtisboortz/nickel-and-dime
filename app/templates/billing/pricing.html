@@ -42,13 +42,14 @@
       <div class="price-amount">$0<span>/mo</span></div>
       <ul class="price-features">
         <li>Market pulse (gold, silver, BTC, yields, DXY, SPY)</li>
-        <li>Economic calendar (current &amp; next week)</li>
+        <li>Economic calendar</li>
         <li>Sentiment gauges</li>
-        <li>Basic portfolio tracker (up to 15 holdings)</li>
+        <li>Manual account balances</li>
         <li>Monthly budget planner</li>
+        <li class="locked">Real-time holdings tracker</li>
+        <li class="locked">Portfolio history &amp; analytics</li>
         <li class="locked">Technical analysis charts</li>
-        <li class="locked">FRED economic data</li>
-        <li class="locked">Unlimited holdings &amp; history</li>
+        <li class="locked">Full FRED economic data</li>
       </ul>
       {% if user and user.plan == 'free' %}
       <span class="price-cta secondary" style="text-align:center;cursor:default;">Current Plan</span>
@@ -65,12 +66,12 @@
       <div class="price-amount">$10<span>/mo</span></div>
       <ul class="price-features">
         <li>Everything in Free</li>
+        <li>Real-time holdings (stocks, ETFs, crypto, metals)</li>
+        <li>Portfolio history &amp; daily snapshots</li>
         <li>Full technical analysis (TradingView)</li>
         <li>FRED economic data series</li>
-        <li>Unlimited holdings &amp; history</li>
-        <li>Custom pulse cards</li>
-        <li>Price alerts</li>
         <li>CSV/Excel data import &amp; export</li>
+        <li>Custom pulse cards &amp; price alerts</li>
         <li>Priority support</li>
       </ul>
       {% if user and user.plan == 'pro' %}

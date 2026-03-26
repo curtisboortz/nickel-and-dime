@@ -114,9 +114,17 @@ def sparklines():
     if not keys:
         return jsonify({})
 
+    from ..models.settings import CustomPulseCard
+
     result = {}
     for key in keys:
-        yf_sym = SPARK_SYMBOL_MAP.get(key.lower(), key)
+        lkey = key.lower()
+        if lkey.startswith("custom-"):
+            card_id = key.split("-", 1)[1]
+            card = CustomPulseCard.query.filter_by(id=card_id).first()
+            yf_sym = card.ticker if card else key
+        else:
+            yf_sym = SPARK_SYMBOL_MAP.get(lkey, key)
         try:
             ticker = yf.Ticker(yf_sym)
             hist = ticker.history(period="5d", interval="30m")
@@ -173,6 +181,96 @@ def save_pulse_order():
     if settings:
         settings.pulse_order = order
         db.session.commit()
+    return jsonify({"success": True})
+
+
+@api_market_bp.route("/pulse-cards", methods=["POST"])
+@login_required
+@csrf.exempt
+def add_pulse_card():
+    """Add a custom ticker to the pulse bar."""
+    from ..models.settings import CustomPulseCard
+    data = flask_request.get_json(silent=True) or {}
+    ticker = (data.get("ticker") or "").strip().upper()
+    label = (data.get("label") or ticker).strip()
+    if not ticker:
+        return jsonify({"error": "Ticker is required"}), 400
+    existing = CustomPulseCard.query.filter_by(
+        user_id=current_user.id, ticker=ticker
+    ).first()
+    if existing:
+        return jsonify({"error": f"{ticker} is already on your pulse bar"}), 400
+    max_pos = db.session.query(db.func.max(CustomPulseCard.position)).filter_by(
+        user_id=current_user.id
+    ).scalar() or 0
+    card = CustomPulseCard(
+        user_id=current_user.id, ticker=ticker, label=label, position=max_pos + 1
+    )
+    db.session.add(card)
+    db.session.commit()
+    return jsonify({"success": True, "id": card.id})
+
+
+@api_market_bp.route("/pulse-cards/<card_id>", methods=["DELETE"])
+@login_required
+@csrf.exempt
+def remove_pulse_card(card_id):
+    """Remove a pulse card (custom or hide a default)."""
+    from ..models.settings import CustomPulseCard, UserSettings
+    card = None
+    if card_id.isdigit():
+        card = CustomPulseCard.query.filter_by(id=int(card_id), user_id=current_user.id).first()
+    if card:
+        db.session.delete(card)
+        db.session.commit()
+        return jsonify({"success": True})
+    settings = UserSettings.query.filter_by(user_id=current_user.id).first()
+    if not settings:
+        settings = UserSettings(user_id=current_user.id)
+        db.session.add(settings)
+    wo = dict(settings.widget_order or {}) if isinstance(settings.widget_order, dict) else {}
+    hidden = list(wo.get("hidden_pulse", []))
+    if card_id not in hidden:
+        hidden.append(card_id)
+    wo["hidden_pulse"] = hidden
+    settings.widget_order = wo
+    db.session.commit()
+    return jsonify({"success": True})
+
+
+@api_market_bp.route("/pulse-cards/restore-all", methods=["POST"])
+@login_required
+@csrf.exempt
+def restore_all_pulse_cards():
+    """Restore all hidden default pulse cards."""
+    from ..models.settings import UserSettings
+    settings = UserSettings.query.filter_by(user_id=current_user.id).first()
+    if settings:
+        wo = dict(settings.widget_order or {}) if isinstance(settings.widget_order, dict) else {}
+        wo["hidden_pulse"] = []
+        settings.widget_order = wo
+        db.session.commit()
+    return jsonify({"success": True})
+
+
+@api_market_bp.route("/pulse-size", methods=["POST"])
+@login_required
+@csrf.exempt
+def save_pulse_size():
+    """Save the user's preferred pulse card size."""
+    from ..models.settings import UserSettings
+    data = flask_request.get_json(silent=True) or {}
+    size = data.get("size", "default")
+    if size not in ("compact", "default", "large"):
+        size = "default"
+    settings = UserSettings.query.filter_by(user_id=current_user.id).first()
+    if not settings:
+        settings = UserSettings(user_id=current_user.id)
+        db.session.add(settings)
+    widget_order = dict(settings.widget_order or {}) if isinstance(settings.widget_order, dict) else {}
+    widget_order["pulse_size"] = size
+    settings.widget_order = widget_order
+    db.session.commit()
     return jsonify({"success": True})
 
 

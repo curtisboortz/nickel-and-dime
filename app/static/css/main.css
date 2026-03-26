@@ -260,6 +260,19 @@ body {
   transition:opacity 0.2s ease;
 }
 .pulse-item.pulse-add:hover { opacity:1; border-color:var(--accent-primary); }
+/* Pulse size variants */
+.pulse-bar.size-compact .pulse-item:not(.pulse-add) { min-width:90px; max-width:100px; height:80px; padding:8px 8px; gap:2px; }
+.pulse-bar.size-compact .pulse-label { font-size:0.6rem; }
+.pulse-bar.size-compact .pulse-price { font-size:0.82rem; }
+.pulse-bar.size-compact .pulse-spark { height:20px; }
+.pulse-bar.size-default .pulse-item:not(.pulse-add) { min-width:110px; max-width:120px; height:110px; }
+.pulse-bar.size-large .pulse-item:not(.pulse-add) { min-width:140px; max-width:170px; height:130px; padding:14px 14px; }
+.pulse-bar.size-large .pulse-label { font-size:0.75rem; }
+.pulse-bar.size-large .pulse-price { font-size:1.1rem; }
+.pulse-bar.size-large .pulse-spark { height:48px; }
+/* Pulse size toggle buttons */
+.pulse-size-btn { background:var(--bg-input); border:1px solid var(--border-subtle); color:var(--text-muted); border-radius:4px; cursor:pointer; font-family:var(--mono); }
+.pulse-size-btn.active { background:var(--accent-primary); color:#000; border-color:var(--accent-primary); font-weight:600; }
 .pulse-remove {
   position:absolute; top:4px; right:6px;
   background:none; border:none; color:var(--text-muted); cursor:pointer;

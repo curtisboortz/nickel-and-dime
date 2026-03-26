@@ -145,50 +145,93 @@
     </div>
   </div>
 
+  <!-- Pulse Controls -->
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+    <span class="hint" style="font-size:0.72rem;">Size:</span>
+    <button type="button" class="pulse-size-btn{% if pulse_size == 'compact' %} active{% endif %}" data-size="compact" onclick="setPulseSize('compact')" style="padding:2px 8px;font-size:0.68rem;">S</button>
+    <button type="button" class="pulse-size-btn{% if pulse_size == 'default' %} active{% endif %}" data-size="default" onclick="setPulseSize('default')" style="padding:2px 8px;font-size:0.68rem;">M</button>
+    <button type="button" class="pulse-size-btn{% if pulse_size == 'large' %} active{% endif %}" data-size="large" onclick="setPulseSize('large')" style="padding:2px 8px;font-size:0.68rem;">L</button>
+    {% if hidden_pulse %}<span style="margin-left:auto;"><button type="button" class="secondary" onclick="restoreAllPulseCards()" style="padding:2px 10px;font-size:0.68rem;">Restore hidden</button></span>{% endif %}
+  </div>
   <!-- Market Pulse (drag-and-drop reorderable) -->
-  <div class="pulse-bar" id="pulse-bar">
+  <div class="pulse-bar size-{{ pulse_size or 'compact' }}" id="pulse-bar">
+    {% if 'gold' not in hidden_pulse %}
     <div class="pulse-item" draggable="true" data-pulse-id="gold" onclick="openPulseChart('GC=F','Gold')">
+      <button class="pulse-remove" onclick="event.stopPropagation();removePulseCard('gold')" title="Hide">&times;</button>
       <span class="pulse-label">Gold</span>
       <span class="pulse-price" data-pulse-price="gold">--</span>
       <canvas class="pulse-spark" id="spark-gold" width="60" height="24"></canvas>
     </div>
+    {% endif %}
+    {% if 'silver' not in hidden_pulse %}
     <div class="pulse-item" draggable="true" data-pulse-id="silver" onclick="openPulseChart('SI=F','Silver')">
+      <button class="pulse-remove" onclick="event.stopPropagation();removePulseCard('silver')" title="Hide">&times;</button>
       <span class="pulse-label">Silver</span>
       <span class="pulse-price" data-pulse-price="silver">--</span>
       <canvas class="pulse-spark" id="spark-silver" width="60" height="24"></canvas>
     </div>
+    {% endif %}
+    {% if 'spy' not in hidden_pulse %}
     <div class="pulse-item" draggable="true" data-pulse-id="spy" onclick="openPulseChart('SPY','S&amp;P 500')">
+      <button class="pulse-remove" onclick="event.stopPropagation();removePulseCard('spy')" title="Hide">&times;</button>
       <span class="pulse-label">S&amp;P 500</span>
       <span class="pulse-price" data-pulse-price="spy">--</span>
       <canvas class="pulse-spark" id="spark-spy" width="60" height="24"></canvas>
     </div>
+    {% endif %}
+    {% if 'btc' not in hidden_pulse %}
     <div class="pulse-item" draggable="true" data-pulse-id="btc" onclick="openPulseChart('BTC-USD','Bitcoin')">
+      <button class="pulse-remove" onclick="event.stopPropagation();removePulseCard('btc')" title="Hide">&times;</button>
       <span class="pulse-label">Bitcoin</span>
       <span class="pulse-price" data-pulse-price="btc">--</span>
       <canvas class="pulse-spark" id="spark-btc" width="60" height="24"></canvas>
     </div>
+    {% endif %}
+    {% if 'tnx_10y' not in hidden_pulse %}
     <div class="pulse-item" draggable="true" data-pulse-id="tnx_10y" onclick="openPulseChart('^TNX','10Y Yield')">
+      <button class="pulse-remove" onclick="event.stopPropagation();removePulseCard('tnx_10y')" title="Hide">&times;</button>
       <span class="pulse-label">10Y Yield</span>
       <span class="pulse-price" data-pulse-price="tnx_10y">--</span>
     </div>
+    {% endif %}
+    {% if 'tnx_2y' not in hidden_pulse %}
     <div class="pulse-item" draggable="true" data-pulse-id="tnx_2y" onclick="openPulseChart('2YY=F','2Y Yield')">
+      <button class="pulse-remove" onclick="event.stopPropagation();removePulseCard('tnx_2y')" title="Hide">&times;</button>
       <span class="pulse-label">2Y Yield</span>
       <span class="pulse-price" data-pulse-price="tnx_2y">--</span>
     </div>
+    {% endif %}
+    {% if 'dxy' not in hidden_pulse %}
     <div class="pulse-item" draggable="true" data-pulse-id="dxy" onclick="openPulseChart('DX=F','DXY')">
+      <button class="pulse-remove" onclick="event.stopPropagation();removePulseCard('dxy')" title="Hide">&times;</button>
       <span class="pulse-label">DXY</span>
       <span class="pulse-price" data-pulse-price="dxy">--</span>
       <canvas class="pulse-spark" id="spark-dxy" width="60" height="24"></canvas>
     </div>
+    {% endif %}
+    {% if 'vix' not in hidden_pulse %}
     <div class="pulse-item" draggable="true" data-pulse-id="vix" onclick="openPulseChart('^VIX','VIX')">
+      <button class="pulse-remove" onclick="event.stopPropagation();removePulseCard('vix')" title="Hide">&times;</button>
       <span class="pulse-label">VIX</span>
       <span class="pulse-price" data-pulse-price="vix">--</span>
     </div>
+    {% endif %}
+    {% if 'oil' not in hidden_pulse %}
     <div class="pulse-item" draggable="true" data-pulse-id="oil" onclick="openPulseChart('CL=F','Oil')">
+      <button class="pulse-remove" onclick="event.stopPropagation();removePulseCard('oil')" title="Hide">&times;</button>
       <span class="pulse-label">Oil</span>
       <span class="pulse-price" data-pulse-price="oil">--</span>
       <canvas class="pulse-spark" id="spark-oil" width="60" height="24"></canvas>
     </div>
+    {% endif %}
+    {% for card in custom_pulse_cards %}
+    <div class="pulse-item" draggable="true" data-pulse-id="custom-{{ card.id }}" onclick="openPulseChart('{{ card.ticker }}','{{ card.label }}')">
+      <button class="pulse-remove" onclick="event.stopPropagation();removePulseCard('{{ card.id }}')" title="Remove">&times;</button>
+      <span class="pulse-label">{{ card.label }}</span>
+      <span class="pulse-price" data-pulse-price="custom-{{ card.id }}">--</span>
+      <canvas class="pulse-spark" id="spark-custom-{{ card.id }}" width="60" height="24"></canvas>
+    </div>
+    {% endfor %}
     <div class="pulse-item pulse-add" onclick="showAddPulseCard()" title="Add custom ticker">
       <span style="font-size:1.6rem;color:var(--text-muted);line-height:1;">+</span>
       <span class="pulse-label">Add Ticker</span>

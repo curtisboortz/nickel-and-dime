@@ -816,11 +816,30 @@ function addPulseCard() {
 }
 function removePulseCard(id) {
   if (!confirm("Remove this card from the pulse bar?")) return;
+  var el = document.querySelector('[data-pulse-id="' + id + '"]');
+  if (el) el.style.display = "none";
   fetch("/api/pulse-cards/" + encodeURIComponent(id), { method: "DELETE" })
     .then(function(r) { return r.json(); })
-    .then(function(d) { if (d.success) location.reload(); });
+    .then(function(d) { if (d.success && el) el.remove(); });
 }
+function setPulseSize(size) {
+  var bar = document.getElementById("pulse-bar");
+  if (!bar) return;
+  bar.className = "pulse-bar size-" + size;
+  document.querySelectorAll(".pulse-size-btn").forEach(function(b) {
+    b.classList.toggle("active", b.getAttribute("data-size") === size);
+  });
+  localStorage.setItem("nd-pulse-size", size);
+  fetch("/api/pulse-size", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ size: size })
+  }).catch(function() {});
+  setTimeout(loadAllSparklines, 200);
+}
+
 function restoreAllPulseCards() {
+  if (!confirm("Restore all hidden pulse cards?")) return;
   fetch("/api/pulse-cards/restore-all", { method: "POST" })
     .then(function(r) { return r.json(); })
     .then(function(d) { if (d.success) location.reload(); });
@@ -1090,6 +1109,14 @@ function restoreAllPulseCards() {
 /* ── Init on load ── */
 buildDonut();
 if (PRICE_HISTORY_DATA.length > 0) buildHistoryChart("total");
+(function() {
+  var savedSize = localStorage.getItem("nd-pulse-size") || "compact";
+  var bar = document.getElementById("pulse-bar");
+  if (bar) bar.className = "pulse-bar size-" + savedSize;
+  document.querySelectorAll(".pulse-size-btn").forEach(function(b) {
+    b.classList.toggle("active", b.getAttribute("data-size") === savedSize);
+  });
+})();
 setTimeout(loadAllSparklines, 300);
 var toast = document.getElementById("toast-msg");
 if (toast) setTimeout(function() { toast.style.display="none"; }, 4000);

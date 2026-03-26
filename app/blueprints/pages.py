@@ -102,17 +102,28 @@ def landing():
 @login_required
 def dashboard_page(tab="summary"):
     """Main dashboard view. Tab content loaded via AJAX for non-default tabs."""
+    from ..models.settings import UserSettings, CustomPulseCard
     valid_tabs = [
         "summary", "balances", "holdings", "budget",
         "import", "history", "economics", "technical",
     ]
     if tab not in valid_tabs:
         tab = "summary"
+    us = UserSettings.query.filter_by(user_id=current_user.id).first()
+    wo = (us.widget_order if us and isinstance(us.widget_order, dict) else {}) or {}
+    hidden_pulse = wo.get("hidden_pulse", [])
+    pulse_size = wo.get("pulse_size", "compact")
+    custom_cards = CustomPulseCard.query.filter_by(
+        user_id=current_user.id
+    ).order_by(CustomPulseCard.position).all()
     return render_template(
         "dashboard/layout.html",
         active_tab=tab,
         user=current_user,
         is_pro=is_pro(),
+        hidden_pulse=hidden_pulse,
+        pulse_size=pulse_size,
+        custom_pulse_cards=custom_cards,
     )
 
 

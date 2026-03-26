@@ -157,37 +157,110 @@
     {% if not is_pro %}
     <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 20px;text-align:center;">
       <div style="font-size:2.5rem;margin-bottom:16px;">📥</div>
-      <h2 style="font-size:1.2rem;margin-bottom:8px;">Data Import is a Pro feature</h2>
-      <p style="color:var(--text-muted);margin-bottom:20px;max-width:400px;">
-        Import holdings from CSV, brokerage exports, and more. Upgrade to Pro to unlock import tools.
+      <h2 style="font-size:1.2rem;margin-bottom:8px;">Brokerage Import is a Pro feature</h2>
+      <p style="color:var(--text-muted);margin-bottom:12px;max-width:400px;">
+        Import holdings from Fidelity, Schwab, Vanguard, E-Trade, Robinhood, Interactive Brokers, and more.
+        Upload a CSV and we auto-detect your brokerage format.
       </p>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:20px;justify-content:center;">
+        <span style="font-size:0.72rem;padding:3px 8px;background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:5px;color:var(--text-muted);">Fidelity</span>
+        <span style="font-size:0.72rem;padding:3px 8px;background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:5px;color:var(--text-muted);">Schwab</span>
+        <span style="font-size:0.72rem;padding:3px 8px;background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:5px;color:var(--text-muted);">Vanguard</span>
+        <span style="font-size:0.72rem;padding:3px 8px;background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:5px;color:var(--text-muted);">E-Trade</span>
+        <span style="font-size:0.72rem;padding:3px 8px;background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:5px;color:var(--text-muted);">Robinhood</span>
+        <span style="font-size:0.72rem;padding:3px 8px;background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:5px;color:var(--text-muted);">IBKR</span>
+        <span style="font-size:0.72rem;padding:3px 8px;background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:5px;color:var(--text-muted);">+5 more</span>
+      </div>
       <a href="{{ url_for('pages.pricing') }}" style="padding:12px 28px;background:linear-gradient(135deg,var(--accent-primary),var(--accent-secondary));color:#09090b;border-radius:8px;font-weight:600;text-decoration:none;box-shadow:0 2px 8px var(--accent-glow);">Upgrade to Pro</a>
     </div>
     {% else %}
-    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 20px;color:var(--text-muted);">
-      <div class="loading-spinner"></div>
-      <p style="margin-top:16px;">Loading import tools&hellip;</p>
+    <!-- Import UI for Pro users -->
+    <div style="max-width:900px;margin:0 auto;padding:20px 16px;">
+      <h2 style="font-size:1.1rem;font-weight:700;margin-bottom:4px;">Import Holdings</h2>
+      <p style="color:var(--text-muted);font-size:0.82rem;margin-bottom:20px;">
+        Upload a positions CSV from your brokerage. We auto-detect the format.
+      </p>
+
+      <!-- Supported brokerages -->
+      <div id="import-brokerages" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:20px;">
+        <span style="font-size:0.75rem;padding:4px 10px;background:var(--card-bg);border:1px solid var(--border);border-radius:6px;color:var(--text-secondary);">Fidelity</span>
+        <span style="font-size:0.75rem;padding:4px 10px;background:var(--card-bg);border:1px solid var(--border);border-radius:6px;color:var(--text-secondary);">Schwab</span>
+        <span style="font-size:0.75rem;padding:4px 10px;background:var(--card-bg);border:1px solid var(--border);border-radius:6px;color:var(--text-secondary);">Vanguard</span>
+        <span style="font-size:0.75rem;padding:4px 10px;background:var(--card-bg);border:1px solid var(--border);border-radius:6px;color:var(--text-secondary);">E-Trade</span>
+        <span style="font-size:0.75rem;padding:4px 10px;background:var(--card-bg);border:1px solid var(--border);border-radius:6px;color:var(--text-secondary);">thinkorswim</span>
+        <span style="font-size:0.75rem;padding:4px 10px;background:var(--card-bg);border:1px solid var(--border);border-radius:6px;color:var(--text-secondary);">Robinhood</span>
+        <span style="font-size:0.75rem;padding:4px 10px;background:var(--card-bg);border:1px solid var(--border);border-radius:6px;color:var(--text-secondary);">WeBull</span>
+        <span style="font-size:0.75rem;padding:4px 10px;background:var(--card-bg);border:1px solid var(--border);border-radius:6px;color:var(--text-secondary);">IBKR</span>
+        <span style="font-size:0.75rem;padding:4px 10px;background:var(--card-bg);border:1px solid var(--border);border-radius:6px;color:var(--text-secondary);">Coinbase</span>
+        <span style="font-size:0.75rem;padding:4px 10px;background:var(--card-bg);border:1px solid var(--border);border-radius:6px;color:var(--text-secondary);">M1 Finance</span>
+        <span style="font-size:0.75rem;padding:4px 10px;background:var(--card-bg);border:1px solid var(--border);border-radius:6px;color:var(--text-secondary);">Custom CSV</span>
+      </div>
+
+      <!-- Upload area -->
+      <div id="import-dropzone" style="border:2px dashed var(--border);border-radius:12px;padding:40px 20px;text-align:center;cursor:pointer;transition:border-color 0.2s,background 0.2s;"
+           ondragover="event.preventDefault();this.style.borderColor='var(--accent-primary)';this.style.background='rgba(52,211,153,0.05)'"
+           ondragleave="this.style.borderColor='var(--border)';this.style.background='transparent'"
+           ondrop="event.preventDefault();this.style.borderColor='var(--border)';this.style.background='transparent';handleImportDrop(event)"
+           onclick="document.getElementById('import-file-input').click()">
+        <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="var(--text-muted)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom:8px;">
+          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+        <p style="font-size:0.9rem;font-weight:600;margin-bottom:4px;">Drop your CSV here or click to browse</p>
+        <p style="font-size:0.78rem;color:var(--text-muted);">Positions export from any supported brokerage</p>
+        <input type="file" id="import-file-input" accept=".csv,.tsv,.txt" style="display:none" onchange="handleImportFile(this.files[0])">
+      </div>
+
+      <!-- Preview area (hidden until file uploaded) -->
+      <div id="import-preview" style="display:none;margin-top:24px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+          <div>
+            <span style="font-weight:600;font-size:0.9rem;">Detected: </span>
+            <span id="import-brokerage" style="color:var(--accent-primary);font-weight:700;font-size:0.9rem;"></span>
+            <span id="import-count" style="color:var(--text-muted);font-size:0.82rem;margin-left:8px;"></span>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <select id="import-mode" style="font-size:0.8rem;padding:4px 8px;background:var(--card-bg);border:1px solid var(--border);border-radius:6px;color:var(--text-primary);">
+              <option value="merge">Merge (update existing)</option>
+              <option value="replace">Replace (overwrite)</option>
+            </select>
+            <button onclick="commitImport()" style="padding:8px 20px;background:linear-gradient(135deg,var(--accent-primary),var(--accent-secondary));color:#09090b;border:none;border-radius:8px;font-weight:600;font-size:0.85rem;cursor:pointer;">Import Selected</button>
+          </div>
+        </div>
+
+        <!-- Errors/warnings -->
+        <div id="import-warnings" style="display:none;margin-bottom:12px;padding:10px 14px;background:rgba(234,179,8,0.1);border:1px solid rgba(234,179,8,0.2);border-radius:8px;font-size:0.8rem;color:var(--text-secondary);"></div>
+
+        <!-- Holdings table -->
+        <div style="overflow-x:auto;border:1px solid var(--border);border-radius:10px;">
+          <table style="width:100%;border-collapse:collapse;font-size:0.82rem;">
+            <thead>
+              <tr style="background:var(--card-bg);border-bottom:1px solid var(--border);">
+                <th style="padding:10px 12px;text-align:left;width:32px;"><input type="checkbox" id="import-select-all" checked onchange="toggleImportSelectAll(this.checked)"></th>
+                <th style="padding:10px 12px;text-align:left;">Ticker</th>
+                <th style="padding:10px 12px;text-align:left;">Description</th>
+                <th style="padding:10px 12px;text-align:right;">Shares</th>
+                <th style="padding:10px 12px;text-align:left;">Account</th>
+                <th style="padding:10px 12px;text-align:left;">Type</th>
+                <th style="padding:10px 12px;text-align:center;">Status</th>
+              </tr>
+            </thead>
+            <tbody id="import-table-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Result message -->
+      <div id="import-result" style="display:none;margin-top:20px;padding:16px;border-radius:10px;text-align:center;"></div>
     </div>
     {% endif %}
   </div>
 
-  <!-- Portfolio History Tab -->
+  <!-- Portfolio History Tab (free for all users) -->
   <div id="tab-history" class="tab{% if active_tab == 'history' %} active{% endif %}">
-    {% if not is_pro %}
-    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 20px;text-align:center;">
-      <div style="font-size:2.5rem;margin-bottom:16px;">📊</div>
-      <h2 style="font-size:1.2rem;margin-bottom:8px;">Portfolio Analytics is a Pro feature</h2>
-      <p style="color:var(--text-muted);margin-bottom:20px;max-width:400px;">
-        View historical portfolio value, daily OHLC snapshots, gold/silver overlays, and performance tracking.
-      </p>
-      <a href="{{ url_for('pages.pricing') }}" style="padding:12px 28px;background:linear-gradient(135deg,var(--accent-primary),var(--accent-secondary));color:#09090b;border-radius:8px;font-weight:600;text-decoration:none;box-shadow:0 2px 8px var(--accent-glow);">Upgrade to Pro</a>
-    </div>
-    {% else %}
     <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 20px;color:var(--text-muted);">
       <div class="loading-spinner"></div>
       <p style="margin-top:16px;">Loading portfolio analytics&hellip;</p>
     </div>
-    {% endif %}
   </div>
 
   <!-- Economics Tab (lazy loaded) -->
@@ -271,4 +344,7 @@ var ACTIVE_TAB = "{{ active_tab }}";
 <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
 <script src="{{ url_for('static', filename='js/tabs.js') }}"></script>
 <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+{% if is_pro %}
+<script src="{{ url_for('static', filename='js/import.js') }}"></script>
+{% endif %}
 {% endblock %}

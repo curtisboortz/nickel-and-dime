@@ -1,7 +1,7 @@
 """Portfolio API routes: holdings, balances, metals, quick-update.
 
-Holdings, metals, and portfolio history are Pro features.
-Balances (manual account values) remain available to all tiers.
+Holdings (real-time tracking), metals, and import are Pro features.
+Balances (manual), portfolio history, and budget remain free for all.
 """
 
 from flask import Blueprint, jsonify, request as flask_request
@@ -114,7 +114,6 @@ def save_balances():
 
 @api_portfolio_bp.route("/portfolio-history")
 @login_required
-@requires_pro
 def portfolio_history():
     """Return portfolio OHLC snapshots for the history chart."""
     snapshots = (PortfolioSnapshot.query

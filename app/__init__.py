@@ -8,7 +8,11 @@ from .config import config_by_name
 def create_app(config_name=None):
     """Create and configure the Flask application."""
     if config_name is None:
-        config_name = os.environ.get("FLASK_ENV", "dev")
+        config_name = os.environ.get("FLASK_ENV", "dev") or "dev"
+
+    if config_name not in config_by_name:
+        print(f"[WARN] Unknown FLASK_ENV={config_name!r}, falling back to 'prod'")
+        config_name = "prod"
 
     app = Flask(__name__)
     app.config.from_object(config_by_name[config_name])

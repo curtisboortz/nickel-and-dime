@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Multi-brokerage CSV import service.
 
 Auto-detects and parses position/holding exports from major brokerages:

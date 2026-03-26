@@ -53,7 +53,7 @@ def register():
         db.session.commit()
 
         login_user(user)
-        flash("Welcome! Your 14-day Pro trial is active.", "success")
+        flash("Welcome! Your 14-day Pro trial is active — you have full access to every feature. Upload your holdings and explore!", "success")
         return redirect(url_for("pages.dashboard_page"))
 
     return render_template("auth/register.html")

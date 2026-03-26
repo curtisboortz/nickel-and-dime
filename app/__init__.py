@@ -114,10 +114,23 @@ def _init_scheduler(app):
 def _register_template_globals(app):
     """Inject common variables into all templates."""
     from datetime import datetime, timezone
+    from flask_login import current_user
 
     @app.context_processor
-    def inject_now():
-        return {"now": datetime.now(timezone.utc)}
+    def inject_globals():
+        ctx = {"now": datetime.now(timezone.utc)}
+
+        if current_user.is_authenticated and current_user.subscription:
+            sub = current_user.subscription
+            if sub.status == "trialing" and sub.current_period_end:
+                delta = sub.current_period_end - datetime.now(timezone.utc)
+                ctx["trial_days_left"] = max(0, delta.days)
+            else:
+                ctx["trial_days_left"] = None
+        else:
+            ctx["trial_days_left"] = None
+
+        return ctx
 
 
 def _register_shell_context(app):

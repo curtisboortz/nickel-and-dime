@@ -115,6 +115,39 @@
 <!-- Main Content -->
 <div class="main-content">
   {% block dashboard_content %}
+
+  <!-- Trial Notification Banners -->
+  {% if trial_days_left is not none %}
+    {% if trial_days_left <= 1 %}
+    <div class="trial-banner trial-urgent">
+      <div class="trial-banner-icon">&#9888;</div>
+      <div class="trial-banner-text">
+        <strong>Your Pro trial expires {% if trial_days_left == 0 %}today{% else %}tomorrow{% endif %}.</strong>
+        Don't lose access to holdings tracking, technical analysis, and brokerage imports.
+      </div>
+      <a href="{{ url_for('pages.pricing') }}" class="trial-banner-btn trial-btn-urgent">Upgrade Now</a>
+    </div>
+    {% elif trial_days_left <= 3 %}
+    <div class="trial-banner trial-warning">
+      <div class="trial-banner-icon">&#9200;</div>
+      <div class="trial-banner-text">
+        <strong>{{ trial_days_left }} day{{ 's' if trial_days_left != 1 }} left on your Pro trial.</strong>
+        Upgrade to keep real-time tracking and all Pro features.
+      </div>
+      <a href="{{ url_for('pages.pricing') }}" class="trial-banner-btn trial-btn-warning">Upgrade to Pro</a>
+    </div>
+    {% else %}
+    <div class="trial-banner trial-info">
+      <div class="trial-banner-icon">&#10024;</div>
+      <div class="trial-banner-text">
+        <strong>Pro trial active</strong> &mdash; {{ trial_days_left }} day{{ 's' if trial_days_left != 1 }} remaining. Full access to all features.
+      </div>
+      <a href="{{ url_for('pages.pricing') }}" class="trial-banner-btn trial-btn-info">View Plans</a>
+      <button type="button" class="trial-banner-dismiss" onclick="this.parentElement.style.display='none'" title="Dismiss">&times;</button>
+    </div>
+    {% endif %}
+  {% endif %}
+
   <!-- Tab containers - populated by JS via API calls -->
 
   <!-- Summary Tab -->
@@ -174,17 +207,6 @@
       </div>
     </div>
 
-    {% if is_pro %}
-    <!-- Trial banner -->
-    {% if user.subscription and user.subscription.status == 'trialing' %}
-    <div style="margin:0 16px 16px;padding:14px 20px;background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.2);border-radius:var(--radius);display:flex;align-items:center;justify-content:space-between;gap:12px;">
-      <span style="font-size:0.85rem;color:var(--text-secondary);">
-        Pro trial active &mdash; expires {{ user.subscription.current_period_end.strftime('%B %d, %Y') if user.subscription.current_period_end else 'soon' }}
-      </span>
-      <a href="{{ url_for('pages.pricing') }}" style="font-size:0.82rem;font-weight:600;color:#3b82f6;text-decoration:none;">Upgrade Now</a>
-    </div>
-    {% endif %}
-    {% endif %}
   </div>
 
   <!-- Balances Tab -->

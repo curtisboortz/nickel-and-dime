@@ -492,6 +492,9 @@ html.light input, html.light select { background:var(--bg-input); color:var(--te
 html.light select option { background:var(--bg-input); color:var(--text-primary); }
 html.light .hero-value { -webkit-text-fill-color:var(--accent-primary); }
 html.light .mobile-nav { background:var(--bg-secondary); }
+/* ── Balance Row Hover ── */
+.bal-row:hover .bal-delete { opacity:0.6; }
+.bal-delete:hover { opacity:1 !important; }
 /* ── Loading Skeleton ── */
 .skeleton {
   background:linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.04) 75%);

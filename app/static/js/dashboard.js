@@ -3705,23 +3705,24 @@ function loadBalances() {
       var html = "";
       if (accts.length > 0) {
         html += '<table style="width:100%;border-collapse:collapse;">';
-        html += '<thead><tr><th style="text-align:left;padding:8px 6px;border-bottom:1px solid var(--border-subtle);font-size:0.75rem;color:var(--text-muted);">Account</th>';
-        html += '<th style="text-align:right;padding:8px 6px;border-bottom:1px solid var(--border-subtle);font-size:0.75rem;color:var(--text-muted);">Balance</th>';
-        html += '<th style="width:40px;"></th></tr></thead><tbody>';
+        html += '<thead><tr><th style="text-align:left;padding:10px 10px;border-bottom:1px solid var(--border-subtle);font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);font-weight:600;">Account</th>';
+        html += '<th style="text-align:right;padding:10px 10px;border-bottom:1px solid var(--border-subtle);font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);font-weight:600;">Value ($)</th></tr></thead><tbody>';
         accts.forEach(function(a) {
-          html += '<tr data-acct-id="' + a.id + '">';
-          html += '<td style="padding:8px 6px;border-bottom:1px solid var(--border-subtle);font-size:0.88rem;">' + (a.name || "Account") + '</td>';
-          html += '<td style="text-align:right;padding:8px 6px;border-bottom:1px solid var(--border-subtle);"><input type="number" step="0.01" class="bal-input" data-acct-id="' + a.id + '" value="' + (a.value || 0) + '" style="width:130px;text-align:right;padding:6px 8px;background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:6px;color:var(--text-primary);font-size:0.88rem;"></td>';
-          html += '<td style="text-align:right;padding:8px 6px;border-bottom:1px solid var(--border-subtle);"><button onclick="deleteBalance(' + a.id + ')" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:0.8rem;" title="Remove">&#10005;</button></td>';
-          html += '</tr>';
+          var fmtVal = parseFloat(a.value || 0).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
+          html += '<tr class="bal-row" data-acct-id="' + a.id + '">';
+          html += '<td style="padding:14px 10px;border-bottom:1px solid var(--border-subtle);font-size:0.92rem;font-weight:500;">' + (a.name || "Account") + '</td>';
+          html += '<td style="text-align:right;padding:14px 10px;border-bottom:1px solid var(--border-subtle);font-family:var(--mono);font-size:0.92rem;font-weight:500;position:relative;">';
+          html += '<input type="number" step="0.01" class="bal-input" data-acct-id="' + a.id + '" value="' + (a.value || 0) + '" style="width:140px;text-align:right;padding:6px 10px;background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:6px;color:var(--text-primary);font-family:var(--mono);font-size:0.92rem;">';
+          html += '<button onclick="deleteBalance(' + a.id + ')" class="bal-delete" style="position:absolute;right:-24px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--danger);cursor:pointer;font-size:0.7rem;opacity:0;transition:opacity 0.15s;padding:4px;" title="Remove">&#10005;</button>';
+          html += '</td></tr>';
         });
         html += '</tbody></table>';
       } else {
         html += '<p class="hint" style="margin-bottom:14px;">No accounts yet. Add one below to start tracking your balances.</p>';
       }
-      html += '<div style="display:flex;gap:8px;align-items:end;margin-top:14px;flex-wrap:wrap;">';
-      html += '<input type="text" id="new-acct-name" placeholder="Account name (e.g. Fidelity IRA)" style="flex:1;min-width:160px;padding:8px 10px;font-size:0.85rem;background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:6px;color:var(--text-primary);">';
-      html += '<input type="number" id="new-acct-value" placeholder="Balance" step="0.01" style="width:120px;padding:8px 10px;font-size:0.85rem;background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:6px;color:var(--text-primary);text-align:right;">';
+      html += '<div style="display:flex;gap:8px;align-items:end;margin-top:16px;flex-wrap:wrap;">';
+      html += '<input type="text" id="new-acct-name" placeholder="Account name (e.g. Fidelity IRA)" style="flex:1;min-width:160px;padding:8px 12px;font-size:0.88rem;background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:6px;color:var(--text-primary);">';
+      html += '<input type="number" id="new-acct-value" placeholder="Balance" step="0.01" style="width:120px;padding:8px 12px;font-size:0.88rem;background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:6px;color:var(--text-primary);text-align:right;">';
       html += '<button onclick="addBalance()" style="padding:8px 16px;font-size:0.85rem;background:var(--accent-primary);color:#fff;border:none;border-radius:6px;cursor:pointer;white-space:nowrap;">+ Add Account</button>';
       html += '</div>';
       wrap.innerHTML = html;
@@ -3853,6 +3854,14 @@ function _renderStockHoldings(wrap, holdings) {
   wrap.innerHTML = html;
 }
 
+function _fmtCryptoQty(qty) {
+  var n = parseFloat(qty);
+  if (isNaN(n)) return qty;
+  if (n >= 1) return n.toLocaleString(undefined, {maximumFractionDigits: 4});
+  if (n >= 0.001) return n.toFixed(6);
+  return n.toFixed(6);
+}
+
 function _renderCryptoHoldings(wrap, crypto) {
   if (!wrap) return;
   var countEl = document.getElementById("crypto-count");
@@ -3872,12 +3881,13 @@ function _renderCryptoHoldings(wrap, crypto) {
   crypto.forEach(function(c) {
     var val = c.value || 0;
     totalVal += val;
+    var qtyStr = _fmtCryptoQty(c.quantity);
     var priceStr = c.price ? "$" + c.price.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}) : "-";
     var valStr = val ? "$" + val.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}) : "-";
     var pctStr = "";
     rows += '<tr class="crypto-row" data-cid="' + c.id + '" data-cgid="' + (c.coingecko_id || "") + '">';
     rows += '<td style="padding:8px 10px;font-weight:600;">' + c.symbol + '</td>';
-    rows += '<td style="padding:8px 10px;text-align:right;font-family:var(--mono);">' + c.quantity + '</td>';
+    rows += '<td style="padding:8px 10px;text-align:right;font-family:var(--mono);">' + qtyStr + '</td>';
     rows += '<td style="padding:8px 10px;text-align:right;font-family:var(--mono);color:var(--text-muted);">' + priceStr + '</td>';
     rows += '<td style="padding:8px 10px;text-align:right;font-family:var(--mono);">' + valStr + '</td>';
     rows += '<td style="padding:8px 10px;text-align:right;color:var(--text-muted);">' + pctStr + '</td>';
@@ -3897,7 +3907,7 @@ function _renderCryptoHoldings(wrap, crypto) {
       var pctStr = totalVal > 0 ? ((val / totalVal) * 100).toFixed(1) + "%" : "";
       rowsWithPct += '<tr class="crypto-row" data-cid="' + c.id + '" data-cgid="' + (c.coingecko_id || "") + '">';
       rowsWithPct += '<td style="padding:8px 10px;font-weight:600;">' + c.symbol + '</td>';
-      rowsWithPct += '<td style="padding:8px 10px;text-align:right;font-family:var(--mono);">' + c.quantity + '</td>';
+      rowsWithPct += '<td style="padding:8px 10px;text-align:right;font-family:var(--mono);">' + _fmtCryptoQty(c.quantity) + '</td>';
       rowsWithPct += '<td style="padding:8px 10px;text-align:right;font-family:var(--mono);color:var(--text-muted);">' + priceStr + '</td>';
       rowsWithPct += '<td style="padding:8px 10px;text-align:right;font-family:var(--mono);">' + valStr + '</td>';
       rowsWithPct += '<td style="padding:8px 10px;text-align:right;color:var(--text-muted);">' + pctStr + '</td>';

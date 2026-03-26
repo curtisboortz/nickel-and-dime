@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
-{% block title %}Nickel&amp;Dime — Your Macro-Financial Command Center{% endblock %}
-{% block meta_description %}Track markets, monitor the economy, and manage your portfolio — all in one place. Free to start.{% endblock %}
+{% block title %}Nickel&amp;Dime — The Investor's Edge{% endblock %}
+{% block meta_description %}Track markets, monitor the economy, and manage your portfolio — all in one place. Built for self-directed investors.{% endblock %}
 
 {% block head_extra %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/landing.css') }}">
@@ -13,7 +13,7 @@
 <!-- Nav -->
 <nav class="landing-nav">
   <a href="/" class="landing-brand">
-    <img src="/icon-192.png" alt="N&amp;D">
+    <img src="/icon-192.png" alt="N&amp;D" onerror="this.style.display='none'">
     Nickel&amp;Dime
   </a>
   <div class="landing-nav-links">
@@ -30,10 +30,10 @@
 
 <!-- Hero -->
 <section class="landing-hero">
-  <h1>Your <span>macro-financial</span> command center</h1>
-  <p>
+  <h1>The investor's<br><span class="hero-grad">command center</span></h1>
+  <p class="landing-hero-sub">
     Real-time market pulse, economic calendars, portfolio tracking, and budgeting
-    — everything a self-directed investor needs, in one clean dashboard.
+    — everything a self-directed investor needs, one clean dashboard.
   </p>
   <div class="landing-hero-ctas">
     <a href="{{ url_for('auth.register') }}" class="landing-cta-lg primary">
@@ -42,66 +42,169 @@
     </a>
     <a href="#features" class="landing-cta-lg secondary">See Features</a>
   </div>
-  <p class="landing-hero-note">No credit card required. Free tier always available.</p>
+  <p class="landing-hero-note">No credit card required &middot; Free tier always available</p>
 </section>
+
+<!-- Dashboard mockup -->
+<div class="hero-mockup">
+  <div class="mockup-frame">
+    <div class="mockup-toolbar">
+      <span class="mockup-dot"></span>
+      <span class="mockup-dot"></span>
+      <span class="mockup-dot"></span>
+      <span class="mockup-toolbar-url">nickelanddime.io/dashboard</span>
+    </div>
+    <div class="mockup-body">
+      <div class="mockup-sidebar">
+        <div class="mockup-sidebar-icon active"></div>
+        <div class="mockup-sidebar-icon"></div>
+        <div class="mockup-sidebar-icon"></div>
+        <div class="mockup-sidebar-icon"></div>
+        <div class="mockup-sidebar-icon"></div>
+        <div class="mockup-sidebar-icon"></div>
+      </div>
+      <div class="mockup-content">
+        <div class="mockup-pulse">
+          <div class="mockup-pulse-card">
+            <div class="mockup-pulse-label">Gold</div>
+            <div class="mockup-pulse-val">$3,042.80</div>
+            <div class="mockup-pulse-chg up">+0.42%</div>
+          </div>
+          <div class="mockup-pulse-card">
+            <div class="mockup-pulse-label">S&amp;P 500</div>
+            <div class="mockup-pulse-val">$5,667.56</div>
+            <div class="mockup-pulse-chg up">+1.08%</div>
+          </div>
+          <div class="mockup-pulse-card">
+            <div class="mockup-pulse-label">Bitcoin</div>
+            <div class="mockup-pulse-val">$84,214</div>
+            <div class="mockup-pulse-chg down">-2.31%</div>
+          </div>
+          <div class="mockup-pulse-card">
+            <div class="mockup-pulse-label">10Y Yield</div>
+            <div class="mockup-pulse-val">4.28%</div>
+            <div class="mockup-pulse-chg down">-0.03%</div>
+          </div>
+          <div class="mockup-pulse-card">
+            <div class="mockup-pulse-label">DXY</div>
+            <div class="mockup-pulse-val">104.12</div>
+            <div class="mockup-pulse-chg up">+0.15%</div>
+          </div>
+          <div class="mockup-pulse-card">
+            <div class="mockup-pulse-label">VIX</div>
+            <div class="mockup-pulse-val">17.36</div>
+            <div class="mockup-pulse-chg down">-5.20%</div>
+          </div>
+        </div>
+        <div class="mockup-grid">
+          <div class="mockup-chart">
+            <div class="mockup-chart-label">Net Worth</div>
+            <div class="mockup-chart-value">$247,832</div>
+            <div class="mockup-chart-line">
+              <svg viewBox="0 0 400 100" preserveAspectRatio="none">
+                <defs>
+                  <linearGradient id="cg" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.3"/>
+                    <stop offset="100%" stop-color="#3b82f6" stop-opacity="0"/>
+                  </linearGradient>
+                </defs>
+                <path d="M0 85 Q40 80 80 65 T160 55 T240 35 T320 28 T400 15" fill="none" stroke="#3b82f6" stroke-width="2"/>
+                <path d="M0 85 Q40 80 80 65 T160 55 T240 35 T320 28 T400 15 L400 100 L0 100Z" fill="url(#cg)"/>
+              </svg>
+            </div>
+          </div>
+          <div class="mockup-stats">
+            <div class="mockup-stat">
+              <div class="mockup-stat-label">Daily Change</div>
+              <div class="mockup-stat-value" style="color:#10b981;">+$1,247 (+0.5%)</div>
+            </div>
+            <div class="mockup-stat">
+              <div class="mockup-stat-label">Allocation</div>
+              <div class="mockup-stat-value">68% Equities</div>
+            </div>
+            <div class="mockup-stat">
+              <div class="mockup-stat-label">Savings Rate</div>
+              <div class="mockup-stat-value">34.2%</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Trust strip -->
+<div class="trust-strip">
+  <span class="trust-item">Stocks &amp; ETFs</span>
+  <span class="trust-divider"></span>
+  <span class="trust-item">Crypto</span>
+  <span class="trust-divider"></span>
+  <span class="trust-item">Precious Metals</span>
+  <span class="trust-divider"></span>
+  <span class="trust-item">Treasuries</span>
+  <span class="trust-divider"></span>
+  <span class="trust-item">FRED Data</span>
+  <span class="trust-divider"></span>
+  <span class="trust-item">Economic Calendar</span>
+</div>
 
 <!-- Features -->
 <section class="landing-features" id="features">
   <p class="landing-section-label">Features</p>
-  <h2 class="landing-section-title">Everything you need in one place</h2>
+  <h2 class="landing-section-title">Built for investors who do their own research</h2>
 
-  <div class="features-grid">
-    <!-- Market Pulse -->
-    <div class="feature-card">
-      <div class="feature-icon">
+  <div class="bento-grid">
+    <!-- Market Pulse — wide -->
+    <div class="bento-card wide" data-accent="blue">
+      <div class="bento-icon">
         <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
       </div>
       <h3>Market Pulse</h3>
-      <p>Live prices for gold, silver, Bitcoin, yields, DXY, and equities — updated every 5 minutes with interactive charts.</p>
+      <p>Live prices for gold, silver, Bitcoin, yields, DXY, oil, copper, and equities — updated every 5 minutes with interactive charts for any timeframe.</p>
+    </div>
+
+    <!-- Portfolio Tracker — wide -->
+    <div class="bento-card" data-accent="emerald">
+      <div class="bento-icon">
+        <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+      </div>
+      <h3>Portfolio Tracker<span class="pro-tag">Pro</span></h3>
+      <p>Stocks, ETFs, crypto, and physical metals with live prices and allocation drift analysis.</p>
     </div>
 
     <!-- Economic Calendar -->
-    <div class="feature-card">
-      <div class="feature-icon">
+    <div class="bento-card" data-accent="cyan">
+      <div class="bento-icon">
         <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
       </div>
       <h3>Economic Calendar</h3>
-      <p>Upcoming and past economic events with actual vs. forecast data, Fed Watch, and impact filtering.</p>
+      <p>Upcoming events with actual vs. forecast data, Fed Watch probabilities, and impact filtering.</p>
     </div>
 
-    <!-- Portfolio Tracker -->
-    <div class="feature-card">
-      <div class="feature-icon">
-        <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
-      </div>
-      <h3>Portfolio Tracker <span style="font-size:0.7rem;color:var(--accent-primary);font-weight:700;">PRO</span></h3>
-      <p>Track stocks, ETFs, crypto, and physical metals with live prices. See allocation drift, daily snapshots, and contribution progress.</p>
-    </div>
-
-    <!-- Sentiment Dashboard -->
-    <div class="feature-card">
-      <div class="feature-icon">
+    <!-- Sentiment -->
+    <div class="bento-card" data-accent="violet">
+      <div class="bento-icon">
         <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
       </div>
       <h3>Sentiment Gauges</h3>
-      <p>Fear &amp; Greed index, crypto sentiment, CAPE ratio, and Buffett Indicator — all in visual gauges.</p>
+      <p>Fear &amp; Greed index, crypto sentiment, CAPE ratio, Buffett Indicator, and Sahm Rule — all in visual gauges.</p>
     </div>
 
     <!-- Budget -->
-    <div class="feature-card">
-      <div class="feature-icon">
+    <div class="bento-card" data-accent="amber">
+      <div class="bento-icon">
         <svg viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
       </div>
       <h3>Budget Manager</h3>
-      <p>Monthly income, expense categories, spending breakdown, debt payoff tracking, and savings rate insights.</p>
+      <p>Monthly income tracking, expense categories, spending breakdown, and savings rate insights.</p>
     </div>
 
-    <!-- Technical Analysis (Pro) -->
-    <div class="feature-card">
-      <div class="feature-icon">
+    <!-- Technical Analysis -->
+    <div class="bento-card" data-accent="rose">
+      <div class="bento-icon">
         <svg viewBox="0 0 24 24"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
       </div>
-      <h3>Technical Analysis <span style="font-size:0.7rem;color:var(--accent-primary);font-weight:700;">PRO</span></h3>
+      <h3>Technical Analysis<span class="pro-tag">Pro</span></h3>
       <p>Full TradingView charts with indicators, log scale, and multi-timeframe analysis for any ticker.</p>
     </div>
   </div>
@@ -119,16 +222,38 @@
       <p class="price-desc">For casual market watchers</p>
       <div class="price-amount">$0<span>/mo</span></div>
       <ul class="price-features">
-        <li>Market pulse (gold, silver, BTC, yields, DXY, SPY)</li>
-        <li>Economic calendar</li>
-        <li>Sentiment gauges</li>
-        <li>Manual account balances</li>
-        <li>Portfolio history &amp; analytics</li>
-        <li>Monthly budget planner</li>
-        <li class="locked">Real-time holdings tracker</li>
-        <li class="locked">Brokerage CSV import</li>
-        <li class="locked">Technical analysis charts</li>
-        <li class="locked">Full FRED economic data</li>
+        <li>
+          <svg class="pf-icon check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          Market pulse (gold, silver, BTC, yields, DXY, SPY)
+        </li>
+        <li>
+          <svg class="pf-icon check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          Economic calendar &amp; sentiment gauges
+        </li>
+        <li>
+          <svg class="pf-icon check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          Manual account balances
+        </li>
+        <li>
+          <svg class="pf-icon check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          Portfolio history &amp; analytics
+        </li>
+        <li>
+          <svg class="pf-icon check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          Monthly budget planner
+        </li>
+        <li class="locked">
+          <svg class="pf-icon lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+          Real-time holdings tracker
+        </li>
+        <li class="locked">
+          <svg class="pf-icon lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+          Brokerage CSV import
+        </li>
+        <li class="locked">
+          <svg class="pf-icon lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+          Technical analysis charts
+        </li>
       </ul>
       <a href="{{ url_for('auth.register') }}" class="price-cta secondary">Get Started Free</a>
     </div>
@@ -140,14 +265,38 @@
       <p class="price-desc">For serious self-directed investors</p>
       <div class="price-amount">$10<span>/mo</span></div>
       <ul class="price-features">
-        <li>Everything in Free</li>
-        <li>Real-time holdings (stocks, ETFs, crypto, metals)</li>
-        <li>Import from Fidelity, Schwab, Vanguard, &amp; more</li>
-        <li>Full technical analysis (TradingView)</li>
-        <li>FRED economic data series</li>
-        <li>Portfolio data export</li>
-        <li>Custom pulse cards &amp; price alerts</li>
-        <li>Priority support</li>
+        <li>
+          <svg class="pf-icon check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          Everything in Free
+        </li>
+        <li>
+          <svg class="pf-icon check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          Real-time holdings (stocks, ETFs, crypto, metals)
+        </li>
+        <li>
+          <svg class="pf-icon check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          Import from Fidelity, Schwab, Vanguard, &amp; more
+        </li>
+        <li>
+          <svg class="pf-icon check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          Full technical analysis (TradingView)
+        </li>
+        <li>
+          <svg class="pf-icon check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          FRED economic data series
+        </li>
+        <li>
+          <svg class="pf-icon check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          Portfolio data export
+        </li>
+        <li>
+          <svg class="pf-icon check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          Custom pulse cards &amp; price alerts
+        </li>
+        <li>
+          <svg class="pf-icon check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          Priority support
+        </li>
       </ul>
       <a href="{{ url_for('auth.register') }}" class="price-cta primary">Start 14-Day Free Trial</a>
     </div>
@@ -156,8 +305,9 @@
 
 <!-- Footer -->
 <footer class="landing-footer">
+  <div class="footer-brand">Nickel&amp;Dime</div>
   <p>&copy; {{ now.year if now else 2026 }} Nickel&amp;Dime. All rights reserved.</p>
-  <p style="margin-top:8px;">
+  <p style="margin-top:10px;">
     <a href="#">Privacy</a> &middot; <a href="#">Terms</a> &middot; <a href="mailto:support@nickelanddime.io">Contact</a>
   </p>
 </footer>

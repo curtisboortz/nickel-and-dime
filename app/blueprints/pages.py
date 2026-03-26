@@ -2,12 +2,20 @@
 
 from datetime import datetime, timezone
 
-from flask import Blueprint, render_template, redirect, url_for, Response, abort, jsonify
+from flask import Blueprint, render_template, redirect, url_for, Response, abort, jsonify, send_from_directory, current_app
 from flask_login import login_required, current_user
 
 from ..utils.auth import is_pro
 
 pages_bp = Blueprint("pages", __name__)
+
+
+@pages_bp.route("/icon-192.png")
+def serve_icon():
+    """Serve the logo SVG at the legacy /icon-192.png path."""
+    return send_from_directory(
+        current_app.static_folder + "/img", "logo.svg", mimetype="image/svg+xml"
+    )
 
 
 @pages_bp.route("/health")

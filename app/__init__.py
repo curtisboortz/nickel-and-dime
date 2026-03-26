@@ -118,17 +118,16 @@ def _register_template_globals(app):
 
     @app.context_processor
     def inject_globals():
-        ctx = {"now": datetime.now(timezone.utc)}
+        ctx = {"now": datetime.now(timezone.utc), "trial_days_left": None}
 
-        if current_user.is_authenticated and not getattr(current_user, "is_admin", False) and current_user.subscription:
-            sub = current_user.subscription
-            if sub.status == "trialing" and sub.current_period_end:
-                delta = sub.current_period_end - datetime.now(timezone.utc)
-                ctx["trial_days_left"] = max(0, delta.days)
-            else:
-                ctx["trial_days_left"] = None
-        else:
-            ctx["trial_days_left"] = None
+        try:
+            if current_user.is_authenticated and not getattr(current_user, "is_admin", False):
+                sub = current_user.subscription
+                if sub and sub.status == "trialing" and sub.current_period_end:
+                    delta = sub.current_period_end - datetime.now(timezone.utc)
+                    ctx["trial_days_left"] = max(0, delta.days)
+        except Exception:
+            pass
 
         return ctx
 

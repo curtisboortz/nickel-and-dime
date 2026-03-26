@@ -1,4 +1,4 @@
-"""upgrade founder account to admin pro
+"""add is_admin column and upgrade founder account to admin pro
 
 Revision ID: d001_founder
 Revises: c667a18d8e68
@@ -16,17 +16,12 @@ depends_on = None
 
 
 def upgrade():
+    op.add_column("users", sa.Column("is_admin", sa.Boolean(), server_default=sa.text("false"), nullable=True))
+
     conn = op.get_bind()
 
-    # Add is_admin column if it doesn't exist yet
-    inspector = sa.inspect(conn)
-    columns = [c["name"] for c in inspector.get_columns("users")]
-    if "is_admin" not in columns:
-        op.add_column("users", sa.Column("is_admin", sa.Boolean(), server_default="false"))
-
     row = conn.execute(
-        sa.text("SELECT id FROM users WHERE email = :e"),
-        {"e": "crb1898@gmail.com"},
+        sa.text("SELECT id FROM users WHERE email = 'crb1898@gmail.com'")
     ).fetchone()
 
     if not row:
@@ -65,4 +60,4 @@ def upgrade():
 
 
 def downgrade():
-    pass
+    op.drop_column("users", "is_admin")

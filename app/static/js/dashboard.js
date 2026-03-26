@@ -3720,6 +3720,30 @@ document.addEventListener("click", function(e) {
    Balances Tab — fetch /api/balances, render editable table, save
    ══════════════════════════════════════════════════════ */
 var _balancesLoaded = false;
+var _balOpenMenu = null;
+
+function _closeBalsMenu() {
+  if (_balOpenMenu) { _balOpenMenu.remove(); _balOpenMenu = null; }
+  document.removeEventListener("click", _closeBalsMenu);
+}
+
+function _openBalMenu(e, id, name, idx, total) {
+  e.stopPropagation();
+  _closeBalsMenu();
+  var btn = e.currentTarget;
+  var menu = document.createElement("div");
+  menu.className = "bal-menu";
+  var items = [];
+  items.push('<button onclick="renameBalance(' + id + ',this)">Rename</button>');
+  if (idx > 0) items.push('<button onclick="moveBalance(' + id + ',\'up\')">Move Up</button>');
+  if (idx < total - 1) items.push('<button onclick="moveBalance(' + id + ',\'down\')">Move Down</button>');
+  items.push('<button class="danger" onclick="deleteBalance(' + id + ')">Delete</button>');
+  menu.innerHTML = items.join("");
+  btn.parentElement.appendChild(menu);
+  _balOpenMenu = menu;
+  setTimeout(function() { document.addEventListener("click", _closeBalsMenu); }, 0);
+}
+
 function loadBalances() {
   if (_balancesLoaded) return;
   _balancesLoaded = true;
@@ -3732,15 +3756,19 @@ function loadBalances() {
       var html = "";
       if (accts.length > 0) {
         html += '<table style="width:100%;border-collapse:collapse;">';
-        html += '<thead><tr><th style="text-align:left;padding:10px 10px;border-bottom:1px solid var(--border-subtle);font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);font-weight:600;">Account</th>';
-        html += '<th style="text-align:right;padding:10px 10px;border-bottom:1px solid var(--border-subtle);font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);font-weight:600;">Value ($)</th></tr></thead><tbody>';
-        accts.forEach(function(a) {
-          var fmtVal = parseFloat(a.value || 0).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
+        html += '<thead><tr>';
+        html += '<th style="width:28px;padding:10px 0;"></th>';
+        html += '<th style="text-align:left;padding:10px 10px;border-bottom:1px solid var(--border-subtle);font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);font-weight:600;">Account</th>';
+        html += '<th style="text-align:right;padding:10px 10px;border-bottom:1px solid var(--border-subtle);font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);font-weight:600;">Value ($)</th>';
+        html += '</tr></thead><tbody>';
+        accts.forEach(function(a, idx) {
           html += '<tr class="bal-row" data-acct-id="' + a.id + '">';
-          html += '<td style="padding:14px 10px;border-bottom:1px solid var(--border-subtle);font-size:0.92rem;font-weight:500;">' + (a.name || "Account") + '</td>';
-          html += '<td style="text-align:right;padding:14px 10px;border-bottom:1px solid var(--border-subtle);font-family:var(--mono);font-size:0.92rem;font-weight:500;position:relative;">';
+          html += '<td style="width:28px;padding:10px 0;border-bottom:1px solid var(--border-subtle);position:relative;">';
+          html += '<button class="bal-kebab" onclick="_openBalMenu(event,' + a.id + ',\'' + (a.name || "").replace(/'/g, "\\'") + '\',' + idx + ',' + accts.length + ')" title="Options">&#8942;</button>';
+          html += '</td>';
+          html += '<td class="bal-name-cell" data-acct-id="' + a.id + '" style="padding:14px 10px;border-bottom:1px solid var(--border-subtle);font-size:0.92rem;font-weight:500;">' + (a.name || "Account") + '</td>';
+          html += '<td style="text-align:right;padding:14px 10px;border-bottom:1px solid var(--border-subtle);font-family:var(--mono);font-size:0.92rem;font-weight:500;">';
           html += '<input type="number" step="0.01" class="bal-input" data-acct-id="' + a.id + '" value="' + (a.value || 0) + '" style="width:140px;text-align:right;padding:6px 10px;background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:6px;color:var(--text-primary);font-family:var(--mono);font-size:0.92rem;">';
-          html += '<button onclick="deleteBalance(' + a.id + ')" class="bal-delete" style="position:absolute;right:-24px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--danger);cursor:pointer;font-size:0.7rem;opacity:0;transition:opacity 0.15s;padding:4px;" title="Remove">&#10005;</button>';
           html += '</td></tr>';
         });
         html += '</tbody></table>';
@@ -3775,9 +3803,60 @@ function addBalance() {
 }
 
 function deleteBalance(id) {
+  _closeBalsMenu();
   if (!confirm("Remove this account?")) return;
   fetch("/api/balances/" + id, { method: "DELETE" })
     .then(function() { _balancesLoaded = false; loadBalances(); });
+}
+
+function renameBalance(id) {
+  _closeBalsMenu();
+  var cell = document.querySelector('.bal-name-cell[data-acct-id="' + id + '"]');
+  if (!cell) return;
+  var current = cell.textContent.trim();
+  var input = document.createElement("input");
+  input.type = "text";
+  input.value = current;
+  input.className = "bal-rename-input";
+  input.style.cssText = "width:100%;padding:6px 10px;font-size:0.92rem;font-weight:500;background:var(--bg-input);border:1px solid var(--accent-primary);border-radius:6px;color:var(--text-primary);";
+  cell.textContent = "";
+  cell.appendChild(input);
+  input.focus();
+  input.select();
+  function commit() {
+    var newName = input.value.trim();
+    if (!newName || newName === current) { cell.textContent = current; return; }
+    cell.textContent = newName;
+    fetch("/api/balances/rename", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: id, name: newName })
+    });
+  }
+  input.addEventListener("blur", commit);
+  input.addEventListener("keydown", function(e) {
+    if (e.key === "Enter") { e.preventDefault(); input.blur(); }
+    if (e.key === "Escape") { cell.textContent = current; }
+  });
+}
+
+function moveBalance(id, direction) {
+  _closeBalsMenu();
+  var rows = document.querySelectorAll(".bal-row");
+  var order = [];
+  rows.forEach(function(r) { order.push(parseInt(r.getAttribute("data-acct-id"))); });
+  var idx = order.indexOf(id);
+  if (idx < 0) return;
+  var swapIdx = direction === "up" ? idx - 1 : idx + 1;
+  if (swapIdx < 0 || swapIdx >= order.length) return;
+  var tmp = order[idx];
+  order[idx] = order[swapIdx];
+  order[swapIdx] = tmp;
+  fetch("/api/balances/reorder", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ order: order })
+  }).then(function() { _balancesLoaded = false; loadBalances(); });
 }
 
 function saveAllBalances() {

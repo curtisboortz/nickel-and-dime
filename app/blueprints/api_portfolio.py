@@ -167,8 +167,15 @@ def delete_holding(holding_id):
 @api_portfolio_bp.route("/balances")
 @login_required
 def get_balances():
-    """Return blended account balances."""
+    """Return blended account balances, respecting saved order."""
+    from ..models.settings import UserSettings
     blended = BlendedAccount.query.filter_by(user_id=current_user.id).all()
+    us = UserSettings.query.filter_by(user_id=current_user.id).first()
+    wo = (us.widget_order if us and isinstance(us.widget_order, dict) else {}) or {}
+    saved_order = wo.get("balance_order", [])
+    if saved_order:
+        order_map = {aid: i for i, aid in enumerate(saved_order)}
+        blended.sort(key=lambda a: order_map.get(a.id, 9999))
     return jsonify({
         "accounts": [{"id": a.id, "name": a.name, "value": a.value,
                        "allocations": a.allocations} for a in blended],
@@ -199,6 +206,38 @@ def save_balances():
         acct = BlendedAccount.query.filter_by(id=item.get("id"), user_id=current_user.id).first()
         if acct and "value" in item:
             acct.value = float(item["value"])
+    db.session.commit()
+    return jsonify({"success": True})
+
+
+@api_portfolio_bp.route("/balances/rename", methods=["POST"])
+@login_required
+@csrf.exempt
+def rename_balance():
+    """Rename a blended account."""
+    data = flask_request.get_json(silent=True) or {}
+    acct = BlendedAccount.query.filter_by(id=data.get("id"), user_id=current_user.id).first()
+    if acct and data.get("name"):
+        acct.name = data["name"].strip()
+        db.session.commit()
+    return jsonify({"success": True})
+
+
+@api_portfolio_bp.route("/balances/reorder", methods=["POST"])
+@login_required
+@csrf.exempt
+def reorder_balances():
+    """Persist the user's preferred balance row order."""
+    from ..models.settings import UserSettings
+    data = flask_request.get_json(silent=True) or {}
+    order = data.get("order", [])
+    settings = UserSettings.query.filter_by(user_id=current_user.id).first()
+    if not settings:
+        settings = UserSettings(user_id=current_user.id)
+        db.session.add(settings)
+    wo = dict(settings.widget_order or {}) if isinstance(settings.widget_order, dict) else {}
+    wo["balance_order"] = order
+    settings.widget_order = wo
     db.session.commit()
     return jsonify({"success": True})
 

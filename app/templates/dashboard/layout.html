@@ -700,6 +700,16 @@ window.PRICE_HISTORY_DATA = [];
       window.BUCKETS_DATA = d.buckets;
       if (typeof buildDonut === "function") buildDonut();
     }
+    // If prices appear empty, trigger a background refresh
+    if (!d || (!d.gold && !d.spy && !d.btc)) {
+      fetch("/api/bg-refresh", { method: "POST" }).then(function() {
+        setTimeout(function() {
+          fetch("/api/live-data").then(function(r2){ return r2.json(); }).then(function(d2) {
+            if (typeof applyLiveDataToDOM === "function") applyLiveDataToDOM(d2);
+          });
+        }, 15000);
+      }).catch(function(){});
+    }
   }).catch(function() {});
 
   fetch("/api/portfolio-history").then(function(r) { return r.json(); }).then(function(d) {

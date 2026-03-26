@@ -3460,3 +3460,222 @@ document.addEventListener("click", function(e) {
   }
 });
 
+/* ══════════════════════════════════════════════════════
+   Balances Tab — fetch /api/balances, render editable table, save
+   ══════════════════════════════════════════════════════ */
+var _balancesLoaded = false;
+function loadBalances() {
+  if (_balancesLoaded) return;
+  _balancesLoaded = true;
+  var wrap = document.getElementById("balances-table-wrap");
+  if (!wrap) return;
+  fetch("/api/balances")
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      var accts = d.accounts || [];
+      if (accts.length === 0) {
+        wrap.innerHTML = '<p class="hint">No accounts yet. Add an account in your Holdings to get started.</p>';
+        return;
+      }
+      var html = '<table style="width:100%;border-collapse:collapse;">';
+      html += '<thead><tr><th style="text-align:left;padding:8px 6px;border-bottom:1px solid var(--border-subtle);font-size:0.75rem;color:var(--text-muted);">Account</th>';
+      html += '<th style="text-align:right;padding:8px 6px;border-bottom:1px solid var(--border-subtle);font-size:0.75rem;color:var(--text-muted);">Balance</th></tr></thead><tbody>';
+      accts.forEach(function(a) {
+        html += '<tr data-acct-id="' + a.id + '"><td style="padding:8px 6px;border-bottom:1px solid var(--border-subtle);font-size:0.88rem;">' + (a.name || "Account") + '</td>';
+        html += '<td style="text-align:right;padding:8px 6px;border-bottom:1px solid var(--border-subtle);"><input type="number" step="0.01" class="bal-input" data-acct-id="' + a.id + '" value="' + (a.value || 0) + '" style="width:130px;text-align:right;padding:6px 8px;background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:6px;color:var(--text-primary);font-size:0.88rem;"></td></tr>';
+      });
+      html += '</tbody></table>';
+      wrap.innerHTML = html;
+    })
+    .catch(function() {
+      wrap.innerHTML = '<p class="hint" style="color:var(--danger);">Failed to load accounts.</p>';
+      _balancesLoaded = false;
+    });
+}
+
+function saveAllBalances() {
+  var inputs = document.querySelectorAll(".bal-input");
+  var accounts = [];
+  inputs.forEach(function(inp) {
+    accounts.push({ id: parseInt(inp.getAttribute("data-acct-id")), value: parseFloat(inp.value) || 0 });
+  });
+  fetch("/api/balances", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ accounts: accounts })
+  })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (d.success) {
+        var btn = document.querySelector('#tab-balances .success');
+        if (btn) { btn.textContent = "Saved!"; setTimeout(function(){ btn.textContent = "Save Balances"; }, 2000); }
+      }
+    });
+}
+
+/* ══════════════════════════════════════════════════════
+   Holdings Tab — fetch /api/holdings, render tables
+   ══════════════════════════════════════════════════════ */
+var _holdingsLoaded = false;
+function loadHoldings() {
+  if (_holdingsLoaded) return;
+  _holdingsLoaded = true;
+
+  var stockWrap = document.getElementById("holdings-table-wrap");
+  var cryptoWrap = document.getElementById("crypto-tbody");
+  var metalsWrap = document.getElementById("metals-tbody");
+
+  fetch("/api/holdings")
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (stockWrap) {
+        var holdings = d.holdings || [];
+        if (holdings.length === 0) {
+          stockWrap.innerHTML = '<p class="hint">No stock holdings yet. Use Import or add manually below.</p>' +
+            '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:end;margin-top:12px;">' +
+            '<input type="text" id="add-holding-ticker" placeholder="Ticker" style="width:90px;text-transform:uppercase;padding:6px 8px;font-size:0.85rem;background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:6px;color:var(--text-primary);">' +
+            '<input type="number" id="add-holding-shares" placeholder="Shares" step="0.01" style="width:90px;padding:6px 8px;font-size:0.85rem;background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:6px;color:var(--text-primary);">' +
+            '<input type="text" id="add-holding-bucket" placeholder="Bucket" style="width:100px;padding:6px 8px;font-size:0.85rem;background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:6px;color:var(--text-primary);">' +
+            '<input type="text" id="add-holding-account" placeholder="Account" style="width:100px;padding:6px 8px;font-size:0.85rem;background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:6px;color:var(--text-primary);">' +
+            '<button onclick="addHolding()" style="padding:8px 14px;font-size:0.8rem;background:var(--accent-primary);color:#fff;border:none;border-radius:6px;cursor:pointer;">Add</button></div>';
+        } else {
+          var html = '<table style="width:100%;border-collapse:collapse;font-size:0.82rem;">';
+          html += '<thead><tr style="border-bottom:1px solid var(--border-subtle);"><th style="padding:8px 6px;text-align:left;">Ticker</th><th style="padding:8px 6px;text-align:right;">Shares</th><th style="padding:8px 6px;">Bucket</th><th style="padding:8px 6px;">Account</th><th></th></tr></thead><tbody>';
+          holdings.forEach(function(h) {
+            html += '<tr data-hid="' + h.id + '">';
+            html += '<td style="padding:8px 6px;font-weight:600;">' + h.ticker + '</td>';
+            html += '<td style="padding:8px 6px;text-align:right;">' + (h.shares || "—") + '</td>';
+            html += '<td style="padding:8px 6px;color:var(--text-muted);">' + (h.bucket || "—") + '</td>';
+            html += '<td style="padding:8px 6px;color:var(--text-muted);">' + (h.account || "—") + '</td>';
+            html += '<td style="padding:8px 6px;text-align:right;"><button onclick="deleteHolding(' + h.id + ')" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:0.8rem;">✕</button></td>';
+            html += '</tr>';
+          });
+          html += '</tbody></table>';
+          html += '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:end;margin-top:12px;">' +
+            '<input type="text" id="add-holding-ticker" placeholder="Ticker" style="width:90px;text-transform:uppercase;padding:6px 8px;font-size:0.85rem;background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:6px;color:var(--text-primary);">' +
+            '<input type="number" id="add-holding-shares" placeholder="Shares" step="0.01" style="width:90px;padding:6px 8px;font-size:0.85rem;background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:6px;color:var(--text-primary);">' +
+            '<input type="text" id="add-holding-bucket" placeholder="Bucket" style="width:100px;padding:6px 8px;font-size:0.85rem;background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:6px;color:var(--text-primary);">' +
+            '<input type="text" id="add-holding-account" placeholder="Account" style="width:100px;padding:6px 8px;font-size:0.85rem;background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:6px;color:var(--text-primary);">' +
+            '<button onclick="addHolding()" style="padding:8px 14px;font-size:0.8rem;background:var(--accent-primary);color:#fff;border:none;border-radius:6px;cursor:pointer;">Add</button></div>';
+          stockWrap.innerHTML = html;
+        }
+      }
+
+      if (cryptoWrap) {
+        var crypto = d.crypto || [];
+        if (crypto.length === 0) {
+          cryptoWrap.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--text-muted);">No crypto holdings.</td></tr>';
+        } else {
+          var ch = "";
+          crypto.forEach(function(c) {
+            ch += '<tr>';
+            ch += '<td style="padding:8px 6px;">' + c.symbol + '</td>';
+            ch += '<td style="padding:8px 6px;text-align:right;">' + c.quantity + '</td>';
+            ch += '<td style="padding:8px 6px;">—</td><td style="padding:8px 6px;text-align:right;">—</td><td style="padding:8px 6px;text-align:right;">—</td>';
+            ch += '</tr>';
+          });
+          cryptoWrap.innerHTML = ch;
+        }
+      }
+
+      _loadPhysicalMetals();
+    })
+    .catch(function() {
+      if (stockWrap) stockWrap.innerHTML = '<p class="hint" style="color:var(--danger);">Failed to load holdings.</p>';
+      _holdingsLoaded = false;
+    });
+}
+
+function _loadPhysicalMetals() {
+  var wrap = document.getElementById("metals-holdings-body");
+  if (!wrap) return;
+  fetch("/api/physical-metals")
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      var metals = d.metals || [];
+      if (metals.length === 0) {
+        wrap.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--text-muted);">No physical metals.</td></tr>';
+      } else {
+        var html = "";
+        metals.forEach(function(m) {
+          html += '<tr>';
+          html += '<td style="padding:8px 6px;text-transform:capitalize;">' + m.metal + '</td>';
+          html += '<td style="padding:8px 6px;text-align:right;">' + m.oz + ' oz</td>';
+          html += '<td style="padding:8px 6px;">' + (m.description || "—") + '</td>';
+          html += '<td style="padding:8px 6px;text-align:right;"><button onclick="deleteMetal(' + m.id + ')" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:0.8rem;">✕</button></td>';
+          html += '</tr>';
+        });
+        wrap.innerHTML = html;
+      }
+    });
+}
+
+function deleteHolding(id) {
+  if (!confirm("Remove this holding?")) return;
+  fetch("/api/holdings/" + id, { method: "DELETE" })
+    .then(function() { _holdingsLoaded = false; loadHoldings(); });
+}
+
+function deleteMetal(id) {
+  if (!confirm("Remove this metal?")) return;
+  fetch("/api/physical-metals?id=" + id, { method: "DELETE" })
+    .then(function() { _loadPhysicalMetals(); });
+}
+
+function addHolding() {
+  var ticker = document.getElementById("add-holding-ticker");
+  var shares = document.getElementById("add-holding-shares");
+  var bucket = document.getElementById("add-holding-bucket");
+  var account = document.getElementById("add-holding-account");
+  if (!ticker || !ticker.value) return;
+  fetch("/api/holdings", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      ticker: ticker.value.toUpperCase(),
+      shares: shares ? parseFloat(shares.value) || 0 : 0,
+      bucket: bucket ? bucket.value : "",
+      account: account ? account.value : ""
+    })
+  }).then(function() {
+    if (ticker) ticker.value = "";
+    if (shares) shares.value = "";
+    _holdingsLoaded = false;
+    loadHoldings();
+  });
+}
+
+function toggleMetalForm() {
+  var f = document.getElementById("metal-form");
+  if (f) f.style.display = f.style.display === "none" ? "block" : "none";
+}
+
+function saveMetalPurchase() {
+  var data = {
+    metal: (document.getElementById("metal-type") || {}).value || "Gold",
+    form: (document.getElementById("metal-form-desc") || {}).value || "",
+    oz: parseFloat((document.getElementById("metal-qty") || {}).value) || 0,
+    purchase_price: parseFloat((document.getElementById("metal-cost") || {}).value) || 0,
+    date: (document.getElementById("metal-date") || {}).value || "",
+    note: (document.getElementById("metal-note") || {}).value || ""
+  };
+  fetch("/api/physical-metals", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data)
+  }).then(function() {
+    toggleMetalForm();
+    _loadPhysicalMetals();
+  });
+}
+
+function showDivForm() {
+  var f = document.getElementById("div-form");
+  if (f) f.style.display = f.style.display === "none" ? "block" : "none";
+}
+
+function saveDividend() {
+  /* placeholder until dividend API is built */
+  showDivForm();
+}
+

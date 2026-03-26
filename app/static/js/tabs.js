@@ -27,6 +27,8 @@
     }
     if (t === "budget" && typeof _initBudgetListeners === "function") _initBudgetListeners();
     if (t === "technical" && typeof initTechnicalTab === "function") initTechnicalTab();
+    if (t === "balances" && typeof loadBalances === "function") loadBalances();
+    if (t === "holdings" && typeof loadHoldings === "function") loadHoldings();
   }
 
   window.showTab = function(t) {

@@ -2,7 +2,7 @@
 
 from datetime import datetime, timezone
 
-from flask import Blueprint, render_template, redirect, url_for, Response, abort
+from flask import Blueprint, render_template, redirect, url_for, Response, abort, jsonify
 from flask_login import login_required, current_user
 
 from ..utils.auth import is_pro
@@ -14,6 +14,36 @@ pages_bp = Blueprint("pages", __name__)
 def health():
     """Lightweight healthcheck endpoint for Railway. No DB or template needed."""
     return "ok", 200
+
+
+@pages_bp.route("/api/diag")
+@login_required
+def diagnostics():
+    """Admin-only diagnostics: DB counts, scheduler status, env checks."""
+    import os
+    if not getattr(current_user, "is_admin", False):
+        abort(403)
+
+    from ..extensions import db
+    from ..models.market import PriceCache
+    from ..models.user import User, Subscription
+
+    prices = PriceCache.query.all()
+    price_summary = {p.symbol: {"price": p.price, "updated": str(p.updated_at)} for p in prices[:20]}
+
+    users = User.query.count()
+    subs = Subscription.query.count()
+
+    return jsonify({
+        "price_cache_count": len(prices),
+        "price_sample": price_summary,
+        "user_count": users,
+        "subscription_count": subs,
+        "run_scheduler": os.environ.get("RUN_SCHEDULER", "NOT SET"),
+        "admin_emails": os.environ.get("ADMIN_EMAILS", "NOT SET"),
+        "database_url_set": bool(os.environ.get("DATABASE_URL")),
+        "flask_env": os.environ.get("FLASK_ENV", "NOT SET"),
+    })
 
 
 @pages_bp.route("/manifest.json")

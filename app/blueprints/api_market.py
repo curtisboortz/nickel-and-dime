@@ -93,19 +93,42 @@ def bg_refresh():
     return jsonify({"started": True})
 
 
+SPARK_SYMBOL_MAP = {
+    "gold": "GC=F", "silver": "SI=F", "spy": "SPY", "btc": "BTC-USD",
+    "dxy": "DX=F", "vix": "^VIX", "oil": "CL=F", "copper": "HG=F",
+    "tnx_10y": "^TNX", "tnx_2y": "2YY=F",
+}
+
+
 @api_market_bp.route("/sparklines")
 @login_required
 def sparklines():
-    """Return intraday sparkline data for a given symbol."""
-    symbol = flask_request.args.get("symbol", "SPY")
-    try:
-        ticker = yf.Ticker(symbol)
-        hist = ticker.history(period="1d", interval="5m")
-        points = [{"t": str(idx), "y": round(row["Close"], 2)}
-                  for idx, row in hist.iterrows()]
-    except Exception:
-        points = []
-    return jsonify({"symbol": symbol, "points": points})
+    """Return intraday sparkline data for one or more symbols.
+
+    Accepts ?symbols=gold,silver,spy (internal names or Yahoo tickers)
+    or ?symbol=SPY (single ticker, legacy).
+    Returns {symbol_key: [close1, close2, ...], ...}
+    """
+    raw = flask_request.args.get("symbols", flask_request.args.get("symbol", ""))
+    keys = [s.strip() for s in raw.split(",") if s.strip()]
+    if not keys:
+        return jsonify({})
+
+    result = {}
+    for key in keys:
+        yf_sym = SPARK_SYMBOL_MAP.get(key.lower(), key)
+        try:
+            ticker = yf.Ticker(yf_sym)
+            hist = ticker.history(period="5d", interval="30m")
+            if hist.empty:
+                hist = ticker.history(period="1mo", interval="1d")
+            closes = [round(row["Close"], 4) for _, row in hist.iterrows()]
+            if len(closes) > 1:
+                result[key] = closes
+        except Exception:
+            pass
+
+    return jsonify(result)
 
 
 @api_market_bp.route("/historical")

@@ -509,14 +509,18 @@ def get_allocation_targets():
 @login_required
 @csrf.exempt
 def save_allocation_targets():
-    """Save or update allocation targets."""
+    """Save or update allocation targets (merges with existing)."""
     from ..models.settings import UserSettings
     data = flask_request.get_json(silent=True) or {}
     settings = UserSettings.query.filter_by(user_id=current_user.id).first()
     if not settings:
         settings = UserSettings(user_id=current_user.id)
         db.session.add(settings)
-    settings.targets = data.get("targets", settings.targets)
+    existing = dict(settings.targets or {})
+    incoming = data.get("targets", {})
+    for key, val in incoming.items():
+        existing[key] = val
+    settings.targets = existing
     db.session.commit()
     return jsonify({"success": True})
 

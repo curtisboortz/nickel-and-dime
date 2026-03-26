@@ -140,19 +140,21 @@ def historical():
     interval = flask_request.args.get("interval", "1d")
 
     try:
-        actual_sym = symbol
-        if symbol == "DX=F" and period in ("1d", "5d"):
-            actual_sym = "DX-Y.NYB"
-
-        ticker = yf.Ticker(actual_sym)
-        hist = ticker.history(period=period, interval=interval)
-        data = [{"t": str(idx),
-                 "o": round(row["Open"], 4),
-                 "h": round(row["High"], 4),
-                 "l": round(row["Low"], 4),
-                 "c": round(row["Close"], 4),
-                 "v": int(row.get("Volume", 0))}
-                for idx, row in hist.iterrows()]
+        dxy_syms = ["DX-Y.NYB", "DX=F"] if symbol == "DX=F" else [symbol]
+        data = []
+        for actual_sym in dxy_syms:
+            ticker = yf.Ticker(actual_sym)
+            hist = ticker.history(period=period, interval=interval)
+            if not hist.empty:
+                data = [{"t": str(idx),
+                         "o": round(row["Open"], 4),
+                         "h": round(row["High"], 4),
+                         "l": round(row["Low"], 4),
+                         "c": round(row["Close"], 4),
+                         "v": int(row.get("Volume", 0))}
+                        for idx, row in hist.iterrows()]
+                if data:
+                    break
     except Exception:
         data = []
 

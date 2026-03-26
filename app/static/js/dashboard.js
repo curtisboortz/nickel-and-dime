@@ -199,14 +199,20 @@ function addInvestCategory() {
 /* ── Edit Allocation Targets ── */
 var _editingTargets = false;
 function toggleEditTargets() {
-  _editingTargets = !_editingTargets;
-  var btn = document.getElementById("edit-targets-btn");
   if (_editingTargets) {
-    btn.textContent = "Save Targets";
-    loadAllocationTableEditable();
+    cancelEditTargets();
   } else {
-    saveAllocationTargets();
+    _editingTargets = true;
+    var btn = document.getElementById("edit-targets-btn");
+    btn.textContent = "Cancel";
+    loadAllocationTableEditable();
   }
+}
+function cancelEditTargets() {
+  _editingTargets = false;
+  var btn = document.getElementById("edit-targets-btn");
+  btn.textContent = "Edit Targets";
+  loadAllocationTable();
 }
 function loadAllocationTableEditable() {
   var tbody = document.getElementById("alloc-table-body");
@@ -225,24 +231,33 @@ function loadAllocationTableEditable() {
         html += '<td style="padding:8px 6px;font-family:var(--mono);">' + ((r.drift > 0 ? "+" : "") + r.drift.toFixed(1)) + '%</td>';
         html += '</tr>';
       });
+      html += '<tr><td colspan="5" style="padding:10px 6px;text-align:right;"><button type="button" onclick="saveAllocationTargets()" style="padding:6px 16px;font-size:0.8rem;">Save Targets</button></td></tr>';
       tbody.innerHTML = html;
     });
 }
 function saveAllocationTargets() {
   var inputs = document.querySelectorAll(".target-input");
+  if (inputs.length === 0) return;
   var tactical = {};
   inputs.forEach(function(i) {
-    tactical[i.dataset.bucket] = { target: parseFloat(i.value) || 0, min: 0, max: 100 };
+    var val = parseFloat(i.value);
+    if (!isNaN(val) && val > 0) {
+      tactical[i.dataset.bucket] = { target: val, min: 0, max: 100 };
+    }
   });
+  if (Object.keys(tactical).length === 0) {
+    alert("No targets to save. Enter at least one target percentage.");
+    return;
+  }
   fetch("/api/allocation-targets", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ targets: { tactical: tactical } })
   }).then(function(r) { return r.json(); }).then(function(d) {
     if (d.success) {
+      _editingTargets = false;
       var btn = document.getElementById("edit-targets-btn");
       btn.textContent = "Edit Targets";
-      _editingTargets = false;
       loadAllocationTable();
     }
   });

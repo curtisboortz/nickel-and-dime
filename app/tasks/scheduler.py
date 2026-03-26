@@ -49,10 +49,11 @@ def init_scheduler(app):
         id="snapshot_portfolios", max_instances=1, replace_existing=True,
     )
 
-    # Run an initial price refresh on startup (delayed 10s to let app fully init)
+    # Run an initial price refresh 30s after startup to let gunicorn boot fully
+    from datetime import datetime, timedelta
     _scheduler.add_job(
         _run_in_context(app, _refresh_prices),
-        "date", run_date=None,  # run ASAP
+        "date", run_date=datetime.now() + timedelta(seconds=30),
         id="initial_price_refresh", replace_existing=True,
     )
 

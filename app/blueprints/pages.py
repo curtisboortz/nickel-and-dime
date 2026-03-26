@@ -10,6 +10,12 @@ from ..utils.auth import is_pro
 pages_bp = Blueprint("pages", __name__)
 
 
+@pages_bp.route("/health")
+def health():
+    """Lightweight healthcheck endpoint for Railway. No DB or template needed."""
+    return "ok", 200
+
+
 @pages_bp.route("/robots.txt")
 def robots():
     return Response(

@@ -986,6 +986,8 @@ window.PRICE_HISTORY_DATA = [];
       if (typeof buildHistoryChart === "function") buildHistoryChart("total");
     }
   }).catch(function() {});
+
+  if (typeof loadSummaryData === "function") loadSummaryData();
 })();
 </script>
 {% endblock %}

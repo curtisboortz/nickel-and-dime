@@ -45,7 +45,7 @@ def init_scheduler(app):
 
     _scheduler.add_job(
         _run_in_context(app, _snapshot_portfolios),
-        "cron", hour=16, minute=30, timezone="US/Eastern",
+        "cron", hour=16, minute=30, timezone="America/New_York",
         id="snapshot_portfolios", max_instances=1, replace_existing=True,
     )
 

@@ -16,9 +16,12 @@ depends_on = None
 
 
 def upgrade():
-    op.add_column("users", sa.Column("is_admin", sa.Boolean(), server_default=sa.text("false"), nullable=True))
-
     conn = op.get_bind()
+
+    # PostgreSQL IF NOT EXISTS handles partial previous runs gracefully
+    conn.execute(sa.text(
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT false"
+    ))
 
     row = conn.execute(
         sa.text("SELECT id FROM users WHERE email = 'crb1898@gmail.com'")

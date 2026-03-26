@@ -11,8 +11,10 @@ PLAN_PRO = "pro"
 
 
 def _check_trial_expiry(user):
-    """Downgrade user to free if their trial has expired."""
+    """Downgrade user to free if their trial has expired. Admins are exempt."""
     if user.plan != PLAN_PRO:
+        return
+    if getattr(user, "is_admin", False):
         return
     sub = user.subscription
     if not sub:

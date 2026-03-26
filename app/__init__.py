@@ -120,7 +120,7 @@ def _register_template_globals(app):
     def inject_globals():
         ctx = {"now": datetime.now(timezone.utc)}
 
-        if current_user.is_authenticated and current_user.subscription:
+        if current_user.is_authenticated and not getattr(current_user, "is_admin", False) and current_user.subscription:
             sub = current_user.subscription
             if sub.status == "trialing" and sub.current_period_end:
                 delta = sub.current_period_end - datetime.now(timezone.utc)

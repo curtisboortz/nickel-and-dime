@@ -52,7 +52,6 @@ def dashboard_page(tab="summary"):
         active_tab=tab,
         user=current_user,
         is_pro=is_pro(),
-        demo_mode=False,
     )
 
 

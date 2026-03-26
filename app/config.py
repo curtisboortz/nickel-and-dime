@@ -16,10 +16,6 @@ class Config:
 
     # External API keys
     FRED_API_KEY = os.environ.get("FRED_API_KEY", "")
-    GOLDAPI_IO = os.environ.get("GOLDAPI_IO", "")
-    CMC_API_KEY = os.environ.get("CMC_API_KEY", "")
-    COINBASE_KEY_NAME = os.environ.get("COINBASE_KEY_NAME", "")
-    COINBASE_PRIVATE_KEY = os.environ.get("COINBASE_PRIVATE_KEY", "")
 
     # Mail (for email verification / password reset)
     MAIL_SERVER = os.environ.get("MAIL_SERVER", "smtp.gmail.com")
@@ -31,9 +27,6 @@ class Config:
 
     # Rate limiting
     RATELIMIT_STORAGE_URI = os.environ.get("RATELIMIT_STORAGE_URI", "memory://")
-
-    # Demo mode
-    DEMO_MODE = os.environ.get("DEMO_MODE", "").lower() in ("1", "true", "yes")
 
 
 class DevConfig(Config):

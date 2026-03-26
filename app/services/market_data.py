@@ -1,7 +1,7 @@
 """Market data fetching service.
 
-Extracted from finance_manager.py -- fetches stock, crypto, metals, and
-treasury prices from yfinance, CoinGecko, and GoldAPI.
+Fetches stock, crypto, metals, and treasury prices via yfinance and CoinGecko.
+Gold (GC=F) and silver (SI=F) are fetched through yfinance -- no GoldAPI needed.
 """
 
 from datetime import datetime, timezone

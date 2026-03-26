@@ -11,11 +11,23 @@ pages_bp = Blueprint("pages", __name__)
 
 
 @pages_bp.route("/icon-192.png")
-def serve_icon():
-    """Serve the logo SVG at the legacy /icon-192.png path."""
-    return send_from_directory(
-        current_app.static_folder + "/img", "logo.svg", mimetype="image/svg+xml"
-    )
+def serve_icon_192():
+    return send_from_directory(current_app.static_folder + "/img", "icon-192.png")
+
+
+@pages_bp.route("/icon-512.png")
+def serve_icon_512():
+    return send_from_directory(current_app.static_folder + "/img", "icon-512.png")
+
+
+@pages_bp.route("/apple-touch-icon.png")
+def serve_apple_icon():
+    return send_from_directory(current_app.static_folder + "/img", "apple-touch-icon.png")
+
+
+@pages_bp.route("/favicon.ico")
+def serve_favicon():
+    return send_from_directory(current_app.static_folder + "/img", "favicon.ico")
 
 
 @pages_bp.route("/health")

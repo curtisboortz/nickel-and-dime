@@ -47,6 +47,9 @@ function loadSummaryData() {
   _summaryDataLoaded = true;
   loadAllocationTable();
   loadMonthlyInvestments();
+  if (window.BUCKETS_DATA && Object.keys(window.BUCKETS_DATA).length > 0) {
+    if (typeof buildDonut === "function") buildDonut();
+  }
 }
 
 function loadAllocationTable() {
@@ -246,9 +249,13 @@ function saveAllocationTargets() {
 }
 
 /* ── Allocation Donut ── */
+var _donutChart = null;
 function buildDonut() {
-  var labels = Object.keys(BUCKETS_DATA);
-  var values = Object.values(BUCKETS_DATA);
+  var data = window.BUCKETS_DATA;
+  if (!data || typeof data !== "object") return;
+  var labels = Object.keys(data);
+  var values = Object.values(data);
+  if (labels.length === 0) return;
   var colorMap = {
     "Gold":"#d4a017", "Silver":"#c0c0c0", "Equities":"#34d399", "Crypto":"#818cf8",
     "Cash":"#64748b", "RealEstate":"#06b6d4", "Art":"#e879f9", "ManagedBlend":"#fb923c",
@@ -258,8 +265,10 @@ function buildDonut() {
   var fi = 0;
   var colors = labels.map(function(l) { return colorMap[l] || fallback[fi++ % fallback.length]; });
   var ctx = document.getElementById("allocation-donut");
-  if (!ctx || typeof Chart === "undefined") return;
-  new Chart(ctx, {
+  if (!ctx) { console.warn("buildDonut: canvas #allocation-donut not found"); return; }
+  if (typeof Chart === "undefined") { console.warn("buildDonut: Chart.js not loaded"); return; }
+  if (_donutChart) { try { _donutChart.destroy(); } catch(e) {} }
+  _donutChart = new Chart(ctx, {
     type: "doughnut",
     data: {
       labels: labels,

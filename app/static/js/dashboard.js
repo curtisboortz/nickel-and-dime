@@ -2555,7 +2555,7 @@ if ("serviceWorker" in navigator) {
       '<p style="color:var(--text-secondary);margin-bottom:20px;font-size:0.9rem;">Get started in 3 easy steps:</p>' +
       '<div style="text-align:left;color:var(--text-secondary);font-size:0.88rem;line-height:1.8;">' +
       '<div style="margin-bottom:8px;"><span style="color:var(--accent-primary);font-weight:700;">1.</span> Set up your <b>Budget</b> (income &amp; expenses)</div>' +
-      '<div style="margin-bottom:8px;"><span style="color:var(--accent-primary);font-weight:700;">2.</span> <b>Import</b> a Fidelity CSV or add holdings manually</div>' +
+      '<div style="margin-bottom:8px;"><span style="color:var(--accent-primary);font-weight:700;">2.</span> <b>Import</b> a CSV from your brokerage or add holdings manually</div>' +
       '<div style="margin-bottom:8px;"><span style="color:var(--accent-primary);font-weight:700;">3.</span> Update <b>Balances</b> for blended accounts</div>' +
       '</div>' +
       '<button id="wos-onboard-btn" style="margin-top:20px;padding:10px 28px;background:var(--accent-primary);color:#09090b;border:none;border-radius:8px;font-weight:600;cursor:pointer;">Get Started</button>' +
@@ -3319,7 +3319,7 @@ function _sentFetchAndRender(key, range) {
     if (panel) panel.classList.add("open");
     return;
   }
-  if (titleEl) titleEl.textContent = (_sentGaugeNames[key] || key) + " — loading…";
+  if (titleEl) titleEl.textContent = (_sentGaugeNames[key] || key) + " - loading…";
   fetch("/api/sentiment-history?range=" + range)
     .then(function(r) { return r.json(); })
     .then(function(d) {
@@ -3473,24 +3473,54 @@ function loadBalances() {
     .then(function(r) { return r.json(); })
     .then(function(d) {
       var accts = d.accounts || [];
-      if (accts.length === 0) {
-        wrap.innerHTML = '<p class="hint">No accounts yet. Add an account in your Holdings to get started.</p>';
-        return;
+      var html = "";
+      if (accts.length > 0) {
+        html += '<table style="width:100%;border-collapse:collapse;">';
+        html += '<thead><tr><th style="text-align:left;padding:8px 6px;border-bottom:1px solid var(--border-subtle);font-size:0.75rem;color:var(--text-muted);">Account</th>';
+        html += '<th style="text-align:right;padding:8px 6px;border-bottom:1px solid var(--border-subtle);font-size:0.75rem;color:var(--text-muted);">Balance</th>';
+        html += '<th style="width:40px;"></th></tr></thead><tbody>';
+        accts.forEach(function(a) {
+          html += '<tr data-acct-id="' + a.id + '">';
+          html += '<td style="padding:8px 6px;border-bottom:1px solid var(--border-subtle);font-size:0.88rem;">' + (a.name || "Account") + '</td>';
+          html += '<td style="text-align:right;padding:8px 6px;border-bottom:1px solid var(--border-subtle);"><input type="number" step="0.01" class="bal-input" data-acct-id="' + a.id + '" value="' + (a.value || 0) + '" style="width:130px;text-align:right;padding:6px 8px;background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:6px;color:var(--text-primary);font-size:0.88rem;"></td>';
+          html += '<td style="text-align:right;padding:8px 6px;border-bottom:1px solid var(--border-subtle);"><button onclick="deleteBalance(' + a.id + ')" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:0.8rem;" title="Remove">&#10005;</button></td>';
+          html += '</tr>';
+        });
+        html += '</tbody></table>';
+      } else {
+        html += '<p class="hint" style="margin-bottom:14px;">No accounts yet. Add one below to start tracking your balances.</p>';
       }
-      var html = '<table style="width:100%;border-collapse:collapse;">';
-      html += '<thead><tr><th style="text-align:left;padding:8px 6px;border-bottom:1px solid var(--border-subtle);font-size:0.75rem;color:var(--text-muted);">Account</th>';
-      html += '<th style="text-align:right;padding:8px 6px;border-bottom:1px solid var(--border-subtle);font-size:0.75rem;color:var(--text-muted);">Balance</th></tr></thead><tbody>';
-      accts.forEach(function(a) {
-        html += '<tr data-acct-id="' + a.id + '"><td style="padding:8px 6px;border-bottom:1px solid var(--border-subtle);font-size:0.88rem;">' + (a.name || "Account") + '</td>';
-        html += '<td style="text-align:right;padding:8px 6px;border-bottom:1px solid var(--border-subtle);"><input type="number" step="0.01" class="bal-input" data-acct-id="' + a.id + '" value="' + (a.value || 0) + '" style="width:130px;text-align:right;padding:6px 8px;background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:6px;color:var(--text-primary);font-size:0.88rem;"></td></tr>';
-      });
-      html += '</tbody></table>';
+      html += '<div style="display:flex;gap:8px;align-items:end;margin-top:14px;flex-wrap:wrap;">';
+      html += '<input type="text" id="new-acct-name" placeholder="Account name (e.g. Fidelity IRA)" style="flex:1;min-width:160px;padding:8px 10px;font-size:0.85rem;background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:6px;color:var(--text-primary);">';
+      html += '<input type="number" id="new-acct-value" placeholder="Balance" step="0.01" style="width:120px;padding:8px 10px;font-size:0.85rem;background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:6px;color:var(--text-primary);text-align:right;">';
+      html += '<button onclick="addBalance()" style="padding:8px 16px;font-size:0.85rem;background:var(--accent-primary);color:#fff;border:none;border-radius:6px;cursor:pointer;white-space:nowrap;">+ Add Account</button>';
+      html += '</div>';
       wrap.innerHTML = html;
     })
     .catch(function() {
       wrap.innerHTML = '<p class="hint" style="color:var(--danger);">Failed to load accounts.</p>';
       _balancesLoaded = false;
     });
+}
+
+function addBalance() {
+  var name = document.getElementById("new-acct-name");
+  var value = document.getElementById("new-acct-value");
+  if (!name || !name.value.trim()) { if (name) name.focus(); return; }
+  fetch("/api/balances", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ new_account: { name: name.value.trim(), value: parseFloat(value && value.value || 0) } })
+  }).then(function() {
+    _balancesLoaded = false;
+    loadBalances();
+  });
+}
+
+function deleteBalance(id) {
+  if (!confirm("Remove this account?")) return;
+  fetch("/api/balances/" + id, { method: "DELETE" })
+    .then(function() { _balancesLoaded = false; loadBalances(); });
 }
 
 function saveAllBalances() {

@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Dashboard — Nickel&amp;Dime{% endblock %}
+{% block title %}Dashboard | Nickel&amp;Dime{% endblock %}
 
 {% block head_extra %}
 <!-- Chart.js + Luxon + Financial charts + Zoom -->
@@ -140,7 +140,7 @@
     <div class="trial-banner trial-info">
       <div class="trial-banner-icon">&#10024;</div>
       <div class="trial-banner-text">
-        <strong>Pro trial active</strong> &mdash; {{ trial_days_left }} day{{ 's' if trial_days_left != 1 }} remaining. Full access to all features.
+        <strong>Pro trial active</strong> &middot; {{ trial_days_left }} day{{ 's' if trial_days_left != 1 }} remaining. Full access to all features.
       </div>
       <a href="{{ url_for('pages.pricing') }}" class="trial-banner-btn trial-btn-info">View Plans</a>
       <button type="button" class="trial-banner-dismiss" onclick="this.parentElement.style.display='none'" title="Dismiss">&times;</button>
@@ -214,7 +214,7 @@
     <div style="max-width:700px;margin:0 auto;padding:20px 16px;">
       <div class="card" style="background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius);padding:20px;">
         <div class="card-title" style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);font-weight:600;margin-bottom:4px;">Account Balances</div>
-        <p class="hint" style="margin-bottom:14px;">Managed accounts &mdash; manually updated. Free for all users.</p>
+        <p class="hint" style="margin-bottom:14px;">Managed accounts, manually updated. Free for all users.</p>
         <div id="balances-table-wrap">
           <p class="hint">Loading accounts&hellip;</p>
         </div>

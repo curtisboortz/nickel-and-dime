@@ -74,13 +74,86 @@ def fedwatch():
 @api_economics_bp.route("/sentiment")
 @login_required
 def sentiment():
-    """Return cached sentiment data (CNN F&G, crypto F&G)."""
+    """Return sentiment data in the format the dashboard gauges expect."""
+    from ..models.market import PriceCache
+
     cnn = SentimentCache.query.get("cnn_fg")
     crypto = SentimentCache.query.get("crypto_fg")
-    return jsonify({
-        "cnn": cnn.data if cnn else None,
-        "crypto": crypto.data if crypto else None,
-    })
+
+    result = {}
+
+    if cnn and cnn.data:
+        score = cnn.data.get("score", 0)
+        result["stock"] = {
+            "value": score,
+            "score": score,
+            "label": _fg_label(score),
+        }
+
+    if crypto and crypto.data:
+        score = crypto.data.get("score", 0)
+        result["crypto"] = {
+            "value": score,
+            "score": score,
+            "label": crypto.data.get("label") or _fg_label(score),
+        }
+
+    vix_row = PriceCache.query.get("^VIX")
+    if vix_row and vix_row.price:
+        vix = vix_row.price
+        vix_score = max(0, min(100, 100 - ((vix - 12) / 28) * 100))
+        if vix < 15:
+            lbl = "Extreme Greed"
+        elif vix < 20:
+            lbl = "Greed"
+        elif vix < 25:
+            lbl = "Neutral"
+        elif vix < 30:
+            lbl = "Fear"
+        else:
+            lbl = "Extreme Fear"
+        result["vix"] = {"value": round(vix, 2), "score": round(vix_score), "label": lbl}
+
+    gold_row = PriceCache.query.get("GC=F")
+    if gold_row and gold_row.price and gold_row.change_pct is not None:
+        chg = gold_row.change_pct
+        score = max(0, min(100, 50 + chg * 10))
+        result["gold"] = {
+            "value": round(gold_row.price, 2),
+            "score": round(score),
+            "label": "Rising" if chg > 0.5 else ("Falling" if chg < -0.5 else "Stable"),
+        }
+
+    tnx_10 = PriceCache.query.get("^TNX")
+    tnx_2 = PriceCache.query.get("2YY=F")
+    if tnx_10 and tnx_2 and tnx_10.price and tnx_2.price:
+        spread = tnx_10.price - tnx_2.price
+        if spread < -0.5:
+            lbl, score = "Inverted", 15
+        elif spread < 0:
+            lbl, score = "Flat/Inverted", 35
+        elif spread < 0.5:
+            lbl, score = "Flat", 50
+        else:
+            lbl, score = "Normal", 75
+        result["yield_curve"] = {
+            "value": round(spread, 2), "score": score, "label": lbl,
+            "spread": round(spread, 2),
+        }
+
+    return jsonify(result)
+
+
+def _fg_label(score):
+    if score >= 75:
+        return "Extreme Greed"
+    if score >= 55:
+        return "Greed"
+    if score >= 45:
+        return "Neutral"
+    if score >= 25:
+        return "Fear"
+    return "Extreme Fear"
 
 
 @api_economics_bp.route("/cape")

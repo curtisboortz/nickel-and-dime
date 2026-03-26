@@ -101,14 +101,39 @@ def get_balances():
 @login_required
 @csrf.exempt
 def save_balances():
-    """Update blended account balances."""
+    """Create or update blended account balances."""
     data = flask_request.get_json(silent=True) or {}
+
+    new_account = data.get("new_account")
+    if new_account:
+        acct = BlendedAccount(
+            user_id=current_user.id,
+            name=new_account.get("name", "Account"),
+            value=float(new_account.get("value", 0)),
+            allocations=new_account.get("allocations", {}),
+        )
+        db.session.add(acct)
+        db.session.commit()
+        return jsonify({"success": True, "id": acct.id})
+
     updates = data.get("accounts", [])
     for item in updates:
         acct = BlendedAccount.query.filter_by(id=item.get("id"), user_id=current_user.id).first()
         if acct and "value" in item:
             acct.value = float(item["value"])
     db.session.commit()
+    return jsonify({"success": True})
+
+
+@api_portfolio_bp.route("/balances/<int:acct_id>", methods=["DELETE"])
+@login_required
+@csrf.exempt
+def delete_balance(acct_id):
+    """Delete a blended account."""
+    acct = BlendedAccount.query.filter_by(id=acct_id, user_id=current_user.id).first()
+    if acct:
+        db.session.delete(acct)
+        db.session.commit()
     return jsonify({"success": True})
 
 

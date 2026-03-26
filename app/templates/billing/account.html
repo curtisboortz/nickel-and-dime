@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Account — Nickel&amp;Dime{% endblock %}
+{% block title %}Account | Nickel&amp;Dime{% endblock %}
 
 {% block body %}
 <div class="auth-screen" style="gap:16px;">
@@ -74,7 +74,7 @@ fetch("/api/subscription-status")
     } else if (d.status === "active" && d.period_end) {
       lines.push("Renews " + new Date(d.period_end).toLocaleDateString());
     } else if (d.status === "past_due") {
-      lines.push('<span style="color:var(--danger);">Payment past due — please update your card.</span>');
+      lines.push('<span style="color:var(--danger);">Payment past due. Please update your card.</span>');
     }
     if (d.cancel_at_period_end && d.period_end) {
       lines.push('<span style="color:var(--warning);">Cancels at end of period (' + new Date(d.period_end).toLocaleDateString() + ')</span>');

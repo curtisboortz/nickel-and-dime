@@ -223,7 +223,10 @@
       </div>
       <!-- Allocation Table -->
       <div class="card widget-card" draggable="true" data-widget="allocation-table">
-        <div class="card-title"><span class="drag-handle" title="Drag to reorder">&#x2630;</span> Allocation vs Target</div>
+        <div class="card-header">
+          <div class="card-title"><span class="drag-handle" title="Drag to reorder">&#x2630;</span> Allocation vs Target</div>
+          <button type="button" class="secondary" style="padding:4px 10px;font-size:0.7rem;" id="edit-targets-btn" onclick="toggleEditTargets()">Edit Targets</button>
+        </div>
         <table>
           <thead><tr><th>Bucket</th><th>Value</th><th>%</th><th>Target</th><th>Drift</th></tr></thead>
           <tbody id="alloc-table-body"></tbody>
@@ -238,7 +241,18 @@
             <div class="card-title"><span class="drag-handle" title="Drag to reorder">&#x2630;</span> Monthly Investments</div>
             <div class="card-subtitle" id="invest-subtitle"></div>
           </div>
-          <button type="button" class="secondary" style="padding:5px 10px;font-size:0.75rem;" onclick="newMonth()">New Month</button>
+          <div style="display:flex;gap:6px;">
+            <button type="button" class="secondary" style="padding:5px 10px;font-size:0.75rem;" onclick="showAddCategoryForm()">+ Category</button>
+            <button type="button" class="secondary" style="padding:5px 10px;font-size:0.75rem;" onclick="newMonthAPI()">New Month</button>
+          </div>
+        </div>
+        <div id="add-category-form" style="display:none;margin-bottom:10px;padding:10px;background:var(--bg-input);border-radius:var(--radius);">
+          <div style="display:flex;gap:8px;align-items:end;">
+            <div style="flex:1;"><label class="hint" style="display:block;margin-bottom:4px;">Category Name</label><input type="text" id="new-cat-name" placeholder="e.g. Real Estate, Bonds" style="width:100%;font-size:0.85rem;padding:6px 10px;"></div>
+            <div><label class="hint" style="display:block;margin-bottom:4px;">Target ($)</label><input type="number" id="new-cat-target" placeholder="0" style="width:100px;font-size:0.85rem;padding:6px 10px;"></div>
+            <button type="button" style="padding:6px 12px;font-size:0.8rem;" onclick="addInvestCategory()">Add</button>
+            <button type="button" class="secondary" style="padding:6px 12px;font-size:0.8rem;" onclick="document.getElementById('add-category-form').style.display='none'">Cancel</button>
+          </div>
         </div>
         <table class="invest-table">
           <thead><tr><th>Category</th><th style="text-align:right">Target</th><th style="text-align:right">Contributed</th><th style="text-align:right">Status</th><th style="text-align:center">Progress</th></tr></thead>
@@ -258,7 +272,7 @@
         </div>
         <div style="display:flex;justify-content:space-between;margin-top:8px;font-size:0.8rem;">
           <span class="hint">Progress: <strong style="color:var(--text-primary)" id="total-progress-pct">0%</strong></span>
-          <button type="button" class="secondary" style="padding:5px 12px;font-size:0.75rem;" onclick="saveContributions()">Save Changes</button>
+          <button type="button" class="secondary" style="padding:5px 12px;font-size:0.75rem;" onclick="saveContributionsAPI()">Save Changes</button>
         </div>
         <div class="invest-chat" style="margin-top:14px;">
           <div id="chat-log" style="max-height:120px;overflow-y:auto;margin-bottom:8px;font-size:0.82rem;"></div>

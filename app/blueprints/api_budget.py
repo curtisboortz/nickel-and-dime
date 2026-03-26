@@ -376,6 +376,151 @@ def spending_insights():
     })
 
 
+@api_budget_bp.route("/investments")
+@login_required
+def get_investments():
+    """Return monthly investment categories for the current or given month."""
+    from ..models.settings import MonthlyInvestment, UserSettings
+    month = flask_request.args.get("month", dt_date.today().strftime("%Y-%m"))
+    rows = (MonthlyInvestment.query
+            .filter_by(user_id=current_user.id, month=month)
+            .order_by(MonthlyInvestment.id)
+            .all())
+    settings = UserSettings.query.filter_by(user_id=current_user.id).first()
+    contribution_plan = (settings.contribution_plan or {}) if settings else {}
+    targets_data = (settings.targets or {}) if settings else {}
+    contribution_amount = (settings.contribution_amount or 0) if settings else 0
+    freq = (settings.contribution_frequency or "biweekly") if settings else "biweekly"
+    if freq == "biweekly":
+        monthly_budget = round(contribution_amount * 26 / 12, 2)
+    elif freq == "weekly":
+        monthly_budget = round(contribution_amount * 52 / 12, 2)
+    else:
+        monthly_budget = contribution_amount
+
+    return jsonify({
+        "month": month,
+        "monthly_budget": monthly_budget,
+        "categories": [
+            {"id": r.id, "category": r.category, "target": r.target, "contributed": r.contributed}
+            for r in rows
+        ],
+        "targets": targets_data,
+        "contribution_plan": contribution_plan,
+    })
+
+
+@api_budget_bp.route("/investments", methods=["POST"])
+@login_required
+@csrf.exempt
+def save_investments():
+    """Save monthly investment contributions."""
+    from ..models.settings import MonthlyInvestment
+    data = flask_request.get_json(silent=True) or {}
+    month = data.get("month", dt_date.today().strftime("%Y-%m"))
+    categories = data.get("categories", [])
+    for item in categories:
+        row_id = item.get("id")
+        if row_id:
+            row = MonthlyInvestment.query.filter_by(id=row_id, user_id=current_user.id).first()
+            if row:
+                if "contributed" in item:
+                    row.contributed = float(item["contributed"])
+                if "target" in item:
+                    row.target = float(item["target"])
+        else:
+            cat = item.get("category", "").strip()
+            if not cat:
+                continue
+            row = MonthlyInvestment(
+                user_id=current_user.id,
+                month=month,
+                category=cat,
+                target=float(item.get("target", 0)),
+                contributed=float(item.get("contributed", 0)),
+            )
+            db.session.add(row)
+    db.session.commit()
+    return jsonify({"success": True})
+
+
+@api_budget_bp.route("/investments/new-month", methods=["POST"])
+@login_required
+@csrf.exempt
+def new_investment_month():
+    """Create a new month's investment categories, copying targets from the previous month."""
+    from ..models.settings import MonthlyInvestment
+    data = flask_request.get_json(silent=True) or {}
+    new_month = data.get("month", dt_date.today().strftime("%Y-%m"))
+
+    existing = MonthlyInvestment.query.filter_by(user_id=current_user.id, month=new_month).count()
+    if existing > 0:
+        return jsonify({"success": True, "message": "Month already exists"})
+
+    prev = (MonthlyInvestment.query
+            .filter_by(user_id=current_user.id)
+            .filter(MonthlyInvestment.month < new_month)
+            .order_by(MonthlyInvestment.month.desc())
+            .limit(20)
+            .all())
+
+    if prev:
+        prev_month = prev[0].month
+        prev_rows = [r for r in prev if r.month == prev_month]
+        for r in prev_rows:
+            db.session.add(MonthlyInvestment(
+                user_id=current_user.id, month=new_month,
+                category=r.category, target=r.target, contributed=0,
+            ))
+    db.session.commit()
+    return jsonify({"success": True})
+
+
+@api_budget_bp.route("/allocation-targets")
+@login_required
+def get_allocation_targets():
+    """Return the user's allocation targets and current breakdown."""
+    from ..models.settings import UserSettings
+    from ..services.portfolio_service import compute_portfolio_value
+    settings = UserSettings.query.filter_by(user_id=current_user.id).first()
+    targets = (settings.targets or {}) if settings else {}
+    pv = compute_portfolio_value(current_user.id)
+    total = pv["total"]
+    breakdown = pv.get("breakdown", {})
+    active = targets.get("tactical", targets.get("catchup", {}))
+
+    rows = []
+    all_buckets = sorted(set(list(breakdown.keys()) + list(active.keys())))
+    for bucket in all_buckets:
+        value = breakdown.get(bucket, 0)
+        pct = (value / total * 100) if total > 0 else 0
+        target_info = active.get(bucket, {})
+        target_pct = target_info.get("target", 0) if isinstance(target_info, dict) else 0
+        drift = round(pct - target_pct, 1)
+        rows.append({
+            "bucket": bucket, "value": round(value, 2),
+            "pct": round(pct, 1), "target": target_pct, "drift": drift,
+        })
+
+    return jsonify({"total": total, "rows": rows, "raw_targets": targets})
+
+
+@api_budget_bp.route("/allocation-targets", methods=["POST"])
+@login_required
+@csrf.exempt
+def save_allocation_targets():
+    """Save or update allocation targets."""
+    from ..models.settings import UserSettings
+    data = flask_request.get_json(silent=True) or {}
+    settings = UserSettings.query.filter_by(user_id=current_user.id).first()
+    if not settings:
+        settings = UserSettings(user_id=current_user.id)
+        db.session.add(settings)
+    settings.targets = data.get("targets", settings.targets)
+    db.session.commit()
+    return jsonify({"success": True})
+
+
 def _auto_categorize(user_id, description):
     """Apply keyword rules to auto-categorize a transaction description."""
     if not description:

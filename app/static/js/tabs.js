@@ -17,6 +17,7 @@
   }
 
   function _postTabInit(t) {
+    if (t === "summary" && typeof loadSummaryData === "function") loadSummaryData();
     if (t === "economics" && typeof loadFredData === "function") loadFredData();
     if (t === "history") {
       if (typeof buildProjectionChart === "function") buildProjectionChart();

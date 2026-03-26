@@ -3553,72 +3553,138 @@ function loadHoldings() {
 
   var stockWrap = document.getElementById("holdings-table-wrap");
   var cryptoWrap = document.getElementById("crypto-tbody");
-  var metalsWrap = document.getElementById("metals-tbody");
 
   fetch("/api/holdings")
     .then(function(r) { return r.json(); })
     .then(function(d) {
-      if (stockWrap) {
-        var holdings = d.holdings || [];
-        if (holdings.length === 0) {
-          stockWrap.innerHTML = '<p class="hint">No stock holdings yet. Use Import or add manually below.</p>' +
-            '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:end;margin-top:12px;">' +
-            '<input type="text" id="add-holding-ticker" placeholder="Ticker" style="width:90px;text-transform:uppercase;padding:6px 8px;font-size:0.85rem;background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:6px;color:var(--text-primary);">' +
-            '<input type="number" id="add-holding-shares" placeholder="Shares" step="0.01" style="width:90px;padding:6px 8px;font-size:0.85rem;background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:6px;color:var(--text-primary);">' +
-            '<input type="text" id="add-holding-bucket" placeholder="Bucket" style="width:100px;padding:6px 8px;font-size:0.85rem;background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:6px;color:var(--text-primary);">' +
-            '<input type="text" id="add-holding-account" placeholder="Account" style="width:100px;padding:6px 8px;font-size:0.85rem;background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:6px;color:var(--text-primary);">' +
-            '<button onclick="addHolding()" style="padding:8px 14px;font-size:0.8rem;background:var(--accent-primary);color:#fff;border:none;border-radius:6px;cursor:pointer;">Add</button></div>';
-        } else {
-          var html = '<table style="width:100%;border-collapse:collapse;font-size:0.82rem;">';
-          html += '<thead><tr style="border-bottom:1px solid var(--border-subtle);"><th style="padding:8px 6px;text-align:left;">Ticker</th><th style="padding:8px 6px;text-align:right;">Shares</th><th style="padding:8px 6px;">Bucket</th><th style="padding:8px 6px;">Account</th><th></th></tr></thead><tbody>';
-          holdings.forEach(function(h) {
-            html += '<tr data-hid="' + h.id + '">';
-            html += '<td style="padding:8px 6px;font-weight:600;">' + h.ticker + '</td>';
-            html += '<td style="padding:8px 6px;text-align:right;">' + (h.shares || "—") + '</td>';
-            html += '<td style="padding:8px 6px;color:var(--text-muted);">' + (h.bucket || "—") + '</td>';
-            html += '<td style="padding:8px 6px;color:var(--text-muted);">' + (h.account || "—") + '</td>';
-            html += '<td style="padding:8px 6px;text-align:right;"><button onclick="deleteHolding(' + h.id + ')" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:0.8rem;">✕</button></td>';
-            html += '</tr>';
-          });
-          html += '</tbody></table>';
-          html += '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:end;margin-top:12px;">' +
-            '<input type="text" id="add-holding-ticker" placeholder="Ticker" style="width:90px;text-transform:uppercase;padding:6px 8px;font-size:0.85rem;background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:6px;color:var(--text-primary);">' +
-            '<input type="number" id="add-holding-shares" placeholder="Shares" step="0.01" style="width:90px;padding:6px 8px;font-size:0.85rem;background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:6px;color:var(--text-primary);">' +
-            '<input type="text" id="add-holding-bucket" placeholder="Bucket" style="width:100px;padding:6px 8px;font-size:0.85rem;background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:6px;color:var(--text-primary);">' +
-            '<input type="text" id="add-holding-account" placeholder="Account" style="width:100px;padding:6px 8px;font-size:0.85rem;background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:6px;color:var(--text-primary);">' +
-            '<button onclick="addHolding()" style="padding:8px 14px;font-size:0.8rem;background:var(--accent-primary);color:#fff;border:none;border-radius:6px;cursor:pointer;">Add</button></div>';
-          stockWrap.innerHTML = html;
-        }
-      }
-
-      if (cryptoWrap) {
-        var crypto = d.crypto || [];
-        var countEl = document.getElementById("crypto-count");
-        var subEl = document.getElementById("crypto-subtitle");
-        if (countEl) countEl.textContent = crypto.length;
-        var hasCbSource = crypto.some(function(c) { return c.source === "coinbase"; });
-        if (subEl) subEl.textContent = hasCbSource ? "Synced from Coinbase - " + crypto.length + " assets" : crypto.length + " assets";
-        if (crypto.length === 0) {
-          cryptoWrap.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--text-muted);">No crypto holdings. Connect Coinbase in Settings (gear icon) to auto-sync.</td></tr>';
-        } else {
-          var ch = "";
-          crypto.forEach(function(c) {
-            ch += '<tr>';
-            ch += '<td style="padding:8px 6px;font-weight:600;">' + c.symbol + '</td>';
-            ch += '<td style="padding:8px 6px;text-align:right;font-family:var(--mono);">' + c.quantity + '</td>';
-            ch += '<td style="padding:8px 6px;text-align:right;">-</td><td style="padding:8px 6px;text-align:right;">-</td><td style="padding:8px 6px;text-align:right;">-</td>';
-            ch += '</tr>';
-          });
-          cryptoWrap.innerHTML = ch;
-        }
-      }
-
+      _renderStockHoldings(stockWrap, d.holdings || []);
+      _renderCryptoHoldings(cryptoWrap, d.crypto || []);
       _loadPhysicalMetals();
     })
     .catch(function() {
       if (stockWrap) stockWrap.innerHTML = '<p class="hint" style="color:var(--danger);">Failed to load holdings.</p>';
       _holdingsLoaded = false;
     });
+}
+
+function _renderStockHoldings(wrap, holdings) {
+  if (!wrap) return;
+  var fmtMoney = function(v) { return v ? "$" + v.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}) : ""; };
+  var inputStyle = 'style="background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:4px;color:var(--text-primary);padding:5px 8px;font-size:0.82rem;width:100%;"';
+
+  var html = '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:0.82rem;">';
+  html += '<thead><tr style="border-bottom:1px solid var(--border-subtle);">';
+  html += '<th style="padding:8px 6px;text-align:left;">Account</th>';
+  html += '<th style="padding:8px 6px;text-align:left;">Ticker</th>';
+  html += '<th style="padding:8px 6px;text-align:left;">Class</th>';
+  html += '<th style="padding:8px 6px;text-align:right;">Qty</th>';
+  html += '<th style="padding:8px 6px;text-align:right;">Price</th>';
+  html += '<th style="padding:8px 6px;text-align:right;">Total</th>';
+  html += '<th style="padding:8px 6px;text-align:right;">Override</th>';
+  html += '<th style="padding:8px 6px;text-align:left;">Notes</th>';
+  html += '</tr></thead><tbody>';
+
+  var grandTotal = 0;
+  holdings.forEach(function(h) {
+    grandTotal += (h.total || 0);
+    var priceStr = h.price ? fmtMoney(h.price) : "";
+    var totalStr = h.total ? fmtMoney(h.total) : "";
+    var qtyStr = (h.shares !== null && h.shares !== undefined) ? h.shares : "";
+    var voStr = (h.value_override !== null && h.value_override !== undefined) ? h.value_override : "";
+    html += '<tr data-hid="' + h.id + '">';
+    html += '<td style="padding:4px 4px;"><input type="text" data-field="account" value="' + (h.account || "") + '" ' + inputStyle + '></td>';
+    html += '<td style="padding:4px 4px;"><input type="text" data-field="ticker" value="' + (h.ticker || "") + '" ' + inputStyle + '></td>';
+    html += '<td style="padding:4px 4px;"><input type="text" data-field="bucket" value="' + (h.bucket || "") + '" ' + inputStyle + '></td>';
+    html += '<td style="padding:4px 4px;"><input type="text" data-field="shares" value="' + qtyStr + '" class="num" ' + inputStyle + '></td>';
+    html += '<td style="padding:8px 6px;text-align:right;color:var(--text-muted);font-family:var(--mono);white-space:nowrap;">' + priceStr + '</td>';
+    html += '<td style="padding:8px 6px;text-align:right;color:var(--text-primary);font-family:var(--mono);font-weight:600;white-space:nowrap;">' + totalStr + '</td>';
+    html += '<td style="padding:4px 4px;"><input type="text" data-field="value_override" value="' + voStr + '" class="num" ' + inputStyle + '></td>';
+    html += '<td style="padding:4px 4px;"><input type="text" data-field="notes" value="' + (h.notes || "") + '" ' + inputStyle + '></td>';
+    html += '</tr>';
+  });
+
+  html += '<tr>';
+  html += '<td style="padding:4px 4px;"><input type="text" data-field="account" placeholder="Account" ' + inputStyle + '></td>';
+  html += '<td style="padding:4px 4px;"><input type="text" data-field="ticker" placeholder="Ticker" style="text-transform:uppercase;background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:4px;color:var(--text-primary);padding:5px 8px;font-size:0.82rem;width:100%;"></td>';
+  html += '<td style="padding:4px 4px;"><input type="text" data-field="bucket" placeholder="Asset class" ' + inputStyle + '></td>';
+  html += '<td style="padding:4px 4px;"><input type="text" data-field="shares" placeholder="Qty" class="num" ' + inputStyle + '></td>';
+  html += '<td></td><td></td>';
+  html += '<td style="padding:4px 4px;"><input type="text" data-field="value_override" placeholder="Override" class="num" ' + inputStyle + '></td>';
+  html += '<td style="padding:4px 4px;"><input type="text" data-field="notes" placeholder="Notes" ' + inputStyle + '></td>';
+  html += '</tr>';
+
+  html += '<tr style="font-weight:600;border-top:2px solid var(--border-subtle);">';
+  html += '<td colspan="4" style="padding:8px 6px;">Holdings Total</td>';
+  html += '<td></td>';
+  html += '<td style="padding:8px 6px;text-align:right;color:#58a6ff;font-family:var(--mono);">' + fmtMoney(grandTotal) + '</td>';
+  html += '<td colspan="2"></td>';
+  html += '</tr>';
+
+  html += '</tbody></table></div>';
+  wrap.innerHTML = html;
+}
+
+function _renderCryptoHoldings(wrap, crypto) {
+  if (!wrap) return;
+  var countEl = document.getElementById("crypto-count");
+  var subEl = document.getElementById("crypto-subtitle");
+  var headerTotal = document.getElementById("crypto-header-total");
+  if (countEl) countEl.textContent = crypto.length;
+  var hasCb = crypto.some(function(c) { return c.source === "coinbase"; });
+  if (subEl) subEl.textContent = hasCb ? "Synced from Coinbase - " + crypto.length + " assets" : crypto.length + " assets";
+
+  if (crypto.length === 0) {
+    wrap.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--text-muted);">No crypto holdings. Connect Coinbase in Settings (gear icon) to auto-sync.</td></tr>';
+    return;
+  }
+
+  var totalVal = 0;
+  var rows = "";
+  crypto.forEach(function(c) {
+    var val = c.value || 0;
+    totalVal += val;
+    var priceStr = c.price ? "$" + c.price.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}) : "-";
+    var valStr = val ? "$" + val.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}) : "-";
+    var pctStr = "";
+    rows += '<tr class="crypto-row" data-cid="' + c.id + '" data-cgid="' + (c.coingecko_id || "") + '">';
+    rows += '<td style="padding:8px 10px;font-weight:600;">' + c.symbol + '</td>';
+    rows += '<td style="padding:8px 10px;text-align:right;font-family:var(--mono);">' + c.quantity + '</td>';
+    rows += '<td style="padding:8px 10px;text-align:right;font-family:var(--mono);color:var(--text-muted);">' + priceStr + '</td>';
+    rows += '<td style="padding:8px 10px;text-align:right;font-family:var(--mono);">' + valStr + '</td>';
+    rows += '<td style="padding:8px 10px;text-align:right;color:var(--text-muted);">' + pctStr + '</td>';
+    rows += '</tr>';
+  });
+
+  if (totalVal > 0) {
+    crypto.forEach(function(c, i) {
+      var pct = ((c.value || 0) / totalVal * 100).toFixed(1) + "%";
+      var row = wrap.parentElement ? null : undefined;
+    });
+    var rowsWithPct = "";
+    crypto.forEach(function(c) {
+      var val = c.value || 0;
+      var priceStr = c.price ? "$" + c.price.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}) : "-";
+      var valStr = val ? "$" + val.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}) : "-";
+      var pctStr = totalVal > 0 ? ((val / totalVal) * 100).toFixed(1) + "%" : "";
+      rowsWithPct += '<tr class="crypto-row" data-cid="' + c.id + '" data-cgid="' + (c.coingecko_id || "") + '">';
+      rowsWithPct += '<td style="padding:8px 10px;font-weight:600;">' + c.symbol + '</td>';
+      rowsWithPct += '<td style="padding:8px 10px;text-align:right;font-family:var(--mono);">' + c.quantity + '</td>';
+      rowsWithPct += '<td style="padding:8px 10px;text-align:right;font-family:var(--mono);color:var(--text-muted);">' + priceStr + '</td>';
+      rowsWithPct += '<td style="padding:8px 10px;text-align:right;font-family:var(--mono);">' + valStr + '</td>';
+      rowsWithPct += '<td style="padding:8px 10px;text-align:right;color:var(--text-muted);">' + pctStr + '</td>';
+      rowsWithPct += '</tr>';
+    });
+    rows = rowsWithPct;
+  }
+
+  rows += '<tr style="font-weight:600;border-top:2px solid var(--border-subtle);">';
+  rows += '<td style="padding:8px 10px;" colspan="3">Total</td>';
+  rows += '<td style="padding:8px 10px;text-align:right;color:#58a6ff;font-family:var(--mono);">$' + totalVal.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}) + '</td>';
+  rows += '<td style="padding:8px 10px;text-align:right;">100%</td>';
+  rows += '</tr>';
+
+  wrap.innerHTML = rows;
+  if (headerTotal) headerTotal.textContent = "$" + totalVal.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
 }
 
 function _loadPhysicalMetals() {
@@ -3657,27 +3723,43 @@ function deleteMetal(id) {
     .then(function() { _loadPhysicalMetals(); });
 }
 
-function addHolding() {
-  var ticker = document.getElementById("add-holding-ticker");
-  var shares = document.getElementById("add-holding-shares");
-  var bucket = document.getElementById("add-holding-bucket");
-  var account = document.getElementById("add-holding-account");
-  if (!ticker || !ticker.value) return;
+function saveAllHoldings() {
+  var wrap = document.getElementById("holdings-table-wrap");
+  if (!wrap) return;
+  var allRows = wrap.querySelectorAll("tbody tr");
+  var holdings = [];
+  allRows.forEach(function(tr) {
+    if (tr.style && tr.style.fontWeight) return;
+    if (tr.querySelector("td[colspan]")) return;
+    var hid = tr.getAttribute("data-hid");
+    var fields = {};
+    tr.querySelectorAll("input[data-field]").forEach(function(inp) {
+      fields[inp.getAttribute("data-field")] = inp.value;
+    });
+    if (!fields.ticker || !fields.ticker.trim()) return;
+    var row = {
+      ticker: fields.ticker.trim().toUpperCase(),
+      shares: fields.shares ? parseFloat(fields.shares) || null : null,
+      bucket: fields.bucket || "",
+      account: fields.account || "",
+      value_override: fields.value_override ? parseFloat(fields.value_override) || null : null,
+      notes: fields.notes || ""
+    };
+    if (hid) row.id = parseInt(hid);
+    holdings.push(row);
+  });
   fetch("/api/holdings", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      ticker: ticker.value.toUpperCase(),
-      shares: shares ? parseFloat(shares.value) || 0 : 0,
-      bucket: bucket ? bucket.value : "",
-      account: account ? account.value : ""
-    })
-  }).then(function() {
-    if (ticker) ticker.value = "";
-    if (shares) shares.value = "";
+    body: JSON.stringify({ holdings: holdings })
+  }).then(function(r) { return r.json(); }).then(function() {
     _holdingsLoaded = false;
     loadHoldings();
   });
+}
+
+function addHolding() {
+  saveAllHoldings();
 }
 
 function toggleMetalForm() {

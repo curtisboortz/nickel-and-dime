@@ -10,28 +10,68 @@ from flask_login import login_required, current_user
 from ..extensions import db, csrf
 from ..utils.auth import requires_pro, is_pro
 from ..models.portfolio import Holding, CryptoHolding, PhysicalMetal, Account, BlendedAccount
+from ..models.market import PriceCache
 from ..models.settings import UserSettings
 from ..models.snapshot import PortfolioSnapshot
 
 api_portfolio_bp = Blueprint("api_portfolio", __name__)
 
 
+def _get_price(symbol):
+    """Look up a cached price by yfinance symbol or CoinGecko key."""
+    entry = PriceCache.query.get(symbol)
+    if entry and entry.price:
+        return entry.price
+    entry = PriceCache.query.get(f"CG:{symbol.lower()}")
+    if entry and entry.price:
+        return entry.price
+    return None
+
+
 @api_portfolio_bp.route("/holdings")
 @login_required
 @requires_pro
 def get_holdings():
-    """Return all holdings for the current user. Pro only."""
+    """Return all holdings with live prices for the current user. Pro only."""
     holdings = Holding.query.filter_by(user_id=current_user.id).all()
     crypto = CryptoHolding.query.filter_by(user_id=current_user.id).all()
     metals = PhysicalMetal.query.filter_by(user_id=current_user.id).all()
+
+    holdings_out = []
+    for h in holdings:
+        price = _get_price(h.ticker)
+        qty = h.shares or 0
+        vo = h.value_override
+        if vo:
+            total = vo
+        elif price and qty:
+            total = price * qty
+        else:
+            total = 0
+        holdings_out.append({
+            "id": h.id, "ticker": h.ticker, "shares": h.shares,
+            "bucket": h.bucket, "account": h.account,
+            "value_override": h.value_override, "notes": h.notes,
+            "price": price, "total": total,
+        })
+
+    crypto_out = []
+    for c in crypto:
+        cg_key = f"CG:{c.coingecko_id}" if c.coingecko_id else None
+        entry = PriceCache.query.get(cg_key) if cg_key else None
+        price = entry.price if entry and entry.price else None
+        qty = c.quantity or 0
+        value = price * qty if price else 0
+        crypto_out.append({
+            "id": c.id, "symbol": c.symbol, "quantity": c.quantity,
+            "coingecko_id": c.coingecko_id,
+            "source": c.source or "manual",
+            "price": price, "value": value,
+        })
+
     return jsonify({
-        "holdings": [{"id": h.id, "ticker": h.ticker, "shares": h.shares,
-                       "bucket": h.bucket, "account": h.account,
-                       "value_override": h.value_override, "notes": h.notes}
-                      for h in holdings],
-        "crypto": [{"id": c.id, "symbol": c.symbol, "quantity": c.quantity,
-                     "coingecko_id": c.coingecko_id,
-                     "source": c.source or "manual"} for c in crypto],
+        "holdings": holdings_out,
+        "crypto": crypto_out,
         "metals": [{"id": m.id, "metal": m.metal, "oz": m.oz,
                      "purchase_price": m.purchase_price, "description": m.description}
                     for m in metals],
@@ -45,8 +85,16 @@ def get_holdings():
 @requires_pro
 @csrf.exempt
 def save_holdings():
-    """Add or update a holding. Pro only."""
+    """Add or update holdings. Supports single or bulk save.
+
+    Single: {"ticker": "AAPL", "shares": 10, ...}
+    Bulk:   {"holdings": [{"id": 1, "ticker": "AAPL", ...}, ...]}
+    """
     data = flask_request.get_json(silent=True) or {}
+
+    bulk = data.get("holdings")
+    if bulk is not None:
+        return _save_holdings_bulk(bulk)
 
     holding_id = data.get("id")
     if holding_id:
@@ -57,6 +105,12 @@ def save_holdings():
         h = Holding(user_id=current_user.id)
         db.session.add(h)
 
+    _apply_holding_fields(h, data)
+    db.session.commit()
+    return jsonify({"success": True, "id": h.id})
+
+
+def _apply_holding_fields(h, data):
     if "ticker" in data:
         h.ticker = data["ticker"]
     if "shares" in data:
@@ -70,8 +124,31 @@ def save_holdings():
     if "notes" in data:
         h.notes = data["notes"]
 
+
+def _save_holdings_bulk(rows):
+    """Replace all holdings with the provided list (mirrors the original form save)."""
+    existing = {h.id: h for h in Holding.query.filter_by(user_id=current_user.id).all()}
+    seen_ids = set()
+
+    for row in rows:
+        ticker = (row.get("ticker") or "").strip()
+        if not ticker:
+            continue
+        hid = row.get("id")
+        if hid and hid in existing:
+            h = existing[hid]
+            seen_ids.add(hid)
+        else:
+            h = Holding(user_id=current_user.id)
+            db.session.add(h)
+        _apply_holding_fields(h, row)
+
+    for hid, h in existing.items():
+        if hid not in seen_ids:
+            db.session.delete(h)
+
     db.session.commit()
-    return jsonify({"success": True, "id": h.id})
+    return jsonify({"success": True})
 
 
 @api_portfolio_bp.route("/holdings/<int:holding_id>", methods=["DELETE"])

@@ -498,7 +498,8 @@ function processInvestChat() {
   }
 }
 // Allow Enter key to submit
-document.getElementById("invest-chat-input").addEventListener("keydown", function(e) {
+var _investInput = document.getElementById("invest-chat-input");
+if (_investInput) _investInput.addEventListener("keydown", function(e) {
   if (e.key === "Enter") { e.preventDefault(); processInvestChat(); }
 });
 
@@ -2492,6 +2493,7 @@ function _buildTATickerButtons() {
   var wrap = document.getElementById("ta-ticker-btns");
   if (!wrap) return;
   var html = "";
+  if (!TA_TICKERS || !TA_TICKERS.forEach) return;
   TA_TICKERS.forEach(function(t) {
     html += '<button type="button" class="ta-tkr" data-symbol="' + t + '" style="padding:3px 8px;font-size:0.75rem;border:1px solid rgba(255,255,255,0.15);border-radius:4px;background:rgba(255,255,255,0.04);color:#94a3b8;cursor:pointer;transition:all 0.15s;">' + t + '</button>';
   });

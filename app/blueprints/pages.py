@@ -16,6 +16,11 @@ def health():
     return "ok", 200
 
 
+@pages_bp.route("/manifest.json")
+def manifest():
+    return redirect(url_for("static", filename="manifest.json"))
+
+
 @pages_bp.route("/robots.txt")
 def robots():
     return Response(

@@ -243,10 +243,10 @@ body {
   -webkit-overflow-scrolling:touch;
 }
 .pulse-item {
-  flex:0 0 auto; min-width:130px; max-width:160px; height:110px; position:relative;
+  flex:0 0 auto; min-width:110px; max-width:120px; height:110px; position:relative;
   background:var(--bg-card); border:1px solid var(--border-subtle);
-  border-radius:var(--radius); padding:14px 16px;
-  display:flex; flex-direction:column; gap:6px; justify-content:flex-start;
+  border-radius:var(--radius); padding:12px 12px;
+  display:flex; flex-direction:column; gap:4px; justify-content:flex-start;
   transition:border-color 0.2s ease, opacity 0.2s ease, transform 0.15s ease;
   cursor:grab; box-sizing:border-box;
 }
@@ -269,7 +269,7 @@ body {
 .pulse-item:hover .pulse-remove { opacity:0.6; }
 .pulse-remove:hover { opacity:1; color:var(--danger); }
 .pulse-label { font-size:0.7rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--text-muted); font-weight:600; }
-.pulse-price { font-family:var(--mono); font-size:1.05rem; font-weight:600; color:var(--text-primary); }
+.pulse-price { font-family:var(--mono); font-size:0.95rem; font-weight:600; color:var(--text-primary); }
 .pulse-price.gold { color:var(--gold); }
 .pulse-price.silver { color:var(--silver); }
 .pulse-spark { height:40px; margin-top:auto; }
@@ -660,7 +660,7 @@ html.light .skeleton { background:linear-gradient(90deg, rgba(0,0,0,0.04) 25%, r
   .hero-row { flex-direction:column; }
   .hero-value { font-size:2rem; }
   .pulse-bar { gap:8px; }
-  .pulse-item { min-width:130px; max-width:160px; height:110px; padding:10px 12px; }
+  .pulse-item { min-width:100px; max-width:120px; height:100px; padding:10px 10px; }
   .summary-grid { grid-template-columns:1fr; }
   .chart-controls { flex-direction:column; }
   .chart-controls select { width:100%; }

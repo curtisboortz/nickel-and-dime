@@ -25,8 +25,8 @@ def create_app(config_name=None):
     _register_error_handlers(app)
     _register_shell_context(app)
 
-    # Start background scheduler (skip in testing)
-    if not app.config.get("TESTING"):
+    # Start background scheduler only when Gunicorn is serving (not during migrations/CLI)
+    if not app.config.get("TESTING") and os.environ.get("RUN_SCHEDULER") == "1":
         _init_scheduler(app)
 
     return app

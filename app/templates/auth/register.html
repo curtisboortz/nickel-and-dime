@@ -3,57 +3,67 @@
 {% block title %}Sign Up — Nickel&amp;Dime{% endblock %}
 
 {% block body %}
-<div class="auth-screen">
-  <div class="auth-box">
-    <div style="margin-bottom:24px;">
-      <img src="/icon-192.png" alt="Nickel&amp;Dime" style="width:56px;height:56px;border-radius:14px;margin-bottom:16px;">
+<div class="auth-split">
+  <!-- Left: Brand Panel -->
+  <div class="auth-brand">
+    <div class="auth-brand-inner">
+      <a href="/" class="auth-logo">
+        <img src="/icon-192.png" alt="N&amp;D" style="width:40px;height:40px;border-radius:10px;">
+        <span>Nickel&amp;Dime</span>
+      </a>
+      <h2 class="auth-headline">Start with<br><span class="auth-accent">14 days of Pro</span><br>— on us.</h2>
+      <p class="auth-subline">No credit card required. Get full access to every feature, then decide if you want to keep it.</p>
+      <div class="auth-features">
+        <div class="auth-feat"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>Real-time holdings tracking</div>
+        <div class="auth-feat"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>FRED data, FedWatch &amp; sentiment</div>
+        <div class="auth-feat"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>Technical analysis charts</div>
+        <div class="auth-feat"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>Import from 11+ brokerages</div>
+      </div>
+      <div class="auth-trial-badge">14-day free trial &mdash; no strings attached</div>
+    </div>
+    <p class="auth-brand-footer">&copy; {{ now.year if now else 2026 }} Nickel&amp;Dime &middot; nickelanddime.io</p>
+  </div>
+
+  <!-- Right: Form Panel -->
+  <div class="auth-form-panel">
+    <div class="auth-form-wrap">
       <h1>Create your account</h1>
-      <p style="color:var(--text-muted);font-size:0.88rem;">Start tracking your portfolio for free</p>
+      <p class="auth-form-sub">14-day Pro trial starts immediately</p>
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+      {% for category, message in messages %}
+      <div class="auth-alert {{ category }}">{{ message }}</div>
+      {% endfor %}
+      {% endif %}
+      {% endwith %}
+
+      <form method="POST" action="{{ url_for('auth.register') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <label class="auth-label" for="email">Email address</label>
+        <input type="email" id="email" name="email" class="auth-input" required autofocus placeholder="you@example.com">
+
+        <label class="auth-label" for="password">Password</label>
+        <input type="password" id="password" name="password" class="auth-input" required minlength="8" placeholder="At least 8 characters">
+
+        <label class="auth-label" for="password2">Confirm password</label>
+        <input type="password" id="password2" name="password2" class="auth-input" required minlength="8" placeholder="Confirm password">
+
+        <button type="submit" class="auth-btn">Start Free Trial</button>
+      </form>
+
+      <p class="auth-switch">
+        Already have an account?
+        <a href="{{ url_for('auth.login') }}">Sign in</a>
+      </p>
+
+      <p class="auth-legal">
+        By creating an account you agree to our
+        <a href="#">Terms of Service</a> and
+        <a href="#">Privacy Policy</a>.
+      </p>
     </div>
-
-    {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-    {% for category, message in messages %}
-    <div style="margin-bottom:12px;padding:10px 14px;border-radius:8px;font-size:0.85rem;
-      {% if category == 'error' %}background:rgba(248,113,113,0.1);color:var(--danger);border:1px solid rgba(248,113,113,0.2);
-      {% else %}background:rgba(52,211,153,0.1);color:var(--success);border:1px solid rgba(52,211,153,0.2);{% endif %}">
-      {{ message }}
-    </div>
-    {% endfor %}
-    {% endif %}
-    {% endwith %}
-
-    <form method="POST" action="{{ url_for('auth.register') }}" style="text-align:left;">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-
-      <label class="label" for="email">Email</label>
-      <input type="email" id="email" name="email" required autofocus
-             placeholder="you@example.com"
-             style="margin-bottom:14px;text-align:left;letter-spacing:normal;font-size:0.92rem;">
-
-      <label class="label" for="password">Password</label>
-      <input type="password" id="password" name="password" required minlength="8"
-             placeholder="At least 8 characters"
-             style="margin-bottom:14px;text-align:left;letter-spacing:normal;font-size:0.92rem;">
-
-      <label class="label" for="password2">Confirm password</label>
-      <input type="password" id="password2" name="password2" required minlength="8"
-             placeholder="Confirm password"
-             style="margin-bottom:20px;text-align:left;letter-spacing:normal;font-size:0.92rem;">
-
-      <button type="submit" style="width:100%;padding:12px;">Create Account</button>
-    </form>
-
-    <p style="margin-top:20px;font-size:0.85rem;color:var(--text-muted);">
-      Already have an account?
-      <a href="{{ url_for('auth.login') }}" style="color:var(--accent-primary);text-decoration:none;font-weight:600;">Sign in</a>
-    </p>
-
-    <p style="margin-top:16px;font-size:0.72rem;color:var(--text-muted);line-height:1.5;">
-      By creating an account you agree to our
-      <a href="#" style="color:var(--text-secondary);text-decoration:underline;">Terms of Service</a> and
-      <a href="#" style="color:var(--text-secondary);text-decoration:underline;">Privacy Policy</a>.
-    </p>
   </div>
 </div>
 {% endblock %}

@@ -48,6 +48,7 @@ def live_data():
 
     pv = compute_portfolio_value(current_user.id)
     result["total"] = pv["total"]
+    result["buckets"] = pv.get("breakdown", {})
 
     yesterday = PortfolioSnapshot.query.filter_by(user_id=current_user.id)\
         .filter(PortfolioSnapshot.date < date.today())\

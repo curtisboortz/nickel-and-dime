@@ -2,7 +2,7 @@
 
 from datetime import datetime, timezone
 
-from flask import Blueprint, render_template, redirect, url_for, Response
+from flask import Blueprint, render_template, redirect, url_for, Response, abort
 from flask_login import login_required, current_user
 
 from ..utils.auth import is_pro
@@ -59,6 +59,15 @@ def dashboard_page(tab="summary"):
         user=current_user,
         is_pro=is_pro(),
     )
+
+
+@pages_bp.route("/api/tab-content/<tab_name>")
+@login_required
+def tab_content(tab_name):
+    """Return HTML fragment for a lazy-loaded tab."""
+    if tab_name == "economics":
+        return render_template("dashboard/partials/economics.html", is_pro=is_pro())
+    abort(404)
 
 
 @pages_bp.route("/economics")

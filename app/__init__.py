@@ -23,6 +23,7 @@ def create_app(config_name=None):
     _init_extensions(app)
     _register_blueprints(app)
     _register_error_handlers(app)
+    _register_template_globals(app)
     _register_shell_context(app)
 
     # Start background scheduler only when Gunicorn is serving (not during migrations/CLI)
@@ -108,6 +109,15 @@ def _init_scheduler(app):
         app.logger.info("Background scheduler started")
     except Exception as e:
         app.logger.warning("Scheduler init failed: %s", e)
+
+
+def _register_template_globals(app):
+    """Inject common variables into all templates."""
+    from datetime import datetime, timezone
+
+    @app.context_processor
+    def inject_now():
+        return {"now": datetime.now(timezone.utc)}
 
 
 def _register_shell_context(app):

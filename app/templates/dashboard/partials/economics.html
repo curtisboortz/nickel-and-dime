@@ -1,0 +1,213 @@
+<div class="card">
+  <div class="card-title">US Economics &amp; Fiscal Data</div>
+  <div id="fred-load-status" class="hint" style="margin-bottom:12px;"></div>
+
+  <!-- Economic Calendar -->
+  <div id="fred-section-econcal" class="card" style="margin-top:16px;padding:16px;">
+    <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin-bottom:10px;">
+      <div class="card-title" style="margin:0;">Economic Calendar</div>
+      <span id="econcal-week" style="font-size:0.85rem;color:#94a3b8;"></span>
+      <div style="margin-left:auto;display:flex;gap:6px;">
+        <button type="button" id="econcal-prev" style="padding:5px 10px;font-size:0.82rem;border:1px solid rgba(255,255,255,0.2);border-radius:6px;background:rgba(255,255,255,0.06);color:#e2e8f0;cursor:pointer;">&laquo; Prev</button>
+        <button type="button" id="econcal-this" style="padding:5px 10px;font-size:0.82rem;border:1px solid rgba(99,102,241,0.5);border-radius:6px;background:rgba(99,102,241,0.15);color:#a5b4fc;cursor:pointer;font-weight:600;">This week</button>
+        <button type="button" id="econcal-next" style="padding:5px 10px;font-size:0.82rem;border:1px solid rgba(255,255,255,0.2);border-radius:6px;background:rgba(255,255,255,0.06);color:#e2e8f0;cursor:pointer;">Next &raquo;</button>
+      </div>
+    </div>
+    <div id="econcal-body" style="max-height:440px;overflow-y:auto;">
+      <p class="hint">Loading economic events&hellip;</p>
+    </div>
+    <p class="hint" style="margin-top:8px;">US economic data releases. Actuals update as numbers are reported. <span style="display:inline-block;width:8px;height:8px;background:#ef4444;border-radius:50%;"></span> High &nbsp;<span style="display:inline-block;width:8px;height:8px;background:#f59e0b;border-radius:50%;"></span> Medium &nbsp;<span style="display:inline-block;width:8px;height:8px;background:#64748b;border-radius:50%;"></span> Low impact.</p>
+  </div>
+
+  <!-- FRED Controls -->
+  <div style="display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-top:20px;margin-bottom:4px;">
+    <button type="button" class="secondary" id="fred-refresh-btn">Refresh FRED Data</button>
+    <span class="label" style="margin:0;">Range:</span>
+    <select id="fred-horizon" style="padding:6px 10px;font-size:0.85rem;">
+      <option value="1y">1 year (fast)</option>
+      <option value="5y">5 years</option>
+      <option value="max">Max (~50y)</option>
+    </select>
+  </div>
+
+  <!-- National Debt -->
+  <div id="fred-section-debt" class="card" style="margin-top:16px;padding:16px;">
+    <div class="card-title" style="margin-bottom:12px;">National Debt &amp; Fiscal Policy</div>
+    <div id="fred-debt-stats" class="pulse-bar" style="flex-wrap:wrap;gap:12px;margin-bottom:16px;"></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(320px, 1fr));gap:16px;">
+      <div><div class="card-title" style="font-size:0.9rem;">Federal Debt (Total Public)</div><div style="position:relative;height:200px;"><canvas id="fred-chart-debt"></canvas></div></div>
+      <div><div class="card-title" style="font-size:0.9rem;">Debt to GDP Ratio</div><div style="position:relative;height:200px;"><canvas id="fred-chart-debt-gdp"></canvas></div></div>
+      <div><div class="card-title" style="font-size:0.9rem;">Federal Surplus or Deficit (Annual)</div><div style="position:relative;height:200px;"><canvas id="fred-chart-deficit"></canvas></div></div>
+      <div><div class="card-title" style="font-size:0.9rem;">Interest Payments</div><div style="position:relative;height:200px;"><canvas id="fred-chart-interest"></canvas></div></div>
+      <div><div class="card-title" style="font-size:0.9rem;">Revenue vs Expenditures</div><div style="position:relative;height:200px;"><canvas id="fred-chart-revenue-spending"></canvas></div></div>
+    </div>
+    <div class="card-title" style="font-size:0.9rem;margin-top:20px;margin-bottom:8px;">Fiscal Ratios (% of GDP)</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(300px, 1fr));gap:16px;">
+      <div><div class="card-title" style="font-size:0.85rem;">Deficit as % of GDP</div><div style="position:relative;height:200px;"><canvas id="fred-chart-deficit-pct"></canvas></div></div>
+      <div><div class="card-title" style="font-size:0.85rem;">Government Spending as % of GDP</div><div style="position:relative;height:200px;"><canvas id="fred-chart-spending-pct"></canvas></div></div>
+      <div><div class="card-title" style="font-size:0.85rem;">Interest Expense as % of GDP</div><div style="position:relative;height:200px;"><canvas id="fred-chart-interest-pct"></canvas></div></div>
+    </div>
+    <p class="hint" style="margin-top:12px;">Debt and deficit ratios show fiscal sustainability. Interest % of GDP reflects debt-service burden &mdash; rising fast = concern.</p>
+  </div>
+
+  <!-- Inflation -->
+  <div id="fred-section-inflation" class="card" style="margin-top:16px;padding:16px;">
+    <div class="card-title" style="margin-bottom:12px;">Inflation (CPI, Core CPI, PCE)</div>
+    <div id="fred-inflation-stats" class="pulse-bar" style="flex-wrap:wrap;gap:12px;margin-bottom:16px;"></div>
+    <div style="position:relative;height:220px;"><canvas id="fred-chart-inflation"></canvas></div>
+    <p class="hint" style="margin-top:8px;">CPI-U = headline inflation. Core CPI excludes food &amp; energy (less volatile). PCE is the Fed&#39;s preferred measure.</p>
+  </div>
+
+  <!-- Monetary Policy -->
+  <div id="fred-section-monetary" class="card" style="margin-top:16px;padding:16px;">
+    <div class="card-title" style="margin-bottom:12px;">Monetary Policy (Fed Funds Rate, M2, Yield Curve)</div>
+    <div id="fred-monetary-stats" class="pulse-bar" style="flex-wrap:wrap;gap:12px;margin-bottom:16px;"></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(300px, 1fr));gap:16px;">
+      <div><div style="position:relative;height:200px;"><canvas id="fred-chart-fedfunds"></canvas></div></div>
+      <div><div style="position:relative;height:200px;"><canvas id="fred-chart-m2"></canvas></div></div>
+    </div>
+    <div class="card-title" style="font-size:0.9rem;margin-top:16px;">Treasury Yield Curve (current vs 1Y ago)</div>
+    <div style="position:relative;height:220px;margin-top:8px;"><canvas id="fred-chart-yield-curve"></canvas></div>
+    <p class="hint" style="margin-top:8px;">Inverted curve (short rates &gt; long) often precedes recessions. Fed Funds drives short-term rates; M2 shows liquidity.</p>
+  </div>
+
+  <!-- FedWatch -->
+  <div id="fred-section-fedwatch" class="card" style="margin-top:16px;padding:16px;">
+    <div class="card-title" style="margin-bottom:4px;">Fed Rate Expectations (FedWatch)</div>
+    <p class="hint" style="margin-bottom:12px;">Market-implied probabilities derived from 30-Day Fed Funds Futures.</p>
+    <div id="fw-tabs" style="display:flex;gap:2px;flex-wrap:wrap;margin-bottom:16px;"></div>
+    <div id="fw-info" style="margin-bottom:12px;"></div>
+    <div id="fw-title" style="font-size:0.85rem;font-weight:600;color:var(--text-primary);margin-bottom:4px;"></div>
+    <div id="fw-subtitle" style="font-size:0.78rem;color:var(--accent-primary);margin-bottom:12px;text-align:center;"></div>
+    <div style="position:relative;height:260px;"><canvas id="fw-bar-chart"></canvas></div>
+  </div>
+
+  <!-- Credit Stress -->
+  <div id="fred-section-credit" class="card" style="margin-top:16px;padding:16px;">
+    <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px;">
+      <div class="card-title" style="margin:0;">Credit Stress (High Yield Spreads)</div>
+      <select class="fred-period-select" data-section="credit" style="padding:4px 8px;font-size:0.8rem;">
+        <option value="1y">1 year</option><option value="5y">5 years</option><option value="max">Max (~15y)</option>
+      </select>
+    </div>
+    <div id="fred-credit-stats" class="pulse-bar" style="flex-wrap:wrap;gap:12px;margin-bottom:16px;"></div>
+    <div style="position:relative;height:220px;"><canvas id="fred-chart-hy-spread"></canvas></div>
+    <p class="hint" style="margin-top:8px;">Spread between high-yield corporate bonds and Treasuries. Widening = financial stress. Above 5% = recession risk.</p>
+  </div>
+
+  <!-- Real Yields -->
+  <div id="fred-section-realyields" class="card" style="margin-top:16px;padding:16px;">
+    <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px;">
+      <div class="card-title" style="margin:0;">Real Yields &amp; Inflation Expectations</div>
+      <select class="fred-period-select" data-section="realyields" style="padding:4px 8px;font-size:0.8rem;">
+        <option value="1y">1 year</option><option value="5y">5 years</option><option value="max">Max (~15y)</option>
+      </select>
+    </div>
+    <div id="fred-realyield-stats" class="pulse-bar" style="flex-wrap:wrap;gap:12px;margin-bottom:16px;"></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(300px, 1fr));gap:16px;">
+      <div><div class="card-title" style="font-size:0.9rem;">10Y Real Yield (TIPS)</div><div style="position:relative;height:200px;"><canvas id="fred-chart-real-yield"></canvas></div></div>
+      <div><div class="card-title" style="font-size:0.9rem;">Breakeven Inflation (5Y &amp; 10Y)</div><div style="position:relative;height:200px;"><canvas id="fred-chart-breakeven"></canvas></div></div>
+    </div>
+    <p class="hint" style="margin-top:8px;">Negative real yields are bullish for gold/crypto. Breakevens show what the bond market expects for inflation.</p>
+  </div>
+
+  <!-- Fed Balance Sheet -->
+  <div id="fred-section-fedbs" class="card" style="margin-top:16px;padding:16px;">
+    <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px;">
+      <div class="card-title" style="margin:0;">Fed Balance Sheet</div>
+      <select class="fred-period-select" data-section="fedbs" style="padding:4px 8px;font-size:0.8rem;">
+        <option value="1y">1 year</option><option value="5y">5 years</option><option value="max">Max (~15y)</option>
+      </select>
+    </div>
+    <div id="fred-fedbs-stats" class="pulse-bar" style="flex-wrap:wrap;gap:12px;margin-bottom:16px;"></div>
+    <div style="position:relative;height:220px;"><canvas id="fred-chart-fedbs"></canvas></div>
+    <p class="hint" style="margin-top:8px;">Total Fed assets. Expanding = QE (liquidity injection, bullish). Contracting = QT (liquidity drain, headwind).</p>
+  </div>
+
+  <!-- Sahm Rule -->
+  <div id="fred-section-sahm" class="card" style="margin-top:16px;padding:16px;">
+    <div class="card-title" style="margin-bottom:12px;">Sahm Rule Recession Indicator</div>
+    <div id="fred-sahm-stats" class="pulse-bar" style="flex-wrap:wrap;gap:12px;margin-bottom:16px;"></div>
+    <div style="position:relative;height:220px;"><canvas id="fred-chart-sahm"></canvas></div>
+    <p class="hint" style="margin-top:8px;">Crosses 0.50 = recession signal. Based on 3-month moving average of unemployment rate vs 12-month low.</p>
+  </div>
+
+  <!-- Labor Market -->
+  <div id="fred-section-labor" class="card" style="margin-top:16px;padding:16px;">
+    <div class="card-title" style="margin-bottom:12px;">Labor Market (Unemployment, Jobless Claims)</div>
+    <div id="fred-labor-stats" class="pulse-bar" style="flex-wrap:wrap;gap:12px;margin-bottom:16px;"></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(300px, 1fr));gap:16px;">
+      <div><div style="position:relative;height:200px;"><canvas id="fred-chart-unemployment"></canvas></div></div>
+      <div><div style="position:relative;height:200px;"><canvas id="fred-chart-claims"></canvas></div></div>
+    </div>
+    <p class="hint" style="margin-top:8px;">Unemployment rate (U-3) and weekly jobless claims. Rising claims can lead unemployment by weeks &mdash; early warning of slowdown.</p>
+  </div>
+
+  <!-- Growth & Sentiment -->
+  <div id="fred-section-growth" class="card" style="margin-top:16px;padding:16px;">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+      <div class="card-title" style="margin:0;">Growth &amp; Sentiment (Real GDP Growth, Consumer Sentiment)</div>
+      <select class="fred-period-select" data-section="growth" style="padding:4px 8px;font-size:0.8rem;">
+        <option value="1y">1 year</option><option value="5y">5 years</option><option value="max">Max</option>
+      </select>
+    </div>
+    <div id="fred-growth-stats" class="pulse-bar" style="flex-wrap:wrap;gap:12px;margin-bottom:16px;"></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(300px, 1fr));gap:16px;">
+      <div><div style="position:relative;height:200px;"><canvas id="fred-chart-gdp-growth"></canvas></div></div>
+      <div><div style="position:relative;height:200px;"><canvas id="fred-chart-sentiment"></canvas></div></div>
+    </div>
+    <p class="hint" style="margin-top:8px;">Quarterly GDP growth (real, annualized) and U. of Michigan consumer sentiment. Sentiment can lead or confirm economic turns.</p>
+  </div>
+
+  <!-- CAPE -->
+  <div id="fred-section-cape" class="card" style="margin-top:16px;padding:16px;">
+    <div class="card-title" style="margin-bottom:12px;">Market Valuation (Shiller CAPE Ratio)</div>
+    <div id="cape-stats" class="pulse-bar" style="flex-wrap:wrap;gap:12px;margin-bottom:16px;"></div>
+    <div style="position:relative;height:240px;"><canvas id="cape-chart"></canvas></div>
+    <p class="hint" style="margin-top:8px;">Cyclically-adjusted P/E (CAPE) smooths earnings over 10 years. Long-term median ~16.8. Above 25 = historically expensive. Below 15 = historically cheap.</p>
+  </div>
+
+  <!-- Buffett Indicator -->
+  <div id="fred-section-buffett" class="card" style="margin-top:16px;padding:16px;">
+    <div class="card-title" style="margin-bottom:12px;">Buffett Indicator (Total Market Cap / GDP)</div>
+    <div id="buffett-stats" class="pulse-bar" style="flex-wrap:wrap;gap:12px;margin-bottom:16px;"></div>
+    <div style="position:relative;height:240px;"><canvas id="buffett-chart"></canvas></div>
+    <p class="hint" style="margin-top:8px;">Warren Buffett&#39;s &ldquo;best single measure of valuations.&rdquo; Compares total US market cap to GDP. Long-term average ~120%. Above 140% = overvalued territory.</p>
+  </div>
+
+  <!-- World Uncertainty Index -->
+  <div id="fred-section-wui" class="card" style="margin-top:16px;padding:16px;">
+    <div class="card-title" style="margin-bottom:12px;">World Uncertainty Index (GDP-Weighted)</div>
+    <div id="fred-wui-stats" class="pulse-bar" style="flex-wrap:wrap;gap:12px;margin-bottom:16px;"></div>
+    <div style="position:relative;height:220px;"><canvas id="fred-chart-wui"></canvas></div>
+    <p class="hint" style="margin-top:8px;">Measures global uncertainty by counting &ldquo;uncertainty&rdquo; mentions in EIU country reports, GDP-weighted across 143 countries.</p>
+  </div>
+
+  <!-- Housing -->
+  <div id="fred-section-housing" class="card" style="margin-top:16px;padding:16px;">
+    <div class="card-title" style="margin-bottom:12px;">Housing (Case-Shiller Home Price Index, 30Y Mortgage Rate)</div>
+    <div id="fred-housing-stats" class="pulse-bar" style="flex-wrap:wrap;gap:12px;margin-bottom:16px;"></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(300px, 1fr));gap:16px;">
+      <div><div style="position:relative;height:200px;"><canvas id="fred-chart-housing"></canvas></div></div>
+      <div><div style="position:relative;height:200px;"><canvas id="fred-chart-mortgage"></canvas></div></div>
+    </div>
+    <p class="hint" style="margin-top:8px;">Case-Shiller tracks home prices nationally. Mortgage rates drive affordability &mdash; spiking rates often cool housing and economy.</p>
+  </div>
+
+  <!-- Sentiment Gauges -->
+  <div id="sentiment-section" class="card" style="margin-top:16px;padding:16px;">
+    <div class="card-title" style="margin-bottom:12px;">Market Sentiment</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:16px;">
+      <div style="text-align:center;">
+        <div class="card-title" style="font-size:0.85rem;margin-bottom:8px;">CNN Fear &amp; Greed</div>
+        <canvas id="cnn-fg-gauge" width="180" height="100"></canvas>
+        <div id="cnn-fg-label" style="margin-top:4px;font-size:0.85rem;font-weight:600;"></div>
+      </div>
+      <div style="text-align:center;">
+        <div class="card-title" style="font-size:0.85rem;margin-bottom:8px;">Crypto Fear &amp; Greed</div>
+        <canvas id="crypto-fg-gauge" width="180" height="100"></canvas>
+        <div id="crypto-fg-label" style="margin-top:4px;font-size:0.85rem;font-weight:600;"></div>
+      </div>
+    </div>
+  </div>
+</div>

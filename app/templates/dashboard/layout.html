@@ -119,10 +119,72 @@
 
   <!-- Summary Tab -->
   <div id="tab-summary" class="tab{% if active_tab == 'summary' %} active{% endif %}">
-    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 20px;color:var(--text-muted);">
-      <div class="loading-spinner"></div>
-      <p style="margin-top:16px;">Loading dashboard&hellip;</p>
+    <!-- Hero: Net Worth -->
+    <div class="hero">
+      <div class="hero-row" style="display:flex;align-items:baseline;gap:16px;flex-wrap:wrap;">
+        <div>
+          <div class="hero-label" style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-muted);margin-bottom:4px;">Net Worth</div>
+          <div class="hero-value" id="net-worth-counter" data-target="0" style="font-size:2.8rem;font-weight:800;font-family:var(--mono);letter-spacing:-0.02em;">$0.00</div>
+          <div class="hero-change" id="hero-change-badge" style="display:inline-flex;align-items:center;gap:6px;margin-top:8px;padding:5px 12px;border-radius:6px;font-size:0.82rem;font-family:var(--mono);background:rgba(255,255,255,0.04);color:var(--text-muted);">--</div>
+        </div>
+        <div class="hero-meta" style="font-size:0.78rem;color:var(--text-muted);">
+          <span id="last-refresh-time">Loading&hellip;</span>
+        </div>
+      </div>
     </div>
+
+    <!-- Market Pulse Bar -->
+    <div class="pulse-bar" id="pulse-bar" style="display:flex;gap:12px;margin:24px 16px 28px;overflow-x:auto;padding-bottom:4px;">
+      {% set pulse_cards = [
+        ("gold", "Gold", "GC=F", "stock"),
+        ("silver", "Silver", "SI=F", "stock"),
+        ("spy", "S&P 500", "SPY", "stock"),
+        ("btc", "Bitcoin", "BTC-USD", "crypto"),
+        ("tnx_10y", "10Y Yield", "^TNX", "bond"),
+        ("tnx_2y", "2Y Yield", "2YY=F", "bond"),
+        ("dxy", "DXY", "DX=F", "stock"),
+        ("vix", "VIX", "^VIX", "stock"),
+        ("oil", "Oil", "CL=F", "commodity"),
+        ("copper", "Copper", "HG=F", "commodity"),
+      ] %}
+      {% for pid, label, ticker, ptype in pulse_cards %}
+      <div class="pulse-item" draggable="true" data-pulse-id="{{ pid }}" data-pulse-type="{{ ptype }}" style="flex:0 0 auto;min-width:140px;max-width:170px;height:90px;padding:12px 14px;background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius);cursor:pointer;transition:border-color 0.2s;">
+        <span class="pulse-label" style="font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);font-weight:600;">{{ label }}</span>
+        <span class="pulse-price" data-pulse-price="{{ pid }}" style="display:block;font-family:var(--mono);font-size:0.95rem;font-weight:600;margin-top:6px;color:var(--text-primary);">--</span>
+      </div>
+      {% endfor %}
+      <div class="pulse-item pulse-add" onclick="showAddPulseCard()" title="Add custom ticker" style="flex:0 0 auto;min-width:60px;height:90px;padding:12px;background:var(--bg-card);border:1px dashed var(--border-subtle);border-radius:var(--radius);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--text-muted);font-size:1.5rem;">+</div>
+    </div>
+
+    <!-- Summary Grid: Donut + History -->
+    <div class="summary-grid" style="display:grid;grid-template-columns:280px 1fr;gap:16px;padding:0 16px;margin-bottom:24px;">
+      <div class="card" style="background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius);padding:20px;">
+        <div class="card-title" style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);font-weight:600;margin-bottom:12px;">Allocation</div>
+        <div style="position:relative;width:100%;aspect-ratio:1;"><canvas id="allocation-donut"></canvas></div>
+        <div id="donut-legend" style="margin-top:12px;font-size:0.78rem;color:var(--text-secondary);"></div>
+      </div>
+      <div class="card" style="background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:var(--radius);padding:20px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+          <div class="card-title" style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);font-weight:600;">Portfolio History</div>
+          <div id="history-period-btns" style="display:flex;gap:4px;">
+            <button type="button" class="pill active" onclick="buildHistoryChart('total')" style="padding:3px 10px;font-size:0.7rem;border-radius:4px;background:rgba(255,255,255,0.08);border:none;color:var(--text-secondary);cursor:pointer;">All</button>
+          </div>
+        </div>
+        <div style="position:relative;height:260px;"><canvas id="history-chart"></canvas></div>
+      </div>
+    </div>
+
+    {% if is_pro %}
+    <!-- Trial banner -->
+    {% if user.subscription and user.subscription.status == 'trialing' %}
+    <div style="margin:0 16px 16px;padding:14px 20px;background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.2);border-radius:var(--radius);display:flex;align-items:center;justify-content:space-between;gap:12px;">
+      <span style="font-size:0.85rem;color:var(--text-secondary);">
+        Pro trial active &mdash; expires {{ user.subscription.current_period_end.strftime('%B %d, %Y') if user.subscription.current_period_end else 'soon' }}
+      </span>
+      <a href="{{ url_for('pages.pricing') }}" style="font-size:0.82rem;font-weight:600;color:#3b82f6;text-decoration:none;">Upgrade Now</a>
+    </div>
+    {% endif %}
+    {% endif %}
   </div>
 
   <!-- Balances Tab -->
@@ -349,6 +411,8 @@
 var USER_PLAN = "{{ user.plan if user else 'free' }}";
 var IS_PRO = {{ 'true' if is_pro else 'false' }};
 var ACTIVE_TAB = "{{ active_tab }}";
+window.BUCKETS_DATA = {};
+window.PRICE_HISTORY_DATA = [];
 </script>
 <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
 <script src="{{ url_for('static', filename='js/tabs.js') }}"></script>
@@ -356,4 +420,22 @@ var ACTIVE_TAB = "{{ active_tab }}";
 {% if is_pro %}
 <script src="{{ url_for('static', filename='js/import.js') }}"></script>
 {% endif %}
+<script>
+(function() {
+  fetch("/api/live-data").then(function(r) { return r.json(); }).then(function(d) {
+    if (typeof applyLiveDataToDOM === "function") applyLiveDataToDOM(d);
+    if (d && d.buckets) {
+      window.BUCKETS_DATA = d.buckets;
+      if (typeof buildDonut === "function") buildDonut();
+    }
+  }).catch(function() {});
+
+  fetch("/api/portfolio-history").then(function(r) { return r.json(); }).then(function(d) {
+    if (d && d.history) {
+      window.PRICE_HISTORY_DATA = d.history;
+      if (typeof buildHistoryChart === "function") buildHistoryChart("total");
+    }
+  }).catch(function() {});
+})();
+</script>
 {% endblock %}

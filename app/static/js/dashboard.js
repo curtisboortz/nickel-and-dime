@@ -897,7 +897,7 @@ document.addEventListener("click", function(e) {
 });
 
 function applyLiveDataToDOM(d) {
-  if (!d || !d.total || d.total <= 0) return;
+  if (!d) return;
   // Update "last refresh" timestamp
   var ts = document.getElementById("last-refresh-time");
   if (ts) {
@@ -908,7 +908,7 @@ function applyLiveDataToDOM(d) {
   var fxRate = (typeof BASE_CURRENCY !== "undefined" && BASE_CURRENCY !== "USD" && typeof FX_RATES !== "undefined" && FX_RATES[BASE_CURRENCY]) ? FX_RATES[BASE_CURRENCY] : 1;
   var sym = (typeof CURRENCY_SYMBOLS !== "undefined" && BASE_CURRENCY !== "USD" && CURRENCY_SYMBOLS[BASE_CURRENCY]) ? CURRENCY_SYMBOLS[BASE_CURRENCY] : "$";
   var nw = document.getElementById("net-worth-counter");
-  if (nw) { nw.dataset.target = d.total; nw.textContent = sym + (d.total * fxRate).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}); }
+  if (nw && typeof d.total === "number") { nw.dataset.target = d.total; nw.textContent = sym + (d.total * fxRate).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}); }
   var heroChange = document.getElementById("hero-change-badge");
   if (heroChange && typeof d.daily_change === "number" && typeof d.daily_change_pct === "number") {
     var dc = d.daily_change;

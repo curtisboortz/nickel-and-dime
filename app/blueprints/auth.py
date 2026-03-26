@@ -33,18 +33,27 @@ def register():
             flash("An account with that email already exists.", "error")
             return render_template("auth/register.html")
 
-        user = User(email=email, name=name or email.split("@")[0])
+        from datetime import datetime, timezone, timedelta
+        from ..models.user import Subscription
+
+        user = User(email=email, name=name or email.split("@")[0], plan="pro")
         user.set_password(password)
         db.session.add(user)
 
-        # Create default settings for the new user
         settings = UserSettings(user=user)
         db.session.add(settings)
+
+        trial_end = datetime.now(timezone.utc) + timedelta(days=14)
+        sub = Subscription(
+            user=user, plan="pro", status="trialing",
+            current_period_end=trial_end,
+        )
+        db.session.add(sub)
 
         db.session.commit()
 
         login_user(user)
-        flash("Welcome to Nickel&Dime!", "success")
+        flash("Welcome! Your 14-day Pro trial is active.", "success")
         return redirect(url_for("pages.dashboard_page"))
 
     return render_template("auth/register.html")
@@ -68,7 +77,7 @@ def login():
             db.session.commit()
             login_user(user, remember=remember)
             next_page = request.args.get("next")
-            return redirect(next_page or url_for("pages.dashboard"))
+            return redirect(next_page or url_for("pages.dashboard_page"))
 
         flash("Invalid email or password.", "error")
 

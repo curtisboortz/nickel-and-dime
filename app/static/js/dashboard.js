@@ -3593,15 +3593,20 @@ function loadHoldings() {
 
       if (cryptoWrap) {
         var crypto = d.crypto || [];
+        var countEl = document.getElementById("crypto-count");
+        var subEl = document.getElementById("crypto-subtitle");
+        if (countEl) countEl.textContent = crypto.length;
+        var hasCbSource = crypto.some(function(c) { return c.source === "coinbase"; });
+        if (subEl) subEl.textContent = hasCbSource ? "Synced from Coinbase - " + crypto.length + " assets" : crypto.length + " assets";
         if (crypto.length === 0) {
-          cryptoWrap.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--text-muted);">No crypto holdings.</td></tr>';
+          cryptoWrap.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--text-muted);">No crypto holdings. Connect Coinbase in Settings (gear icon) to auto-sync.</td></tr>';
         } else {
           var ch = "";
           crypto.forEach(function(c) {
             ch += '<tr>';
-            ch += '<td style="padding:8px 6px;">' + c.symbol + '</td>';
-            ch += '<td style="padding:8px 6px;text-align:right;">' + c.quantity + '</td>';
-            ch += '<td style="padding:8px 6px;">—</td><td style="padding:8px 6px;text-align:right;">—</td><td style="padding:8px 6px;text-align:right;">—</td>';
+            ch += '<td style="padding:8px 6px;font-weight:600;">' + c.symbol + '</td>';
+            ch += '<td style="padding:8px 6px;text-align:right;font-family:var(--mono);">' + c.quantity + '</td>';
+            ch += '<td style="padding:8px 6px;text-align:right;">-</td><td style="padding:8px 6px;text-align:right;">-</td><td style="padding:8px 6px;text-align:right;">-</td>';
             ch += '</tr>';
           });
           cryptoWrap.innerHTML = ch;
@@ -3707,5 +3712,112 @@ function showDivForm() {
 function saveDividend() {
   /* placeholder until dividend API is built */
   showDivForm();
+}
+
+/* ═══════════════════════════════════════════════
+   Settings & Integrations (Coinbase)
+   ═══════════════════════════════════════════════ */
+
+function openSettingsModal() {
+  var m = document.getElementById("settings-modal");
+  if (!m) return;
+  m.style.display = "flex";
+  _loadIntegrationStatus();
+}
+
+function closeSettingsModal() {
+  var m = document.getElementById("settings-modal");
+  if (m) m.style.display = "none";
+}
+
+function _loadIntegrationStatus() {
+  var badge = document.getElementById("cb-status-badge");
+  var connPanel = document.getElementById("cb-connected-panel");
+  var setupPanel = document.getElementById("cb-setup-panel");
+  fetch("/api/settings/integrations").then(function(r) { return r.json(); }).then(function(d) {
+    if (d.coinbase && d.coinbase.connected) {
+      if (badge) { badge.textContent = "Connected"; badge.style.background = "rgba(46,160,67,0.15)"; badge.style.color = "#3fb950"; }
+      if (connPanel) connPanel.style.display = "block";
+      if (setupPanel) setupPanel.style.display = "none";
+      var hint = document.getElementById("cb-key-hint");
+      if (hint && d.coinbase.key_hint) hint.textContent = d.coinbase.key_hint;
+    } else {
+      if (badge) { badge.textContent = "Not connected"; badge.style.background = "var(--bg-input)"; badge.style.color = "var(--text-muted)"; }
+      if (connPanel) connPanel.style.display = "none";
+      if (setupPanel) setupPanel.style.display = "block";
+    }
+  }).catch(function() {
+    if (badge) { badge.textContent = "Error"; badge.style.color = "var(--danger)"; }
+  });
+}
+
+function saveCoinbaseKeys() {
+  var keyName = document.getElementById("cb-key-name");
+  var privKey = document.getElementById("cb-private-key");
+  var btn = document.getElementById("cb-save-btn");
+  if (!keyName || !keyName.value.trim() || !privKey || !privKey.value.trim()) {
+    alert("Please enter both the API Key Name and Private Key.");
+    return;
+  }
+  if (btn) { btn.disabled = true; btn.textContent = "Connecting..."; }
+  fetch("/api/settings/coinbase-keys", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      key_name: keyName.value.trim(),
+      private_key: privKey.value.trim()
+    })
+  }).then(function(r) { return r.json(); }).then(function(d) {
+    if (d.error) {
+      alert(d.error);
+      if (btn) { btn.disabled = false; btn.textContent = "Connect & Sync"; }
+      return;
+    }
+    keyName.value = "";
+    privKey.value = "";
+    syncCoinbaseNow(true);
+    _loadIntegrationStatus();
+  }).catch(function() {
+    alert("Failed to save keys. Please try again.");
+    if (btn) { btn.disabled = false; btn.textContent = "Connect & Sync"; }
+  });
+}
+
+function syncCoinbaseNow(isInitial) {
+  var btn = document.getElementById("cb-sync-btn");
+  var status = document.getElementById("cb-sync-status");
+  if (btn) { btn.disabled = true; btn.textContent = "Syncing..."; }
+  if (status) { status.textContent = "Fetching balances from Coinbase..."; status.style.color = "var(--text-secondary)"; }
+  fetch("/api/coinbase-sync", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" }
+  }).then(function(r) { return r.json(); }).then(function(d) {
+    if (d.error) {
+      if (status) { status.textContent = d.error; status.style.color = "var(--danger)"; }
+    } else {
+      var msg = "Synced " + d.synced + " asset" + (d.synced !== 1 ? "s" : "");
+      if (d.removed > 0) msg += ", removed " + d.removed;
+      if (status) { status.textContent = msg; status.style.color = "var(--success)"; }
+      _holdingsLoaded = false;
+      if (typeof loadHoldings === "function") loadHoldings();
+    }
+    if (btn) { btn.disabled = false; btn.textContent = "Sync Now"; }
+    if (isInitial) {
+      var saveBtn = document.getElementById("cb-save-btn");
+      if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = "Connect & Sync"; }
+    }
+  }).catch(function() {
+    if (status) { status.textContent = "Sync failed. Please try again."; status.style.color = "var(--danger)"; }
+    if (btn) { btn.disabled = false; btn.textContent = "Sync Now"; }
+  });
+}
+
+function disconnectCoinbase() {
+  if (!confirm("Disconnect Coinbase? Your crypto holdings data will remain, but auto-sync will stop.")) return;
+  fetch("/api/settings/coinbase-keys", { method: "DELETE" }).then(function() {
+    _loadIntegrationStatus();
+    var status = document.getElementById("cb-sync-status");
+    if (status) status.textContent = "";
+  });
 }
 

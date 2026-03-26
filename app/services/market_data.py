@@ -70,16 +70,23 @@ def _fetch_yfinance_batch(symbols):
 
 
 def _fetch_coingecko_prices():
-    """Fetch crypto prices via CoinGecko free API."""
+    """Fetch crypto prices via CoinGecko free API using coingecko_id."""
     import urllib.request
     import json
     from ..models.portfolio import CryptoHolding
 
-    crypto_ids = db.session.query(CryptoHolding.symbol).distinct().all()
-    if not crypto_ids:
+    rows = (db.session.query(CryptoHolding.coingecko_id)
+            .filter(CryptoHolding.coingecko_id.isnot(None),
+                    CryptoHolding.coingecko_id != "")
+            .distinct().all())
+    if not rows:
         return
 
-    ids_str = ",".join(c[0] for c in crypto_ids)
+    cg_ids = [r[0] for r in rows if r[0]]
+    if not cg_ids:
+        return
+
+    ids_str = ",".join(cg_ids)
     url = f"https://api.coingecko.com/api/v3/simple/price?ids={ids_str}&vs_currencies=usd&include_24hr_change=true"
     try:
         req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})

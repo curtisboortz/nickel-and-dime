@@ -152,7 +152,7 @@ def main():
             history = price_history.get("history", [])
             for h in history:
                 conn.execute(text(
-                    "INSERT INTO portfolio_snapshots (user_id, date, total, open_val, high, low, close, gold_price, silver_price) "
+                    "INSERT INTO portfolio_snapshots (user_id, date, total, \"open\", high, low, close, gold_price, silver_price) "
                     "VALUES (:uid, :date, :total, :open, :high, :low, :close, :gold, :silver)"
                 ), {
                     "uid": user_id,
@@ -189,15 +189,15 @@ def main():
         ).scalar()
         if existing_custom == 0:
             custom = config.get("custom_pulse_cards", [])
-            for c in custom:
+            for idx, c in enumerate(custom):
                 conn.execute(text(
-                    "INSERT INTO custom_pulse_cards (user_id, ticker, label, card_type) "
-                    "VALUES (:uid, :ticker, :label, :ctype)"
+                    "INSERT INTO custom_pulse_cards (user_id, ticker, label, position) "
+                    "VALUES (:uid, :ticker, :label, :pos)"
                 ), {
                     "uid": user_id,
                     "ticker": c.get("ticker", ""),
                     "label": c.get("label", ""),
-                    "ctype": c.get("type", "stock"),
+                    "pos": idx,
                 })
             print(f"  Custom pulse cards: inserted {len(custom)} rows")
 
@@ -209,13 +209,12 @@ def main():
             budget = config.get("budget", {})
             if budget:
                 conn.execute(text(
-                    "INSERT INTO budget_configs (user_id, monthly_income, categories, month) "
-                    "VALUES (:uid, :income, :cats, :month)"
+                    "INSERT INTO budget_configs (user_id, monthly_income, categories) "
+                    "VALUES (:uid, :income, :cats)"
                 ), {
                     "uid": user_id,
                     "income": budget.get("monthly_income", 0),
                     "cats": json.dumps(budget.get("categories", [])),
-                    "month": budget.get("month", ""),
                 })
                 print(f"  Budget config: inserted")
 

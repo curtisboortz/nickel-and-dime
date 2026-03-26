@@ -44,6 +44,12 @@ def init_scheduler(app):
     )
 
     _scheduler.add_job(
+        _run_in_context(app, _sync_coinbase),
+        "interval", minutes=10, id="sync_coinbase",
+        max_instances=1, replace_existing=True,
+    )
+
+    _scheduler.add_job(
         _run_in_context(app, _snapshot_portfolios),
         "cron", hour=16, minute=30, timezone="America/New_York",
         id="snapshot_portfolios", max_instances=1, replace_existing=True,
@@ -101,6 +107,15 @@ def _refresh_sentiment():
         refresh_sentiment()
     except Exception as e:
         log.error("Sentiment refresh error: %s", e)
+
+
+def _sync_coinbase():
+    from ..services.coinbase_service import sync_all_coinbase_users
+    try:
+        sync_all_coinbase_users()
+        log.info("Coinbase sync completed")
+    except Exception as e:
+        log.error("Coinbase sync error: %s", e)
 
 
 def _snapshot_portfolios():

@@ -30,7 +30,8 @@ def get_holdings():
                        "value_override": h.value_override, "notes": h.notes}
                       for h in holdings],
         "crypto": [{"id": c.id, "symbol": c.symbol, "quantity": c.quantity,
-                     "coingecko_id": c.coingecko_id} for c in crypto],
+                     "coingecko_id": c.coingecko_id,
+                     "source": c.source or "manual"} for c in crypto],
         "metals": [{"id": m.id, "metal": m.metal, "oz": m.oz,
                      "purchase_price": m.purchase_price, "description": m.description}
                     for m in metals],

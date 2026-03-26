@@ -23,7 +23,7 @@ def sitemap():
     xml = '<?xml version="1.0" encoding="UTF-8"?>\n'
     xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
     for path in ["/", "/login", "/register", "/billing/pricing"]:
-        xml += f"  <url><loc>https://nickeldime.io{path}</loc></url>\n"
+        xml += f"  <url><loc>https://nickelanddime.io{path}</loc></url>\n"
     xml += "</urlset>\n"
     return Response(xml, mimetype="application/xml")
 

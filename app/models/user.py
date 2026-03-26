@@ -13,7 +13,6 @@ class User(UserMixin, db.Model):
     password_hash = db.Column(db.String(255), nullable=False)
     name = db.Column(db.String(120), nullable=False, default="")
     plan = db.Column(db.String(20), nullable=False, default="free")  # free | pro
-    is_admin = db.Column(db.Boolean, default=False)
     email_verified = db.Column(db.Boolean, default=False)
     stripe_customer_id = db.Column(db.String(255), unique=True, nullable=True)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
@@ -43,6 +42,12 @@ class User(UserMixin, db.Model):
     @property
     def is_pro(self):
         return self.plan == "pro"
+
+    @property
+    def is_admin(self):
+        import os
+        admins = os.environ.get("ADMIN_EMAILS", "").lower().split(",")
+        return self.email and self.email.lower() in admins
 
     def __repr__(self):
         return f"<User {self.email} ({self.plan})>"

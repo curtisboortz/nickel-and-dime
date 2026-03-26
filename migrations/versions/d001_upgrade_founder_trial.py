@@ -1,4 +1,4 @@
-"""add is_admin column and upgrade founder account to admin pro
+"""upgrade founder account to permanent pro
 
 Revision ID: d001_founder
 Revises: c667a18d8e68
@@ -18,10 +18,11 @@ depends_on = None
 def upgrade():
     conn = op.get_bind()
 
-    # PostgreSQL IF NOT EXISTS handles partial previous runs gracefully
-    conn.execute(sa.text(
-        "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT false"
-    ))
+    # Drop is_admin column if it exists from a previous partial migration
+    try:
+        conn.execute(sa.text("ALTER TABLE users DROP COLUMN IF EXISTS is_admin"))
+    except Exception:
+        pass
 
     row = conn.execute(
         sa.text("SELECT id FROM users WHERE email = 'crb1898@gmail.com'")
@@ -33,7 +34,7 @@ def upgrade():
     user_id = row[0]
 
     conn.execute(
-        sa.text("UPDATE users SET plan = 'pro', is_admin = true WHERE id = :uid"),
+        sa.text("UPDATE users SET plan = 'pro' WHERE id = :uid"),
         {"uid": user_id},
     )
 
@@ -63,4 +64,4 @@ def upgrade():
 
 
 def downgrade():
-    op.drop_column("users", "is_admin")
+    pass

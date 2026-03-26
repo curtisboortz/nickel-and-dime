@@ -871,34 +871,21 @@ function toggleAutoRefreshSettings() {
 }
 function saveAutoRefresh() {
   var enabled = document.getElementById("auto-enabled").checked;
-  var interval = parseInt(document.getElementById("auto-interval").value);
-  fetch("/api/auto-refresh", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ enabled: enabled, interval_minutes: interval })
-  }).then(function(r) { return r.json(); }).then(function(d) {
-    var dot = document.getElementById("auto-dot");
-    var label = document.getElementById("auto-label");
-    dot.className = "auto-dot " + (enabled ? "on" : "off");
-    label.textContent = interval + "m";
-    var t = document.createElement("div");
-    t.className = "toast";
-    t.style.background = "rgba(52,211,153,0.15)";
-    t.style.color = "var(--success)";
-    t.textContent = "Auto-refresh saved";
-    document.body.appendChild(t);
-    setTimeout(function() { t.remove(); }, 2500);
-    if (window._periodicPollInterval) clearInterval(window._periodicPollInterval);
-    if (enabled && interval >= 5) startPeriodicLivePoll(interval);
-  }).catch(function() {
-    var t = document.createElement("div");
-    t.className = "toast";
-    t.style.background = "rgba(248,113,113,0.15)";
-    t.style.color = "var(--danger)";
-    t.textContent = "Failed to save auto-refresh";
-    document.body.appendChild(t);
-    setTimeout(function() { t.remove(); }, 3500);
-  });
+  var intervalSec = parseInt(document.getElementById("auto-interval").value);
+  var dot = document.getElementById("auto-dot");
+  var label = document.getElementById("auto-label");
+  dot.className = "auto-dot " + (enabled ? "on" : "off");
+  label.textContent = intervalSec >= 60 ? (intervalSec / 60) + "m" : intervalSec + "s";
+  try { localStorage.setItem("nd_auto_refresh", JSON.stringify({enabled: enabled, interval: intervalSec})); } catch(e) {}
+  var t = document.createElement("div");
+  t.className = "toast";
+  t.style.background = "rgba(52,211,153,0.15)";
+  t.style.color = "var(--success)";
+  t.textContent = "Auto-refresh " + (enabled ? "every " + label.textContent : "off");
+  document.body.appendChild(t);
+  setTimeout(function() { t.remove(); }, 2500);
+  if (window._periodicPollInterval) clearInterval(window._periodicPollInterval);
+  if (enabled && intervalSec >= 15) startPeriodicLivePoll(intervalSec);
 }
 // Close popover when clicking outside
 document.addEventListener("click", function(e) {
@@ -1030,12 +1017,38 @@ function applyLiveDataToDOM(d) {
     }
   }
 }
-function startPeriodicLivePoll(intervalMin) {
+function startPeriodicLivePoll(intervalSec) {
   if (window._periodicPollInterval) clearInterval(window._periodicPollInterval);
-  var ms = Math.max(5, intervalMin) * 60 * 1000;
+  var ms = Math.max(15, intervalSec) * 1000;
   window._periodicPollInterval = setInterval(function() {
-    fetch("/api/live-data").then(function(r) { return r.json(); }).then(applyLiveDataToDOM).catch(function() {});
+    fetch("/api/live-data").then(function(r) { return r.json(); }).then(function(d) {
+      applyLiveDataToDOM(d);
+      _flashUpdatedPulseCards();
+    }).catch(function() {});
   }, ms);
+}
+window._prevPulseValues = window._prevPulseValues || {};
+function _flashUpdatedPulseCards() {
+  document.querySelectorAll("[data-pulse-price]").forEach(function(el) {
+    var pid = el.getAttribute("data-pulse-price");
+    var cur = el.textContent;
+    if (window._prevPulseValues[pid] && window._prevPulseValues[pid] !== cur) {
+      el.classList.remove("price-flash");
+      void el.offsetWidth;
+      el.classList.add("price-flash");
+    }
+    window._prevPulseValues[pid] = cur;
+  });
+  var nw = document.getElementById("net-worth-counter");
+  if (nw) {
+    var cur = nw.textContent;
+    if (window._prevPulseValues._nw && window._prevPulseValues._nw !== cur) {
+      nw.classList.remove("price-flash");
+      void nw.offsetWidth;
+      nw.classList.add("price-flash");
+    }
+    window._prevPulseValues._nw = cur;
+  }
 }
 
 /* ── Phase 1: Theme Toggle ── */
@@ -3155,19 +3168,18 @@ function convertDisplayCurrency(rate, symbol) {
 (function() {
   function _startLongPoll() {
     var enabled = document.getElementById("auto-enabled") && document.getElementById("auto-enabled").checked;
-    var interval = parseInt((document.getElementById("auto-interval") && document.getElementById("auto-interval").value) || 15);
-    if (enabled !== false && interval >= 5) startPeriodicLivePoll(interval);
+    var intervalSec = parseInt((document.getElementById("auto-interval") && document.getElementById("auto-interval").value) || 60);
+    if (enabled !== false && intervalSec >= 15) startPeriodicLivePoll(intervalSec);
   }
-  // Immediate poll: update from cache right away (before bg-refresh finishes)
   fetch("/api/live-data").then(function(r) { return r.json(); }).then(applyLiveDataToDOM).catch(function() {});
-  // Kick off background refresh, then poll for fresh data
   fetch("/api/bg-refresh", { method:"POST" }).then(function() {
     var polls = 0;
-    var maxPolls = 8;
+    var maxPolls = 6;
     function pollLive() {
       polls++;
       fetch("/api/live-data").then(function(r) { return r.json(); }).then(function(d) {
         applyLiveDataToDOM(d);
+        _flashUpdatedPulseCards();
         if (polls < maxPolls) { setTimeout(pollLive, 3000); } else { _startLongPoll(); }
       }).catch(function() {
         if (polls < maxPolls) setTimeout(pollLive, 3000); else _startLongPoll();

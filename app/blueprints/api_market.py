@@ -1,7 +1,8 @@
 """Market data API routes: live prices, sparklines, historical charts."""
 
+import threading
 import yfinance as yf
-from flask import Blueprint, jsonify, request as flask_request
+from flask import Blueprint, jsonify, request as flask_request, current_app
 from flask_login import login_required, current_user
 
 from ..extensions import db, csrf
@@ -9,15 +10,85 @@ from ..models.market import PriceCache
 
 api_market_bp = Blueprint("api_market", __name__)
 
+SYMBOL_MAP = {
+    "GC=F": "gold", "SI=F": "silver", "BTC-USD": "btc",
+    "SPY": "spy", "DX=F": "dxy", "^VIX": "vix",
+    "CL=F": "oil", "HG=F": "copper", "^TNX": "tnx_10y", "2YY=F": "tnx_2y",
+}
+
 
 @api_market_bp.route("/live-data")
 @login_required
 def live_data():
-    """Return latest cached prices for the pulse bar and dashboard cards."""
-    prices = {p.symbol: {"price": p.price, "change_pct": p.change_pct,
-                         "source": p.source}
-              for p in PriceCache.query.all()}
-    return jsonify({"prices": prices})
+    """Return full dashboard payload: portfolio total, pulse prices, crypto, holdings."""
+    from ..services.portfolio_service import compute_portfolio_value
+    from ..models.portfolio import CryptoHolding
+    from ..models.snapshot import PortfolioSnapshot
+    from ..models.settings import CustomPulseCard
+    from datetime import date
+
+    prices = {p.symbol: p for p in PriceCache.query.all()}
+    result = {}
+
+    for symbol, key in SYMBOL_MAP.items():
+        row = prices.get(symbol)
+        result[key] = row.price if row else None
+
+    gold = result.get("gold") or 0
+    silver = result.get("silver") or 0
+    oil = result.get("oil") or 0
+    result["gold_silver_ratio"] = round(gold / silver, 2) if silver else None
+    result["gold_oil_ratio"] = round(gold / oil, 2) if oil else None
+
+    custom_cards = CustomPulseCard.query.filter_by(user_id=current_user.id).all()
+    for card in custom_cards:
+        row = prices.get(card.ticker)
+        if row:
+            result[f"custom-{card.id}"] = row.price
+
+    pv = compute_portfolio_value(current_user.id)
+    result["total"] = pv["total"]
+
+    yesterday = PortfolioSnapshot.query.filter_by(user_id=current_user.id)\
+        .filter(PortfolioSnapshot.date < date.today())\
+        .order_by(PortfolioSnapshot.date.desc()).first()
+    if yesterday and yesterday.close and yesterday.close > 0:
+        result["daily_change"] = pv["total"] - yesterday.close
+        result["daily_change_pct"] = (result["daily_change"] / yesterday.close) * 100
+    else:
+        result["daily_change"] = 0
+        result["daily_change_pct"] = 0
+
+    crypto_holdings = CryptoHolding.query.filter_by(user_id=current_user.id).all()
+    if crypto_holdings:
+        cp = {}
+        for ch in crypto_holdings:
+            row = prices.get(f"CG:{ch.symbol}")
+            if row:
+                cp[ch.symbol] = row.price
+        result["crypto_prices"] = cp
+
+    return jsonify(result)
+
+
+@api_market_bp.route("/bg-refresh", methods=["POST"])
+@login_required
+@csrf.exempt
+def bg_refresh():
+    """Kick off a background price refresh (non-blocking)."""
+    from ..services.market_data import refresh_all_prices
+
+    app = current_app._get_current_object()
+
+    def _run():
+        with app.app_context():
+            try:
+                refresh_all_prices()
+            except Exception as e:
+                print(f"[bg-refresh] error: {e}")
+
+    threading.Thread(target=_run, daemon=True).start()
+    return jsonify({"started": True})
 
 
 @api_market_bp.route("/sparklines")

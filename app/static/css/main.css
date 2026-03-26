@@ -115,8 +115,11 @@ body {
   width:7px; height:7px; border-radius:50%;
   transition:background 0.3s;
 }
-.auto-dot.on { background:#34d399; box-shadow:0 0 6px rgba(52,211,153,0.5); }
+.auto-dot.on { background:#34d399; box-shadow:0 0 6px rgba(52,211,153,0.5); animation:pulse-dot 2s ease-in-out infinite; }
 .auto-dot.off { background:#64748b; }
+@keyframes pulse-dot { 0%,100%{opacity:1;} 50%{opacity:.5;} }
+@keyframes price-flash { 0%{background:rgba(99,102,241,0.25);} 100%{background:transparent;} }
+.price-flash { animation:price-flash .8s ease-out; }
 .auto-label { font-size:0.6rem; color:var(--text-muted); font-family:var(--mono); }
 .auto-popover {
   position:absolute; left:calc(100% + 16px); bottom:-8px;

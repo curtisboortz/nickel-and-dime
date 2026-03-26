@@ -44,9 +44,9 @@
     </button>
     <div class="auto-refresh-indicator" id="auto-refresh-indicator" onclick="toggleAutoRefreshSettings()" title="Auto-refresh settings">
       <span class="auto-dot on" id="auto-dot"></span>
-      <span class="auto-label" id="auto-label">5m</span>
+      <span class="auto-label" id="auto-label">1m</span>
       <div id="auto-refresh-popover" class="auto-popover" style="display:none;" onclick="event.stopPropagation()">
-        <div class="auto-popover-title">Auto-Refresh</div>
+        <div class="auto-popover-title">Live Polling</div>
         <label class="auto-toggle-row">
           <span>Enabled</span>
           <input type="checkbox" id="auto-enabled" checked onchange="saveAutoRefresh()">
@@ -54,20 +54,36 @@
         <label class="auto-toggle-row">
           <span>Interval</span>
           <select id="auto-interval" onchange="saveAutoRefresh()">
-            <option value="5" selected>5 min</option>
-            <option value="10">10 min</option>
-            <option value="15">15 min</option>
-            <option value="30">30 min</option>
-            <option value="60">1 hour</option>
-            <option value="120">2 hours</option>
-            <option value="240">4 hours</option>
+            <option value="30">30 sec</option>
+            <option value="60" selected>1 min</option>
+            <option value="120">2 min</option>
+            <option value="300">5 min</option>
+            <option value="600">10 min</option>
+            <option value="900">15 min</option>
           </select>
         </label>
         <div style="font-size:0.65rem;color:var(--text-muted);margin-top:6px;line-height:1.4;">
-          Runs 24/7 while server is active.<br>Captures portfolio OHLC daily.
+          Prices update in the background.<br>Pulse cards &amp; holdings refresh automatically.
         </div>
       </div>
     </div>
+    <script>
+      (function() {
+        try {
+          var s = JSON.parse(localStorage.getItem("nd_auto_refresh"));
+          if (s) {
+            var el = document.getElementById("auto-enabled");
+            var sel = document.getElementById("auto-interval");
+            var dot = document.getElementById("auto-dot");
+            var lbl = document.getElementById("auto-label");
+            if (el) el.checked = !!s.enabled;
+            if (sel) sel.value = String(s.interval);
+            if (dot) dot.className = "auto-dot " + (s.enabled ? "on" : "off");
+            if (lbl) lbl.textContent = s.interval >= 60 ? (s.interval / 60) + "m" : s.interval + "s";
+          }
+        } catch(e) {}
+      })();
+    </script>
     {% if user %}
     <a href="{{ url_for('pages.pricing') }}" class="nav-item" title="Account" style="margin-top:4px;">
       <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>

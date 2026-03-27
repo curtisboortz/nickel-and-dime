@@ -16,27 +16,61 @@ FREE_FRED_GROUPS = {"debt_fiscal", "cpi_pce", "monetary_policy"}
 @api_economics_bp.route("/fred-data")
 @login_required
 def fred_data():
-    """Return cached FRED series data."""
-    from ..utils.auth import is_pro
-    group = flask_request.args.get("group", "")
+    """Return FRED series data keyed by individual series ID.
 
-    if not is_pro() and group and group not in FREE_FRED_GROUPS:
-        return jsonify({
-            "error": "Pro plan required for this data group.",
-            "upgrade": True,
-        }), 403
+    Accepts:
+      ?series_ids=GFDEBTN,GFDEGDQ188S,...  (specific series)
+      ?horizon=1y|5y|max                   (trim length)
+      ?refresh=1                           (force re-fetch)
 
-    if group:
-        cached = FredCache.query.get(group)
-        return jsonify({"group": group, "data": cached.data if cached else None})
+    Returns { "GFDEBTN": { "data": [{date, value}, ...] }, ... }
+    """
+    import math as _math
 
-    # Return all groups (filter by tier)
+    series_ids_raw = flask_request.args.get("series_ids", "")
+    horizon = flask_request.args.get("horizon", "1y").lower()
+    refresh = flask_request.args.get("refresh", "").lower() in ("1", "true")
+
+    requested = [s.strip() for s in series_ids_raw.split(",") if s.strip()] if series_ids_raw else None
+
+    if horizon == "max":
+        max_pts = 3780
+    elif horizon == "5y":
+        max_pts = 1260
+    else:
+        max_pts = 252
+
+    if refresh:
+        import os
+        from ..services.fred_service import refresh_fred_data
+        refresh_fred_data(os.environ.get("FRED_API_KEY", ""))
+
     all_cache = FredCache.query.all()
-    result = {}
+    series_pool = {}
     for c in all_cache:
-        if is_pro() or c.series_group in FREE_FRED_GROUPS:
-            result[c.series_group] = c.data
-    return jsonify({"data": result})
+        if not isinstance(c.data, dict):
+            continue
+        for sid, points in c.data.items():
+            series_pool[sid] = points
+
+    result = {}
+    targets = requested if requested else list(series_pool.keys())
+    for sid in targets[:50]:
+        raw = series_pool.get(sid)
+        if not raw:
+            result[sid] = {"data": None}
+            continue
+        data = []
+        for pt in raw:
+            if isinstance(pt, (list, tuple)) and len(pt) >= 2:
+                d, v = pt[0], pt[1]
+                if v is not None and not (isinstance(v, float) and (_math.isnan(v) or _math.isinf(v))):
+                    data.append({"date": d, "value": v})
+        if len(data) > max_pts:
+            data = data[-max_pts:]
+        result[sid] = {"data": data}
+
+    return jsonify(result)
 
 
 @api_economics_bp.route("/economic-calendar")
@@ -66,9 +100,18 @@ def economic_calendar():
 @api_economics_bp.route("/fedwatch")
 @login_required
 def fedwatch():
-    """Return FedWatch probability data."""
-    # TODO: Migrate from routes.py
-    return jsonify({"meetings": [], "current_rate": None})
+    """Compute FedWatch-style rate probabilities from Fed Funds Futures."""
+    import time as _time
+
+    now = _time.time()
+    if _fedwatch_cache["data"] and (now - _fedwatch_cache["ts"]) < _FEDWATCH_TTL:
+        return jsonify(_fedwatch_cache["data"])
+
+    result = _compute_fedwatch()
+    if result and result.get("meetings"):
+        _fedwatch_cache["data"] = result
+        _fedwatch_cache["ts"] = now
+    return jsonify(result or {"meetings": [], "current_rate": None, "error": "Failed to fetch data"})
 
 
 @api_economics_bp.route("/sentiment")
@@ -213,17 +256,421 @@ def _fg_label(score):
     return "Extreme Greed"
 
 
+# ── CAPE Ratio ───────────────────────────────────────────────────────
+_cape_cache = {"data": None, "ts": 0}
+_CAPE_TTL = 3600 * 6
+
+
+def _fetch_cape_data():
+    """Scrape CAPE ratio (current + monthly history) from multpl.com."""
+    import urllib.request
+    import re
+    import html as htmlmod
+    from datetime import datetime
+
+    url = "https://www.multpl.com/shiller-pe/table/by-month"
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                       "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml",
+    }
+    try:
+        req = urllib.request.Request(url, headers=headers)
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            raw_html = resp.read().decode("utf-8", errors="replace")
+    except Exception as e:
+        print(f"[CAPE] fetch error: {e}")
+        return None
+
+    row_pat = re.compile(
+        r'<tr[^>]*>\s*<td[^>]*>(.*?)</td>\s*<td[^>]*>(.*?)</td>',
+        re.DOTALL,
+    )
+
+    history = []
+    for m in row_pat.finditer(raw_html):
+        raw_date = re.sub(r"<[^>]+>", "", m.group(1)).strip()
+        try:
+            dt = datetime.strptime(raw_date, "%b %d, %Y")
+            date_str = dt.strftime("%Y-%m-%d")
+        except ValueError:
+            continue
+        clean_val = htmlmod.unescape(re.sub(r"<[^>]+>", "", m.group(2))).strip()
+        try:
+            val = round(float(clean_val), 2)
+        except ValueError:
+            continue
+        history.append({"date": date_str, "value": val})
+
+    history.sort(key=lambda x: x["date"])
+    current = history[-1]["value"] if history else None
+
+    median = 16.8
+    label = "Average"
+    if current:
+        if current > 30:
+            label = "Very Expensive"
+        elif current > 25:
+            label = "Expensive"
+        elif current > 20:
+            label = "Above Average"
+        elif current > 15:
+            label = "Average"
+        elif current > 10:
+            label = "Below Average"
+        else:
+            label = "Cheap"
+
+    return {
+        "current": current,
+        "median": median,
+        "label": label,
+        "history": history,
+    }
+
+
+# ── Buffett Indicator ────────────────────────────────────────────────
+_buffett_cache = {"data": None, "ts": 0}
+_BUFFETT_TTL = 3600 * 6
+
+
+def _fetch_buffett_data():
+    """Compute Buffett Indicator: total market cap / GDP.
+
+    Uses yfinance Wilshire 5000 + FRED-cached GDP, calibrated with a
+    known reference point (Dec 2025: 230%).
+    """
+    gdp_data = []
+    all_cache = FredCache.query.all()
+    for c in all_cache:
+        if isinstance(c.data, dict) and "GDP" in c.data:
+            raw_pts = c.data["GDP"]
+            for pt in raw_pts:
+                if isinstance(pt, (list, tuple)) and len(pt) >= 2:
+                    gdp_data.append({"date": pt[0], "value": pt[1]})
+            break
+
+    if not gdp_data:
+        print("[Buffett] no GDP data available")
+        return None
+
+    try:
+        import yfinance as yf
+        w = yf.download("^W5000", period="max", interval="1wk", progress=False)
+        if w.empty:
+            print("[Buffett] yfinance returned no Wilshire data")
+            return None
+    except Exception as e:
+        print(f"[Buffett] yfinance error: {e}")
+        return None
+
+    gdp_quarters = []
+    gdp_map = {}
+    for pt in gdp_data:
+        d, v = pt.get("date"), pt.get("value")
+        if d and v:
+            gdp_map[d[:10]] = v
+            gdp_quarters.append(d[:10])
+    gdp_quarters.sort()
+
+    wilshire_data = {}
+    for dt_idx, row in w.iterrows():
+        dt_str = dt_idx.strftime("%Y-%m-%d") if hasattr(dt_idx, "strftime") else str(dt_idx)[:10]
+        close = row["Close"]
+        if hasattr(close, "values"):
+            close = close.values[0]
+        val = float(close)
+        if val > 0:
+            wilshire_data[dt_str] = val
+
+    w_dates = sorted(wilshire_data.keys())
+
+    def closest_gdp(target):
+        best = None
+        for gd in gdp_quarters:
+            if gd <= target:
+                best = gd
+            else:
+                break
+        return gdp_map.get(best) if best else None
+
+    raw = []
+    for wd in w_dates:
+        w_val = wilshire_data[wd]
+        gdp_val = closest_gdp(wd)
+        if gdp_val and gdp_val > 0:
+            raw_ratio = w_val / gdp_val * 100
+            raw.append({"date": wd, "raw": raw_ratio})
+
+    if not raw:
+        return None
+
+    try:
+        import yfinance as yf
+        tk = yf.Ticker("^W5000")
+        latest_w = tk.fast_info.last_price
+        if latest_w and latest_w > 0:
+            latest_gdp = gdp_map.get(gdp_quarters[-1]) if gdp_quarters else None
+            if latest_gdp and latest_gdp > 0:
+                from datetime import date as _date
+                today_str_local = _date.today().strftime("%Y-%m-%d")
+                raw.append({"date": today_str_local, "raw": latest_w / latest_gdp * 100})
+    except Exception:
+        pass
+
+    ref_raw = None
+    for r in reversed(raw):
+        if r["date"] <= "2025-12-31":
+            ref_raw = r["raw"]
+            break
+    scale = (230.0 / ref_raw) if ref_raw and ref_raw > 0 else 1.0
+
+    history = []
+    seen = set()
+    for r in raw:
+        if r["date"] not in seen:
+            history.append({"date": r["date"], "value": round(r["raw"] * scale, 1)})
+            seen.add(r["date"])
+
+    current = history[-1]["value"] if history else None
+
+    median = 120
+    label = "Fair Value"
+    if current:
+        if current > 180:
+            label = "Significantly Overvalued"
+        elif current > 140:
+            label = "Overvalued"
+        elif current > 100:
+            label = "Fair Value"
+        elif current > 70:
+            label = "Undervalued"
+        else:
+            label = "Significantly Undervalued"
+
+    return {
+        "current": current,
+        "median": median,
+        "label": label,
+        "history": history,
+    }
+
+
+# ── FedWatch (rate probabilities from Fed Funds Futures) ─────────────
+_fedwatch_cache = {"data": None, "ts": 0}
+_FEDWATCH_TTL = 3600 * 2
+
+_FOMC_DATES_2026 = [
+    "2026-01-29", "2026-03-18", "2026-05-06", "2026-06-17",
+    "2026-07-29", "2026-09-16", "2026-10-28", "2026-12-16",
+]
+
+_FF_MONTH_CODES = {
+    1: "F", 2: "G", 3: "H", 4: "J", 5: "K", 6: "M",
+    7: "N", 8: "Q", 9: "U", 10: "V", 11: "X", 12: "Z",
+}
+
+
+def _compute_fedwatch():
+    """Build a probability tree across FOMC meetings using CME methodology."""
+    import yfinance as yf
+    from datetime import datetime, date
+    import calendar
+    import math
+
+    today = date.today()
+    today_str = today.strftime("%Y-%m-%d")
+
+    effr = None
+    try:
+        all_cache = FredCache.query.all()
+        for c in all_cache:
+            if isinstance(c.data, dict):
+                dff_pts = c.data.get("DFF") or c.data.get("FEDFUNDS")
+                if dff_pts:
+                    for pt in reversed(dff_pts):
+                        if isinstance(pt, (list, tuple)) and len(pt) >= 2 and pt[1] is not None:
+                            effr = pt[1]
+                            break
+            if effr is not None:
+                break
+    except Exception as e:
+        print(f"[FedWatch] FRED EFFR error: {e}")
+
+    if effr is None:
+        return None
+
+    current_upper = math.ceil(effr * 4) / 4
+    current_lower = current_upper - 0.25
+    current_mid = (current_upper + current_lower) / 2
+
+    upcoming = [m for m in _FOMC_DATES_2026 if m > today_str]
+    if not upcoming:
+        return {"meetings": [], "current_rate": effr,
+                "current_range_bps": f"{int(current_lower * 100)}-{int(current_upper * 100)}"}
+
+    last_md = datetime.strptime(upcoming[-1], "%Y-%m-%d").date()
+    tickers, month_keys = [], []
+    m, y = today.month, today.year
+    end_m, end_y = last_md.month + 1, last_md.year
+    if end_m > 12:
+        end_m, end_y = 1, end_y + 1
+
+    while (y, m) <= (end_y, end_m):
+        code = _FF_MONTH_CODES[m]
+        tickers.append(f"ZQ{code}{str(y)[2:]}.CBT")
+        month_keys.append((y, m))
+        m += 1
+        if m > 12:
+            m, y = 1, y + 1
+
+    implied = {}
+    for i, ticker in enumerate(tickers):
+        try:
+            tk = yf.Ticker(ticker)
+            p = tk.fast_info.last_price if tk.fast_info else None
+            if p and 80 < p < 105:
+                implied[month_keys[i]] = round(100.0 - float(p), 4)
+        except Exception:
+            pass
+
+    if not implied:
+        return {"meetings": [], "current_rate": effr,
+                "current_range_bps": f"{int(current_lower * 100)}-{int(current_upper * 100)}",
+                "error": "Could not fetch futures prices"}
+
+    meeting_months = {}
+    for ms in upcoming:
+        md_ = datetime.strptime(ms, "%Y-%m-%d").date()
+        meeting_months[(md_.year, md_.month)] = md_
+
+    def _next_month(y, m):
+        return (y, m + 1) if m < 12 else (y + 1, 1)
+
+    prev_rate = effr
+    prev_meeting_month = (today.year, today.month)
+    isolated = []
+
+    for meeting_str in upcoming:
+        md = datetime.strptime(meeting_str, "%Y-%m-%d").date()
+        mkey = (md.year, md.month)
+        imp = implied.get(mkey)
+        if imp is None:
+            isolated.append({"date": meeting_str, "md": md, "p_cut": 0.0, "ok": False})
+            prev_meeting_month = mkey
+            continue
+
+        ref = None
+        ry, rm = _next_month(*prev_meeting_month)
+        while (ry, rm) < mkey:
+            if (ry, rm) not in meeting_months and (ry, rm) in implied:
+                ref = implied[(ry, rm)]
+            ry, rm = _next_month(ry, rm)
+        pre_rate = ref if ref is not None else prev_rate
+
+        days_in = calendar.monthrange(md.year, md.month)[1]
+        days_after = days_in - md.day
+
+        if days_after <= 3:
+            ny, nm = _next_month(md.year, md.month)
+            next_imp = implied.get((ny, nm))
+            post = next_imp if next_imp is not None else imp
+        else:
+            post = (imp * days_in - pre_rate * md.day) / days_after
+
+        change = pre_rate - post
+        if abs(change) > 0.50:
+            isolated.append({"date": meeting_str, "md": md, "p_cut": 0.0, "ok": False})
+            prev_meeting_month = mkey
+            continue
+
+        p_cut = max(0.0, min(1.0, change / 0.25))
+        isolated.append({"date": meeting_str, "md": md, "p_cut": p_cut, "post": post, "ok": True})
+        prev_rate = post
+        prev_meeting_month = mkey
+
+    dist = {round(current_mid, 4): 100.0}
+    meetings_out = []
+
+    for iso in isolated:
+        md = iso["md"]
+        p_cut = iso["p_cut"] if iso["ok"] else 0.0
+        p_hold = 1.0 - p_cut
+
+        new_dist = {}
+        for rate, prob in dist.items():
+            new_dist[rate] = new_dist.get(rate, 0.0) + prob * p_hold
+            cut_rate = round(rate - 0.25, 4)
+            if cut_rate >= 0:
+                new_dist[cut_rate] = new_dist.get(cut_rate, 0.0) + prob * p_cut
+        dist = new_dist
+
+        ranges = []
+        cut_t, hold_t, hike_t = 0.0, 0.0, 0.0
+        for rate in sorted(dist.keys()):
+            prob = dist[rate]
+            if prob < 0.05:
+                continue
+            lo = int(round((rate - 0.125) * 100))
+            hi = int(round((rate + 0.125) * 100))
+            ranges.append({"range": f"{lo}-{hi}", "lo": lo, "prob": round(prob, 1)})
+            if rate < current_mid - 0.001:
+                cut_t += prob
+            elif rate > current_mid + 0.001:
+                hike_t += prob
+            else:
+                hold_t += prob
+
+        contract_code = f"ZQ{_FF_MONTH_CODES[md.month]}{str(md.year)[2:]}"
+        imp_price = implied.get((md.year, md.month))
+
+        meetings_out.append({
+            "date": iso["date"],
+            "label": md.strftime("%d %b%y").lstrip("0"),
+            "contract": contract_code,
+            "price": round(imp_price, 4) if imp_price else None,
+            "cut": round(cut_t, 1),
+            "hold": round(hold_t, 1),
+            "hike": round(hike_t, 1),
+            "ranges": ranges,
+        })
+
+    return {
+        "current_rate": effr,
+        "current_range_bps": f"{int(current_lower * 100)}-{int(current_upper * 100)}",
+        "meetings": meetings_out,
+    }
+
+
 @api_economics_bp.route("/cape")
 @login_required
 def cape():
-    """Return Shiller CAPE ratio data."""
-    # TODO: Migrate from routes.py (multpl.com scraper)
-    return jsonify({"cape": None})
+    """Return current + historical CAPE (Shiller P/E) ratio."""
+    import time as _time
+
+    now = _time.time()
+    if _cape_cache["data"] and (now - _cape_cache["ts"]) < _CAPE_TTL:
+        return jsonify(_cape_cache["data"])
+
+    result = _fetch_cape_data()
+    if result and result.get("history"):
+        _cape_cache["data"] = result
+        _cape_cache["ts"] = now
+    return jsonify(result or {"current": None, "history": []})
 
 
 @api_economics_bp.route("/buffett")
 @login_required
 def buffett():
-    """Return Buffett indicator data."""
-    # TODO: Migrate from routes.py
-    return jsonify({"indicator": None})
+    """Return current + historical Buffett Indicator (market cap / GDP %)."""
+    import time as _time
+
+    now = _time.time()
+    if _buffett_cache["data"] and (now - _buffett_cache["ts"]) < _BUFFETT_TTL:
+        return jsonify(_buffett_cache["data"])
+
+    result = _fetch_buffett_data()
+    if result and result.get("history"):
+        _buffett_cache["data"] = result
+        _buffett_cache["ts"] = now
+    return jsonify(result or {"current": None, "history": []})

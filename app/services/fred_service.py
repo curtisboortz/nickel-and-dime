@@ -8,27 +8,30 @@ from datetime import datetime, timezone
 from ..extensions import db
 from ..models.market import FredCache
 
-# Series groups (same as fred_manager.py SERIES_GROUPS)
+# Series groups -- must match the series IDs the frontend JS requests.
+# Kept in sync with fred_manager.py in the local version.
 SERIES_GROUPS = {
     "debt_fiscal": [
         "GFDEBTN", "GFDEGDQ188S", "FYFSD", "A091RC1Q027SBEA",
-        "FGEXPND", "FGRECPT",
+        "GDP", "W006RC1Q027SBEA", "W068RCQ027SBEA",
+        "FYFSGDA188S", "FYONGDA188S", "FYOIGDA188S",
+        "FDHBFIN", "MTSDS133FMS",
     ],
     "cpi_pce": [
-        "CPIAUCSL", "CPILFESL", "PCEPI", "PCEPILFE",
+        "CPIAUCSL", "CPILFESL", "PCEPI",
     ],
     "monetary_policy": [
-        "DFF", "M2SL", "WALCL",
+        "FEDFUNDS", "M2SL", "WALCL",
     ],
     "yield_curve": [
         "DGS1MO", "DGS3MO", "DGS6MO", "DGS1", "DGS2",
-        "DGS3", "DGS5", "DGS7", "DGS10", "DGS20", "DGS30",
+        "DGS5", "DGS10", "DGS20", "DGS30",
     ],
     "credit_spreads": [
         "BAMLH0A0HYM2",
     ],
     "real_yields": [
-        "DFII5", "DFII10", "T5YIE", "T10YIE",
+        "DFII10", "T5YIE", "T10YIE",
     ],
     "fed_balance": [
         "WALCL",
@@ -37,16 +40,16 @@ SERIES_GROUPS = {
         "SAHMREALTIME",
     ],
     "labor": [
-        "UNRATE", "PAYEMS", "ICSA", "JTSJOL",
+        "UNRATE", "ICSA",
     ],
     "growth_sentiment": [
-        "GDP", "UMCSENT",
+        "A191RL1Q225SBEA", "UMCSENT",
     ],
     "housing": [
-        "CSUSHPISA", "HOUST", "HSN1F",
+        "CSUSHPINSA", "MORTGAGE30US",
     ],
     "wui": [
-        "WUIWORLD",
+        "WUIGLOBALWEIGHTAVG",
     ],
 }
 

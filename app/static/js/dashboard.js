@@ -1,7 +1,9 @@
 /* Nickel&Dime — Dashboard JavaScript */
 /* Core chart building, data fetching, and UI interactions */
 
-/* Fix candlestick wick-through-body rendering artifact by redrawing bodies */
+/* Fix candlestick wick-through-body rendering artifact by redrawing bodies.
+   CandlestickElement pixel props: x, open, high, low, close, width.
+   In canvas coords lower y = higher price, so close < open means price UP. */
 (function() {
   if (typeof Chart === "undefined") return;
   Chart.register({
@@ -14,18 +16,23 @@
         var ctx = chart.ctx;
         meta.data.forEach(function(el) {
           if (!el || typeof el.x === "undefined") return;
-          var o = el.o, c = el.c, x = el.x, w = el.width || 6;
-          if (typeof o === "undefined" || typeof c === "undefined") return;
-          var top = Math.min(o, c), bot = Math.max(o, c);
-          var h = Math.max(bot - top, 1);
-          var color = ds.color || {};
+          var openPx = el.open, closePx = el.close;
+          var x = el.x, w = el.width || 6;
+          if (typeof openPx === "undefined" || typeof closePx === "undefined") return;
+          var bodyTop = Math.min(openPx, closePx);
+          var bodyH = Math.max(Math.abs(openPx - closePx), 1);
+          var bgColors = el.options && el.options.backgroundColors;
           var fill;
-          if (c > o) fill = color.up || "#34d399";
-          else if (c < o) fill = color.down || "#f87171";
-          else fill = color.unchanged || "#94a3b8";
+          if (closePx < openPx) {
+            fill = (bgColors && bgColors.up) || "#34d399";
+          } else if (closePx > openPx) {
+            fill = (bgColors && bgColors.down) || "#f87171";
+          } else {
+            fill = (bgColors && bgColors.unchanged) || "#94a3b8";
+          }
           ctx.save();
           ctx.fillStyle = fill;
-          ctx.fillRect(x - w / 2, top, w, h);
+          ctx.fillRect(x - w / 2, bodyTop, w, bodyH);
           ctx.restore();
         });
       });

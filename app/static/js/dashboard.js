@@ -1,6 +1,38 @@
 /* Nickel&Dime — Dashboard JavaScript */
 /* Core chart building, data fetching, and UI interactions */
 
+/* Fix candlestick wick-through-body rendering artifact by redrawing bodies */
+(function() {
+  if (typeof Chart === "undefined") return;
+  Chart.register({
+    id: "candleBodyOverlay",
+    afterDatasetsDraw: function(chart) {
+      if (chart.config.type !== "candlestick") return;
+      chart.data.datasets.forEach(function(ds, dsIdx) {
+        var meta = chart.getDatasetMeta(dsIdx);
+        if (!meta || meta.hidden) return;
+        var ctx = chart.ctx;
+        meta.data.forEach(function(el) {
+          if (!el || typeof el.x === "undefined") return;
+          var o = el.o, c = el.c, x = el.x, w = el.width || 6;
+          if (typeof o === "undefined" || typeof c === "undefined") return;
+          var top = Math.min(o, c), bot = Math.max(o, c);
+          var h = Math.max(bot - top, 1);
+          var color = ds.color || {};
+          var fill;
+          if (c > o) fill = color.up || "#34d399";
+          else if (c < o) fill = color.down || "#f87171";
+          else fill = color.unchanged || "#94a3b8";
+          ctx.save();
+          ctx.fillStyle = fill;
+          ctx.fillRect(x - w / 2, top, w, h);
+          ctx.restore();
+        });
+      });
+    }
+  });
+})();
+
 var PRICE_HISTORY_DATA = window.PRICE_HISTORY_DATA || [];
 var BUCKETS_DATA = window.BUCKETS_DATA || {};
 var TARGETS_DATA = window.TARGETS_DATA || {};
@@ -973,7 +1005,7 @@ function restoreAllPulseCards() {
         data: { datasets: [{
           label: pcmState.label,
           data: candles,
-          color: { up: "rgba(34,197,94,0.9)", down: "rgba(239,68,68,0.9)", unchanged: "rgba(100,116,139,0.8)" },
+          color: { up: "rgba(34,197,94,1)", down: "rgba(239,68,68,1)", unchanged: "rgba(100,116,139,1)" },
           borderColor: { up: "rgba(34,197,94,1)", down: "rgba(239,68,68,1)", unchanged: "rgba(100,116,139,1)" }
         }] },
         options: {

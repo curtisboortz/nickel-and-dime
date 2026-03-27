@@ -429,7 +429,15 @@
         <button type="button" onclick="saveMetalPurchase()" style="padding:8px 14px;font-size:0.8rem;">Save</button>
       </div>
     </div>
-    <div style="display:flex;gap:20px;margin-bottom:12px;flex-wrap:wrap;">
+    <div style="display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap;">
+      <div style="padding:10px 16px;background:var(--bg-input);border-radius:var(--radius);flex:1;min-width:80px;text-align:center;">
+        <div class="hint" style="margin-bottom:4px;">Gold (oz)</div>
+        <div id="metals-header-au" class="mono" style="font-size:1.1rem;color:var(--gold);">0</div>
+      </div>
+      <div style="padding:10px 16px;background:var(--bg-input);border-radius:var(--radius);flex:1;min-width:80px;text-align:center;">
+        <div class="hint" style="margin-bottom:4px;">Silver (oz)</div>
+        <div id="metals-header-ag" class="mono" style="font-size:1.1rem;color:var(--text-primary);">0</div>
+      </div>
       <div style="padding:10px 16px;background:var(--bg-input);border-radius:var(--radius);flex:1;min-width:80px;text-align:center;">
         <div class="hint" style="margin-bottom:4px;">Total Value</div>
         <div id="metals-header-total" class="mono" style="font-size:1.1rem;color:#58a6ff;">$0.00</div>

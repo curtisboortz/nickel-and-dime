@@ -1155,7 +1155,7 @@ document.addEventListener("click", function(e) {
 
 function applyLiveDataToDOM(d) {
   if (!d) return;
-  // Update "last refresh" timestamp
+  window._lastLiveData = d;
   var ts = document.getElementById("last-refresh-time");
   if (ts) {
     var now = new Date();
@@ -1205,7 +1205,7 @@ function applyLiveDataToDOM(d) {
     else if (entry.fmt === "raw1") el.textContent = v.toFixed(1);
   });
   // Update physical metals spot prices on holdings page
-  var metalsTotalVal = 0, metalsTotalCost = 0;
+  var metalsTotalVal = 0, metalsTotalCost = 0, metalsAu = 0, metalsAg = 0;
   var spotCells = document.querySelectorAll(".metal-spot-cell");
   spotCells.forEach(function(cell) {
     var metal = cell.getAttribute("data-metal-spot");
@@ -1217,25 +1217,31 @@ function applyLiveDataToDOM(d) {
     var newVal = qty * newSpot;
     metalsTotalVal += newVal;
     metalsTotalCost += (cost > 0 ? qty * cost : 0);
+    if (metal === "gold") metalsAu += qty; else metalsAg += qty;
     var valCell = cell.nextElementSibling;
     if (valCell) {
       valCell.textContent = "$" + newVal.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
       var glCell = valCell.nextElementSibling;
       if (glCell && cost > 0) {
         var gl = newVal - (qty * cost);
-        glCell.textContent = (gl >= 0 ? "$+" : "$") + gl.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
+        var sign = gl >= 0 ? "" : "-";
+        glCell.textContent = sign + "$" + Math.abs(gl).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
         glCell.style.color = gl >= 0 ? "var(--success)" : "var(--danger)";
       }
     }
   });
-  if (spotCells.length > 0 && metalsTotalVal > 0) {
+  if (spotCells.length > 0) {
+    var mhAu = document.getElementById("metals-header-au");
+    var mhAg = document.getElementById("metals-header-ag");
+    if (mhAu) mhAu.textContent = metalsAu.toFixed(1);
+    if (mhAg) mhAg.textContent = metalsAg.toFixed(0);
     var mhTotal = document.getElementById("metals-header-total");
     if (mhTotal) mhTotal.textContent = "$" + metalsTotalVal.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
     var mhGl = document.getElementById("metals-header-gl");
     if (mhGl) {
       var gl = metalsTotalVal - metalsTotalCost;
-      mhGl.textContent = (gl >= 0 ? "$+" : "$") + Math.abs(gl).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
-      if (gl < 0) mhGl.textContent = "-" + mhGl.textContent;
+      var glSign = gl >= 0 ? "" : "-";
+      mhGl.textContent = glSign + "$" + Math.abs(gl).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
       mhGl.style.color = gl >= 0 ? "var(--success)" : "var(--danger)";
     }
   }
@@ -4033,26 +4039,67 @@ function _renderCryptoHoldings(wrap, crypto) {
 }
 
 function _loadPhysicalMetals() {
-  var wrap = document.getElementById("metals-holdings-body");
-  if (!wrap) return;
+  var tbody = document.getElementById("metals-tbody");
+  if (!tbody) return;
   fetch("/api/physical-metals")
     .then(function(r) { return r.json(); })
     .then(function(d) {
       var metals = d.metals || [];
       if (metals.length === 0) {
-        wrap.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--text-muted);">No physical metals.</td></tr>';
-      } else {
-        var html = "";
-        metals.forEach(function(m) {
-          html += '<tr>';
-          html += '<td style="padding:8px 6px;text-transform:capitalize;">' + m.metal + '</td>';
-          html += '<td style="padding:8px 6px;text-align:right;">' + m.oz + ' oz</td>';
-          html += '<td style="padding:8px 6px;">' + (m.description || "—") + '</td>';
-          html += '<td style="padding:8px 6px;text-align:right;"><button onclick="deleteMetal(' + m.id + ')" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:0.8rem;">✕</button></td>';
-          html += '</tr>';
-        });
-        wrap.innerHTML = html;
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:20px;color:var(--text-muted);">No physical metals yet. Click "+ Add Purchase" to start.</td></tr>';
+        return;
       }
+      var goldSpot = window._lastLiveData && window._lastLiveData.gold ? window._lastLiveData.gold : 0;
+      var silverSpot = window._lastLiveData && window._lastLiveData.silver ? window._lastLiveData.silver : 0;
+      var totalAu = 0, totalAg = 0, totalVal = 0, totalCost = 0;
+      var html = "";
+      metals.forEach(function(m) {
+        var oz = parseFloat(m.oz) || 0;
+        var cost = parseFloat(m.purchase_price) || 0;
+        var isGold = m.metal && m.metal.toLowerCase() === "gold";
+        var spot = isGold ? goldSpot : silverSpot;
+        var val = oz * spot;
+        var totalItemCost = oz * cost;
+        var gl = val - totalItemCost;
+        if (isGold) totalAu += oz; else totalAg += oz;
+        totalVal += val;
+        totalCost += totalItemCost;
+        var glColor = gl >= 0 ? "var(--success)" : "var(--danger)";
+        var glSign = gl >= 0 ? "" : "-";
+        html += '<tr>';
+        html += '<td style="padding:8px 6px;text-transform:capitalize;font-weight:500;">' + (m.metal || "") + '</td>';
+        html += '<td style="padding:8px 6px;">' + (m.form || "") + '</td>';
+        html += '<td style="padding:8px 6px;text-align:right;" class="mono">' + oz + '</td>';
+        html += '<td style="padding:8px 6px;text-align:right;" class="mono">$' + cost.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}) + '</td>';
+        html += '<td style="padding:8px 6px;text-align:right;" class="mono metal-spot-cell" data-metal-spot="' + (isGold ? 'gold' : 'silver') + '" data-metal-qty="' + oz + '" data-metal-cost="' + cost + '">$' + spot.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}) + '</td>';
+        html += '<td style="padding:8px 6px;text-align:right;" class="mono">$' + val.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}) + '</td>';
+        html += '<td style="padding:8px 6px;text-align:right;color:' + glColor + ';" class="mono">' + glSign + '$' + Math.abs(gl).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}) + '</td>';
+        html += '<td style="padding:8px 6px;color:var(--text-muted);font-size:0.82rem;">' + (m.date || "") + '</td>';
+        html += '<td style="padding:8px 4px;text-align:center;"><button onclick="deleteMetal(' + m.id + ')" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:0.75rem;opacity:0.5;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.5">&#10005;</button></td>';
+        html += '</tr>';
+      });
+      var totalGL = totalVal - totalCost;
+      var tglColor = totalGL >= 0 ? "var(--success)" : "var(--danger)";
+      var tglSign = totalGL >= 0 ? "" : "-";
+      html += '<tr style="font-weight:600;border-top:2px solid var(--border-subtle);">';
+      html += '<td style="padding:8px 6px;">Totals</td>';
+      html += '<td style="padding:8px 6px;"></td>';
+      html += '<td style="padding:8px 6px;text-align:right;" class="mono">Au ' + totalAu.toFixed(1) + ' / Ag ' + totalAg.toFixed(0) + '</td>';
+      html += '<td style="padding:8px 6px;text-align:right;" class="mono">$' + totalCost.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}) + '</td>';
+      html += '<td style="padding:8px 6px;"></td>';
+      html += '<td style="padding:8px 6px;text-align:right;color:#58a6ff;" class="mono">$' + totalVal.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}) + '</td>';
+      html += '<td style="padding:8px 6px;text-align:right;color:' + tglColor + ';" class="mono">' + tglSign + '$' + Math.abs(totalGL).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}) + '</td>';
+      html += '<td colspan="2"></td>';
+      html += '</tr>';
+      tbody.innerHTML = html;
+      var elAu = document.getElementById("metals-header-au");
+      var elAg = document.getElementById("metals-header-ag");
+      var elTotal = document.getElementById("metals-header-total");
+      var elGL = document.getElementById("metals-header-gl");
+      if (elAu) elAu.textContent = totalAu.toFixed(1);
+      if (elAg) elAg.textContent = totalAg.toFixed(0);
+      if (elTotal) elTotal.textContent = "$" + totalVal.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
+      if (elGL) { elGL.textContent = tglSign + "$" + Math.abs(totalGL).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}); elGL.style.color = tglColor; }
     });
 }
 

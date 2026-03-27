@@ -25,6 +25,7 @@ def create_app(config_name=None):
     _register_error_handlers(app)
     _register_template_globals(app)
     _register_shell_context(app)
+    _register_domain_redirect(app)
 
     # Start background scheduler only when Gunicorn is serving (not during migrations/CLI)
     if not app.config.get("TESTING") and os.environ.get("RUN_SCHEDULER") == "1":
@@ -135,6 +136,21 @@ def _register_template_globals(app):
             pass
 
         return ctx
+
+
+def _register_domain_redirect(app):
+    """301 redirect Railway subdomain traffic to the canonical domain."""
+    from flask import request, redirect as flask_redirect
+
+    CANONICAL = "nickelanddime.io"
+
+    @app.before_request
+    def _redirect_old_domain():
+        host = request.host.split(":")[0]
+        if host.endswith(".up.railway.app"):
+            return flask_redirect(
+                f"https://{CANONICAL}{request.full_path}", code=301
+            )
 
 
 def _register_shell_context(app):

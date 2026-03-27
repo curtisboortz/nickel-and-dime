@@ -74,7 +74,12 @@ def fedwatch():
 @api_economics_bp.route("/sentiment")
 @login_required
 def sentiment():
-    """Return sentiment data in the format the dashboard gauges expect."""
+    """Return sentiment data in the format the dashboard gauges expect.
+
+    Each gauge receives a 0-100 `value` for the needle and a human `label`.
+    VIX additionally carries the raw VIX in `score` (used by subtitle).
+    Yield curve additionally carries the raw `spread`.
+    """
     from ..models.market import PriceCache
 
     cnn = SentimentCache.query.get("cnn_fg")
@@ -99,61 +104,113 @@ def sentiment():
         }
 
     vix_row = PriceCache.query.get("^VIX")
-    if vix_row and vix_row.price:
-        vix = vix_row.price
-        vix_score = max(0, min(100, 100 - ((vix - 12) / 28) * 100))
-        if vix < 15:
-            lbl = "Extreme Greed"
-        elif vix < 20:
-            lbl = "Greed"
-        elif vix < 25:
-            lbl = "Neutral"
-        elif vix < 30:
-            lbl = "Fear"
-        else:
-            lbl = "Extreme Fear"
-        result["vix"] = {"value": round(vix, 2), "score": round(vix_score), "label": lbl}
+    vix_val = vix_row.price if vix_row and vix_row.price else 0
+    if vix_val:
+        vix_score = _vix_to_score(vix_val)
+        result["vix"] = {
+            "value": round(vix_val, 1),
+            "score": vix_score,
+            "label": _fg_label(vix_score),
+        }
 
     gold_row = PriceCache.query.get("GC=F")
-    if gold_row and gold_row.price and gold_row.change_pct is not None:
-        chg = gold_row.change_pct
-        score = max(0, min(100, 50 + chg * 10))
-        result["gold"] = {
-            "value": round(gold_row.price, 2),
-            "score": round(score),
-            "label": "Rising" if chg > 0.5 else ("Falling" if chg < -0.5 else "Stable"),
-        }
+    dxy_row = PriceCache.query.get("DX=F")
+    gvz_row = PriceCache.query.get("^GVZ")
+    gold_price = gold_row.price if gold_row and gold_row.price else 0
+    dxy = dxy_row.price if dxy_row and dxy_row.price else 0
+    gvz = gvz_row.price if gvz_row and gvz_row.price else 0
+    if gold_price:
+        gold_score = _compute_gold_sentiment(gold_price, vix_val, dxy, gvz)
+        result["gold"] = {"value": gold_score, "label": _fg_label(gold_score)}
 
     tnx_10 = PriceCache.query.get("^TNX")
     tnx_2 = PriceCache.query.get("2YY=F")
     if tnx_10 and tnx_2 and tnx_10.price and tnx_2.price:
         spread = tnx_10.price - tnx_2.price
-        if spread < -0.5:
-            lbl, score = "Inverted", 15
-        elif spread < 0:
-            lbl, score = "Flat/Inverted", 35
-        elif spread < 0.5:
-            lbl, score = "Flat", 50
-        else:
-            lbl, score = "Normal", 75
+        yc_score = _yield_curve_to_score(spread)
         result["yield_curve"] = {
-            "value": round(spread, 2), "score": score, "label": lbl,
+            "value": yc_score,
             "spread": round(spread, 2),
+            "label": _fg_label(yc_score),
         }
 
     return jsonify(result)
 
 
+def _vix_to_score(vix):
+    """Map VIX to 0-100 sentiment (low VIX = greed, high VIX = fear)."""
+    if vix <= 12:
+        return 100
+    elif vix <= 20:
+        return int(60 + (20 - vix) * 5)
+    elif vix <= 30:
+        return int(60 - (vix - 20) * 4)
+    elif vix <= 40:
+        return int(20 - (vix - 30) * 2)
+    else:
+        return 0
+
+
+def _compute_gold_sentiment(gold_price, vix, dxy, gvz):
+    """Compute a 0-100 gold sentiment score from available signals.
+
+    Higher = more bullish/greed for gold.
+    Signals: low DXY, high VIX (safe-haven demand), low GVZ (calm accumulation),
+    high gold price (momentum).
+    """
+    score = 50
+
+    if dxy:
+        if dxy < 100:
+            score += min(15, (100 - dxy) * 1.5)
+        else:
+            score -= min(15, (dxy - 100) * 1.5)
+
+    if vix:
+        if vix > 25:
+            score += min(10, (vix - 25) * 1.0)
+        elif vix < 15:
+            score -= min(10, (15 - vix) * 1.5)
+
+    if gvz:
+        if gvz < 15:
+            score += 8
+        elif gvz > 25:
+            score -= min(10, (gvz - 25) * 1.0)
+
+    if gold_price:
+        if gold_price > 2500:
+            score += min(10, (gold_price - 2500) / 100)
+        elif gold_price < 1800:
+            score -= min(10, (1800 - gold_price) / 100)
+
+    return max(0, min(100, round(score)))
+
+
+def _yield_curve_to_score(spread):
+    """Map 10Y-2Y spread to 0-100 sentiment. Inverted = fear, steep = greed."""
+    if spread < -1.0:
+        return 0
+    elif spread < 0:
+        return int(25 + spread * 25)
+    elif spread < 0.5:
+        return int(25 + spread * 60)
+    elif spread < 1.5:
+        return int(55 + (spread - 0.5) * 35)
+    else:
+        return min(100, int(90 + (spread - 1.5) * 10))
+
+
 def _fg_label(score):
-    if score >= 75:
-        return "Extreme Greed"
-    if score >= 55:
-        return "Greed"
-    if score >= 45:
-        return "Neutral"
-    if score >= 25:
+    if score <= 25:
+        return "Extreme Fear"
+    if score <= 45:
         return "Fear"
-    return "Extreme Fear"
+    if score <= 55:
+        return "Neutral"
+    if score <= 75:
+        return "Greed"
+    return "Extreme Greed"
 
 
 @api_economics_bp.route("/cape")

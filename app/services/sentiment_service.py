@@ -39,22 +39,34 @@ def _refresh_cnn_fear_greed():
 
 
 def _refresh_crypto_fear_greed():
-    """Fetch crypto Fear & Greed from alternative.me."""
+    """Fetch crypto Fear & Greed from CoinMarketCap API."""
+    import os
     import urllib.request
     import json
+
+    api_key = os.environ.get("CMC_API_KEY", "")
+    if not api_key:
+        print("[Sentiment] CMC_API_KEY not set, skipping crypto F&G")
+        return
+
     try:
-        url = "https://api.alternative.me/fng/?limit=1"
-        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        url = "https://pro-api.coinmarketcap.com/v3/fear-and-greed/historical?limit=1"
+        req = urllib.request.Request(url, headers={
+            "X-CMC_PRO_API_KEY": api_key,
+            "Accept": "application/json",
+        })
         with urllib.request.urlopen(req, timeout=10) as resp:
-            data = json.loads(resp.read().decode())
-        items = data.get("data", [])
+            body = json.loads(resp.read().decode())
+
+        items = body.get("data", [])
         if items:
+            latest = items[0]
             _upsert_sentiment("crypto_fg", {
-                "score": int(items[0].get("value", 0)),
-                "label": items[0].get("value_classification", ""),
+                "score": int(latest.get("value", 0)),
+                "label": latest.get("value_classification", ""),
             })
     except Exception as e:
-        print(f"[Sentiment] Crypto F&G error: {e}")
+        print(f"[Sentiment] CMC Crypto F&G error: {e}")
 
 
 def _upsert_sentiment(source, data):

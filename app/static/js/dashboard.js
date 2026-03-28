@@ -1,15 +1,17 @@
 /* Nickel&Dime — Dashboard JavaScript */
 /* Core chart building, data fetching, and UI interactions */
 
-/* Fix candlestick wick-through-body rendering artifact by redrawing bodies.
+/* Fix candlestick wick-through-body artifact: redraw opaque bodies over wicks.
    CandlestickElement pixel props: x, open, high, low, close, width.
-   In canvas coords lower y = higher price, so close < open means price UP. */
+   In canvas coords lower y = higher price, so close < open means price went UP. */
 (function() {
   if (typeof Chart === "undefined") return;
   Chart.register({
     id: "candleBodyOverlay",
     afterDatasetsDraw: function(chart) {
       if (chart.config.type !== "candlestick") return;
+      var defaults = Chart.defaults.elements.candlestick || {};
+      var defBg = defaults.backgroundColors || {};
       chart.data.datasets.forEach(function(ds, dsIdx) {
         var meta = chart.getDatasetMeta(dsIdx);
         if (!meta || meta.hidden) return;
@@ -18,21 +20,15 @@
           if (!el || typeof el.x === "undefined") return;
           var openPx = el.open, closePx = el.close;
           var x = el.x, w = el.width || 6;
-          if (typeof openPx === "undefined" || typeof closePx === "undefined") return;
-          var bodyTop = Math.min(openPx, closePx);
-          var bodyH = Math.max(Math.abs(openPx - closePx), 1);
-          var bgColors = el.options && el.options.backgroundColors;
+          if (openPx == null || closePx == null) return;
+          var bg = (el.options && el.options.backgroundColors) || {};
           var fill;
-          if (closePx < openPx) {
-            fill = (bgColors && bgColors.up) || "#34d399";
-          } else if (closePx > openPx) {
-            fill = (bgColors && bgColors.down) || "#f87171";
-          } else {
-            fill = (bgColors && bgColors.unchanged) || "#94a3b8";
-          }
+          if (closePx < openPx) fill = bg.up || defBg.up || "#34d399";
+          else if (closePx > openPx) fill = bg.down || defBg.down || "#f87171";
+          else fill = bg.unchanged || defBg.unchanged || "#94a3b8";
           ctx.save();
           ctx.fillStyle = fill;
-          ctx.fillRect(x - w / 2, bodyTop, w, bodyH);
+          ctx.fillRect(x - w / 2, closePx, w, openPx - closePx);
           ctx.restore();
         });
       });
@@ -378,12 +374,12 @@ function buildHistoryChart(metric) {
         datasets: [{
           label: "Portfolio Value",
           data: ohlcData,
-          color: {
+          backgroundColors: {
             up: "rgba(52,211,153,1)",
             down: "rgba(248,113,113,1)",
             unchanged: "rgba(148,163,184,1)",
           },
-          borderColor: {
+          borderColors: {
             up: "rgba(52,211,153,1)",
             down: "rgba(248,113,113,1)",
             unchanged: "rgba(148,163,184,1)",
@@ -1012,8 +1008,8 @@ function restoreAllPulseCards() {
         data: { datasets: [{
           label: pcmState.label,
           data: candles,
-          color: { up: "rgba(34,197,94,1)", down: "rgba(239,68,68,1)", unchanged: "rgba(100,116,139,1)" },
-          borderColor: { up: "rgba(34,197,94,1)", down: "rgba(239,68,68,1)", unchanged: "rgba(100,116,139,1)" }
+          backgroundColors: { up: "rgba(34,197,94,1)", down: "rgba(239,68,68,1)", unchanged: "rgba(100,116,139,1)" },
+          borderColors: { up: "rgba(34,197,94,1)", down: "rgba(239,68,68,1)", unchanged: "rgba(100,116,139,1)" }
         }] },
         options: {
           responsive: true, maintainAspectRatio: false,
@@ -2735,12 +2731,18 @@ function renderEconCalendar(d) {
 var _tvScriptLoaded = false;
 var _tvInitDone = false;
 var _tvCurrentSymbol = "SPY";
-var TA_TICKERS = window.TA_TICKERS || ["GC=F","SI=F","BTC-USD","SPY","DX=F","^TNX"];
+var TA_TICKERS = [];
 
 function initTechnicalTab() {
   if (!_tvInitDone) {
-    _buildTATickerButtons();
     _tvInitDone = true;
+    fetch("/api/ta-tickers").then(function(r) { return r.json(); }).then(function(d) {
+      TA_TICKERS = d.tickers || [];
+      _buildTATickerButtons();
+    }).catch(function() {
+      TA_TICKERS = ["SPY","GC=F","SI=F","BTC-USD","DX=F","^TNX"];
+      _buildTATickerButtons();
+    });
   }
   if (!document.getElementById("tv_chart_container")) return;
   if (!_tvScriptLoaded) {
@@ -2796,24 +2798,61 @@ function _buildTATickerButtons() {
   var html = "";
   if (!TA_TICKERS || !TA_TICKERS.forEach) return;
   TA_TICKERS.forEach(function(t) {
-    html += '<button type="button" class="ta-tkr" data-symbol="' + t + '" style="padding:3px 8px;font-size:0.75rem;border:1px solid rgba(255,255,255,0.15);border-radius:4px;background:rgba(255,255,255,0.04);color:#94a3b8;cursor:pointer;transition:all 0.15s;">' + t + '</button>';
+    html += '<span class="ta-tkr-wrap" style="display:inline-flex;align-items:center;gap:0;border:1px solid rgba(255,255,255,0.15);border-radius:4px;overflow:hidden;">';
+    html += '<button type="button" class="ta-tkr" data-symbol="' + t + '" style="padding:3px 8px;font-size:0.75rem;border:none;background:rgba(255,255,255,0.04);color:#94a3b8;cursor:pointer;transition:all 0.15s;">' + t + '</button>';
+    html += '<button type="button" class="ta-tkr-rm" data-rm="' + t + '" style="padding:2px 5px;font-size:0.65rem;border:none;border-left:1px solid rgba(255,255,255,0.1);background:transparent;color:#64748b;cursor:pointer;line-height:1;" title="Remove">&times;</button>';
+    html += '</span>';
   });
+  html += '<button type="button" id="ta-add-btn" style="padding:3px 8px;font-size:0.75rem;border:1px dashed rgba(255,255,255,0.2);border-radius:4px;background:transparent;color:#64748b;cursor:pointer;">+ Add</button>';
   wrap.innerHTML = html;
-  wrap.addEventListener("click", function(ev) {
-    var btn = ev.target.closest(".ta-tkr");
-    if (!btn) return;
-    _createTVWidget(btn.getAttribute("data-symbol"));
-  });
+  wrap.onclick = function(ev) {
+    var rmBtn = ev.target.closest(".ta-tkr-rm");
+    if (rmBtn) { _removeTATicker(rmBtn.getAttribute("data-rm")); return; }
+    var tkrBtn = ev.target.closest(".ta-tkr");
+    if (tkrBtn) { _createTVWidget(tkrBtn.getAttribute("data-symbol")); return; }
+    if (ev.target.id === "ta-add-btn") { _addTATicker(); return; }
+  };
 }
 
 function _highlightTABtn(symbol) {
   document.querySelectorAll(".ta-tkr").forEach(function(b) {
     var isActive = b.getAttribute("data-symbol") === symbol;
     b.style.background = isActive ? "rgba(99,102,241,0.2)" : "rgba(255,255,255,0.04)";
-    b.style.borderColor = isActive ? "rgba(99,102,241,0.5)" : "rgba(255,255,255,0.15)";
+    b.style.borderColor = isActive ? "rgba(99,102,241,0.5)" : "";
     b.style.color = isActive ? "#a5b4fc" : "#94a3b8";
     b.style.fontWeight = isActive ? "600" : "400";
+    var parent = b.parentElement;
+    if (parent && parent.classList.contains("ta-tkr-wrap")) {
+      parent.style.borderColor = isActive ? "rgba(99,102,241,0.5)" : "rgba(255,255,255,0.15)";
+    }
   });
+}
+
+function _addTATicker() {
+  var sym = prompt("Enter ticker symbol (e.g. AAPL, TSLA, ETH-USD):");
+  if (!sym) return;
+  sym = sym.trim().toUpperCase();
+  if (!sym) return;
+  if (TA_TICKERS.indexOf(sym) >= 0) { _createTVWidget(sym); return; }
+  TA_TICKERS.push(sym);
+  _saveTATickers();
+  _buildTATickerButtons();
+  _createTVWidget(sym);
+}
+
+function _removeTATicker(sym) {
+  TA_TICKERS = TA_TICKERS.filter(function(t) { return t !== sym; });
+  _saveTATickers();
+  _buildTATickerButtons();
+  _highlightTABtn(_tvCurrentSymbol);
+}
+
+function _saveTATickers() {
+  fetch("/api/ta-tickers", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ tickers: TA_TICKERS })
+  }).catch(function() {});
 }
 
 /* ── Phase 3: Price Alerts ── */

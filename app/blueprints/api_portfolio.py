@@ -345,3 +345,53 @@ def export_data():
         mimetype="text/csv",
         headers={"Content-Disposition": "attachment; filename=portfolio_export.csv"},
     )
+
+
+DEFAULT_TA_TICKERS = ["SPY", "GC=F", "SI=F", "BTC-USD", "DX=F", "^TNX"]
+
+
+@api_portfolio_bp.route("/ta-tickers")
+@login_required
+def get_ta_tickers():
+    """Return the user's TA quick-access tickers, auto-seeded from holdings."""
+    settings = UserSettings.query.filter_by(user_id=current_user.id).first()
+    wo = (settings.widget_order if settings and isinstance(settings.widget_order, dict) else {})
+    saved = wo.get("ta_tickers")
+
+    if saved is not None:
+        return jsonify({"tickers": saved})
+
+    tickers = list(DEFAULT_TA_TICKERS)
+    holdings = Holding.query.filter_by(user_id=current_user.id).all()
+    for h in holdings:
+        t = h.ticker.upper()
+        if t not in tickers:
+            tickers.append(t)
+    cryptos = CryptoHolding.query.filter_by(user_id=current_user.id).all()
+    for c in cryptos:
+        sym = c.symbol.upper() + "-USD"
+        if sym not in tickers and "BTC-USD" != sym:
+            tickers.append(sym)
+    return jsonify({"tickers": tickers})
+
+
+@api_portfolio_bp.route("/ta-tickers", methods=["POST"])
+@login_required
+@csrf.exempt
+def save_ta_tickers():
+    """Save the user's TA quick-access ticker list."""
+    data = flask_request.get_json(silent=True) or {}
+    tickers = data.get("tickers", [])
+
+    settings = UserSettings.query.filter_by(user_id=current_user.id).first()
+    if not settings:
+        settings = UserSettings(user_id=current_user.id, widget_order={})
+        db.session.add(settings)
+
+    wo = settings.widget_order if isinstance(settings.widget_order, dict) else {}
+    wo["ta_tickers"] = tickers
+    settings.widget_order = wo
+    from sqlalchemy.orm.attributes import flag_modified
+    flag_modified(settings, "widget_order")
+    db.session.commit()
+    return jsonify({"ok": True, "tickers": tickers})

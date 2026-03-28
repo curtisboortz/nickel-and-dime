@@ -123,6 +123,15 @@ def sentiment():
     CNN and Crypto F&G are read from SentimentCache. If cache is empty,
     a background thread is kicked off to populate it (never blocks response).
     """
+    try:
+        return _build_sentiment_response()
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"_error": str(e)}), 500
+
+
+def _build_sentiment_response():
     from ..models.market import PriceCache
 
     result = {}

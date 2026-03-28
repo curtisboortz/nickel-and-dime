@@ -3588,8 +3588,12 @@ var _sentimentRetries = 0;
 function loadSentimentGauges() {
   if (_sentimentLoaded) return;
   fetch("/api/sentiment")
-    .then(function(r) { return r.json(); })
+    .then(function(r) {
+      if (!r.ok) { console.error("[Sentiment] HTTP " + r.status); throw new Error("HTTP " + r.status); }
+      return r.json();
+    })
     .then(function(d) {
+      console.log("[Sentiment] response:", JSON.stringify(d));
       var keys = ["stock", "crypto", "gold", "vix", "yield_curve"];
       var filled = 0;
       keys.forEach(function(k) {

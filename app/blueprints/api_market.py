@@ -41,10 +41,23 @@ def live_data():
     result["gold_oil_ratio"] = round(gold / oil, 2) if oil else None
 
     custom_cards = CustomPulseCard.query.filter_by(user_id=current_user.id).all()
+    ratio_ids = set()
     for card in custom_cards:
-        row = prices.get(card.ticker)
-        if row:
-            result[f"custom-{card.id}"] = row.price
+        resolved = _normalize_ticker(card.ticker)
+        if "/" in card.ticker:
+            ratio_ids.add(card.id)
+            parts = card.ticker.split("/", 1)
+            num_sym = _normalize_ticker(parts[0])
+            den_sym = _normalize_ticker(parts[1])
+            num_row = prices.get(num_sym)
+            den_row = prices.get(den_sym)
+            if num_row and den_row and den_row.price and den_row.price > 0:
+                result[f"custom-{card.id}"] = round(num_row.price / den_row.price, 4)
+        else:
+            row = prices.get(resolved) or prices.get(card.ticker)
+            if row:
+                result[f"custom-{card.id}"] = row.price
+    result["_ratio_ids"] = [f"custom-{rid}" for rid in ratio_ids]
 
     pv = compute_portfolio_value(current_user.id)
     result["total"] = pv["total"]
@@ -122,7 +135,12 @@ def sparklines():
         if lkey.startswith("custom-"):
             card_id = key.split("-", 1)[1]
             card = CustomPulseCard.query.filter_by(id=card_id).first()
-            yf_sym = card.ticker if card else key
+            if not card:
+                continue
+            if "/" in card.ticker:
+                _spark_ratio(result, key, card.ticker)
+                continue
+            yf_sym = _normalize_ticker(card.ticker)
         else:
             yf_sym = SPARK_SYMBOL_MAP.get(lkey, key)
         try:
@@ -139,6 +157,29 @@ def sparklines():
     return jsonify(result)
 
 
+def _spark_ratio(result, key, ratio_ticker):
+    """Build sparkline data for a ratio like GOLD/SILVER."""
+    parts = ratio_ticker.split("/", 1)
+    num_sym = _normalize_ticker(parts[0])
+    den_sym = _normalize_ticker(parts[1])
+    try:
+        num_hist = yf.Ticker(num_sym).history(period="5d", interval="30m")
+        den_hist = yf.Ticker(den_sym).history(period="5d", interval="30m")
+        if num_hist.empty or den_hist.empty:
+            return
+        merged = num_hist[["Close"]].rename(columns={"Close": "num"}).join(
+            den_hist[["Close"]].rename(columns={"Close": "den"}), how="inner"
+        )
+        points = []
+        for _, row in merged.iterrows():
+            if row["den"] and row["den"] > 0:
+                points.append(round(row["num"] / row["den"], 4))
+        if len(points) > 1:
+            result[key] = points
+    except Exception:
+        pass
+
+
 @api_market_bp.route("/historical")
 @login_required
 def historical():
@@ -146,6 +187,14 @@ def historical():
     symbol = flask_request.args.get("symbol", "SPY")
     period = flask_request.args.get("period", "1mo")
     interval = flask_request.args.get("interval", "1d")
+
+    if symbol.startswith("custom-"):
+        from ..models.settings import CustomPulseCard
+        card_id = symbol.split("-", 1)[1]
+        card = CustomPulseCard.query.filter_by(id=card_id).first()
+        if card and "/" in card.ticker:
+            return _historical_ratio(card.ticker, period, interval, symbol)
+        symbol = _normalize_ticker(card.ticker) if card else symbol
 
     try:
         dxy_syms = ["DX-Y.NYB", "DX=F"] if symbol == "DX=F" else [symbol]
@@ -169,6 +218,39 @@ def historical():
     return jsonify({"symbol": symbol, "period": period, "data": data})
 
 
+def _historical_ratio(ratio_ticker, period, interval, label):
+    """Return historical OHLC-ish data for a ratio like GOLD/SILVER."""
+    parts = ratio_ticker.split("/", 1)
+    num_sym = _normalize_ticker(parts[0])
+    den_sym = _normalize_ticker(parts[1])
+    try:
+        num_hist = yf.Ticker(num_sym).history(period=period, interval=interval)
+        den_hist = yf.Ticker(den_sym).history(period=period, interval=interval)
+        if num_hist.empty or den_hist.empty:
+            return jsonify({"symbol": label, "period": period, "data": []})
+        merged = num_hist[["Open", "High", "Low", "Close"]].join(
+            den_hist[["Open", "High", "Low", "Close"]], how="inner", lsuffix="_n", rsuffix="_d"
+        )
+        data = []
+        for idx, row in merged.iterrows():
+            d_open = row["Open_d"] or 1
+            d_high = row["High_d"] or 1
+            d_low = row["Low_d"] or 1
+            d_close = row["Close_d"] or 1
+            if d_open > 0 and d_close > 0:
+                data.append({
+                    "t": str(idx),
+                    "o": round(row["Open_n"] / d_open, 4),
+                    "h": round(row["High_n"] / d_low, 4),
+                    "l": round(row["Low_n"] / d_high, 4),
+                    "c": round(row["Close_n"] / d_close, 4),
+                    "v": 0,
+                })
+        return jsonify({"symbol": label, "period": period, "data": data})
+    except Exception:
+        return jsonify({"symbol": label, "period": period, "data": []})
+
+
 @api_market_bp.route("/pulse-order", methods=["POST"])
 @login_required
 @csrf.exempt
@@ -184,6 +266,32 @@ def save_pulse_order():
     return jsonify({"success": True})
 
 
+CRYPTO_SUFFIXES = {
+    "BTC", "ETH", "SOL", "XRP", "ADA", "DOGE", "DOT", "AVAX",
+    "MATIC", "LINK", "UNI", "ATOM", "NEAR", "LTC", "XLM", "ALGO",
+    "FIL", "ICP", "HBAR", "VET", "SAND", "MANA", "APE", "SHIB",
+    "TRX", "ETC", "BCH", "XMR", "FTM", "CRO", "AAVE", "MKR",
+    "COMP", "SNX", "GRT", "RNDR", "OP", "ARB", "SUI", "SEI", "PEPE",
+}
+
+COMMODITY_ALIAS = {
+    "GOLD": "GC=F", "SILVER": "SI=F", "OIL": "CL=F", "COPPER": "HG=F",
+    "DXY": "DX=F", "VIX": "^VIX", "BITCOIN": "BTC-USD",
+}
+
+
+def _normalize_ticker(raw):
+    """Normalize user input to a valid Yahoo Finance symbol."""
+    t = raw.strip().upper()
+    if "/" in t:
+        return t
+    if t in COMMODITY_ALIAS:
+        return COMMODITY_ALIAS[t]
+    if t in CRYPTO_SUFFIXES and not t.endswith("-USD"):
+        return t + "-USD"
+    return t
+
+
 @api_market_bp.route("/pulse-cards", methods=["POST"])
 @login_required
 @csrf.exempt
@@ -191,15 +299,18 @@ def add_pulse_card():
     """Add a custom ticker to the pulse bar."""
     from ..models.settings import CustomPulseCard
     data = flask_request.get_json(silent=True) or {}
-    ticker = (data.get("ticker") or "").strip().upper()
-    label = (data.get("label") or ticker).strip()
-    if not ticker:
+    raw_ticker = (data.get("ticker") or "").strip().upper()
+    label = (data.get("label") or "").strip()
+    if not raw_ticker:
         return jsonify({"error": "Ticker is required"}), 400
+    ticker = _normalize_ticker(raw_ticker)
+    if not label:
+        label = raw_ticker
     existing = CustomPulseCard.query.filter_by(
         user_id=current_user.id, ticker=ticker
     ).first()
     if existing:
-        return jsonify({"error": f"{ticker} is already on your pulse bar"}), 400
+        return jsonify({"error": f"{raw_ticker} is already on your pulse bar"}), 400
     max_pos = db.session.query(db.func.max(CustomPulseCard.position)).filter_by(
         user_id=current_user.id
     ).scalar() or 0

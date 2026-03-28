@@ -225,7 +225,7 @@
     </div>
     {% endif %}
     {% for card in custom_pulse_cards %}
-    <div class="pulse-item" draggable="true" data-pulse-id="custom-{{ card.id }}" onclick="openPulseChart('{{ card.ticker }}','{{ card.label }}')">
+    <div class="pulse-item" draggable="true" data-pulse-id="custom-{{ card.id }}" data-pulse-type="{{ 'ratio' if '/' in card.ticker else 'stock' }}">
       <button class="pulse-remove" onclick="event.stopPropagation();removePulseCard('{{ card.id }}')" title="Remove">&times;</button>
       <span class="pulse-label">{{ card.label }}</span>
       <span class="pulse-price" data-pulse-price="custom-{{ card.id }}">--</span>
@@ -243,9 +243,9 @@
     <div style="background:var(--bg-card);border:1px solid var(--border-accent);border-radius:var(--radius);padding:24px;max-width:340px;width:90%;">
       <div class="card-title" style="margin-bottom:14px;">Add Market Ticker</div>
       <div style="display:flex;flex-direction:column;gap:10px;">
-        <div class="ctrl-group"><span class="label">Ticker Symbol</span><input type="text" id="pulse-add-ticker" placeholder="AAPL, TSLA, ETH..." style="text-transform:uppercase;"></div>
+        <div class="ctrl-group"><span class="label">Ticker Symbol</span><input type="text" id="pulse-add-ticker" placeholder="AAPL, ETH, GOLD/SILVER..." style="text-transform:uppercase;"></div>
+        <p class="hint" style="margin:0;font-size:0.72rem;">Stocks: AAPL, TSLA &bull; Crypto: ETH, SOL &bull; Ratios: GOLD/SILVER, GOLD/OIL, BTC/ETH</p>
         <div class="ctrl-group"><span class="label">Display Label (optional)</span><input type="text" id="pulse-add-label" placeholder="Apple"></div>
-        <div class="ctrl-group"><span class="label">Type</span><select id="pulse-add-type" style="width:100%;"><option value="stock">Stock / ETF</option><option value="crypto">Crypto</option></select></div>
         <div style="display:flex;gap:8px;justify-content:flex-end;">
           <button type="button" class="secondary" onclick="hideAddPulseCard()">Cancel</button>
           <button type="button" onclick="addPulseCard()">Add</button>

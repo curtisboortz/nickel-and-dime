@@ -29,10 +29,21 @@ def refresh_all_prices(symbols=None):
         from ..models.settings import CustomPulseCard
         user_tickers = db.session.query(Holding.ticker).distinct().all()
         custom_tickers = db.session.query(CustomPulseCard.ticker).distinct().all()
+        from ..blueprints.api_market import _normalize_ticker
+        custom_syms = []
+        for t in custom_tickers:
+            if not t[0]:
+                continue
+            tk = t[0]
+            if "/" in tk:
+                for p in tk.split("/"):
+                    custom_syms.append(_normalize_ticker(p.strip()))
+            else:
+                custom_syms.append(_normalize_ticker(tk))
         symbols = list(set(
             standard
             + [t[0] for t in user_tickers if t[0]]
-            + [t[0] for t in custom_tickers if t[0]]
+            + custom_syms
         ))
     else:
         symbols = list(set(standard + symbols))

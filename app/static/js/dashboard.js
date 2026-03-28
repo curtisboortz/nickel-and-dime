@@ -837,13 +837,12 @@ function hideAddPulseCard() {
 }
 function addPulseCard() {
   var ticker = document.getElementById("pulse-add-ticker").value.trim().toUpperCase();
-  var label = document.getElementById("pulse-add-label").value.trim() || ticker;
-  var ptype = (document.getElementById("pulse-add-type") || {}).value || "stock";
+  var label = document.getElementById("pulse-add-label").value.trim();
   if (!ticker) return alert("Please enter a ticker symbol.");
   fetch("/api/pulse-cards", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ ticker: ticker, label: label, type: ptype })
+    body: JSON.stringify({ ticker: ticker, label: label })
   }).then(function(r) { return r.json(); }).then(function(d) {
     if (d.success) location.reload();
     else alert(d.error || "Failed to add ticker.");
@@ -894,8 +893,7 @@ function restoreAllPulseCards() {
   function pcmResolveSymbol(pulseId, pulseType) {
     if (PCM_SYMBOL_MAP[pulseId]) return { sym: PCM_SYMBOL_MAP[pulseId], type: pulseId === "btc" ? "crypto" : "stock" };
     if (pulseId.startsWith("custom-")) {
-      var ticker = pulseId.substring(7);
-      return { sym: ticker, type: pulseType || "stock" };
+      return { sym: pulseId, type: pulseType || "stock" };
     }
     return { sym: pulseId, type: pulseType || "stock" };
   }
@@ -1222,9 +1220,11 @@ function applyLiveDataToDOM(d) {
     "tnx_10y": {val: d.tnx_10y, fmt: "pct"},
     "tnx_2y": {val: d.tnx_2y, fmt: "pct"}
   };
+  var ratioIds = d._ratio_ids || [];
   for (var dKey in d) {
-    if (dKey.indexOf("custom_") === 0 && d[dKey]) {
-      pulseMap[dKey.replace("_", "-")] = {val: d[dKey], fmt: "dollar2"};
+    if (dKey.indexOf("custom-") === 0 && d[dKey] != null) {
+      var isRatio = ratioIds.indexOf(dKey) >= 0;
+      pulseMap[dKey] = {val: d[dKey], fmt: isRatio ? "nodollar2" : "dollar2"};
     }
   }
   document.querySelectorAll("[data-pulse-price]").forEach(function(el) {

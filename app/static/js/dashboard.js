@@ -4105,8 +4105,11 @@ function _loadPhysicalMetals() {
         totalCost += totalItemCost;
         var glColor = gl >= 0 ? "var(--success)" : "var(--danger)";
         var glSign = gl >= 0 ? "" : "-";
-        html += '<tr>';
-        html += '<td style="padding:8px 6px;text-transform:capitalize;font-weight:500;">' + (m.metal || "") + '</td>';
+        var noteText = (m.note || m.description || "").replace(/"/g, "&quot;");
+        var rowTitle = noteText ? ' title="' + noteText + '" style="cursor:help;"' : '';
+        html += '<tr' + rowTitle + '>';
+        var noteHint = noteText ? '<span style="display:block;font-size:0.72rem;color:var(--text-muted);font-weight:400;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + noteText + '">' + noteText + '</span>' : '';
+        html += '<td style="padding:8px 6px;text-transform:capitalize;font-weight:500;">' + (m.metal || "") + noteHint + '</td>';
         html += '<td style="padding:8px 6px;">' + (m.form || "") + '</td>';
         html += '<td style="padding:8px 6px;text-align:right;" class="mono">' + oz + '</td>';
         html += '<td style="padding:8px 6px;text-align:right;" class="mono">$' + cost.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}) + '</td>';

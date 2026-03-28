@@ -3560,20 +3560,20 @@ function convertDisplayCurrency(rate, symbol) {
 
 /* ── Sentiment Gauges ── */
 var _sentimentLoaded = false;
+var _sentimentRetries = 0;
 function loadSentimentGauges() {
   if (_sentimentLoaded) return;
-  _sentimentLoaded = true;
   fetch("/api/sentiment")
     .then(function(r) { return r.json(); })
     .then(function(d) {
       var keys = ["stock", "crypto", "gold", "vix", "yield_curve"];
+      var filled = 0;
       keys.forEach(function(k) {
         var info = d[k];
         if (!info) {
-          var lbl = document.getElementById("gl-" + k);
-          if (lbl) { lbl.textContent = "N/A"; lbl.className = "gauge-label neutral"; }
           return;
         }
+        filled++;
         var score = (k === "vix") ? info.score : info.value;
         drawGauge("gauge-" + k, score);
         var valEl = document.getElementById("gv-" + k);
@@ -3589,9 +3589,19 @@ function loadSentimentGauges() {
           if (k === "yield_curve" && info.spread != null) subEl.textContent = "Spread: " + (info.spread > 0 ? "+" : "") + info.spread.toFixed(2) + "%";
         }
       });
+      if (filled > 0) {
+        _sentimentLoaded = true;
+      } else if (_sentimentRetries < 5) {
+        _sentimentRetries++;
+        setTimeout(loadSentimentGauges, 8000);
+      }
     })
     .catch(function(e) {
       console.warn("[Sentiment] fetch failed:", e);
+      if (_sentimentRetries < 5) {
+        _sentimentRetries++;
+        setTimeout(loadSentimentGauges, 8000);
+      }
     });
 }
 

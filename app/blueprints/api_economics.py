@@ -122,6 +122,9 @@ def sentiment():
     Each gauge receives a 0-100 `value` for the needle and a human `label`.
     VIX additionally carries the raw VIX in `score` (used by subtitle).
     Yield curve additionally carries the raw `spread`.
+
+    If cache is empty, triggers a background refresh and returns what we can
+    compute from PriceCache alone.
     """
     from ..models.market import PriceCache
 
@@ -137,6 +140,28 @@ def sentiment():
             "score": score,
             "label": _fg_label(score),
         }
+    else:
+        try:
+            import fear_greed
+            data = fear_greed.get()
+            score = data.get("score")
+            if score is not None:
+                score = round(float(score), 1)
+                result["stock"] = {
+                    "value": score,
+                    "score": score,
+                    "label": data.get("rating", _fg_label(score)),
+                }
+                from datetime import datetime, timezone as tz
+                existing = SentimentCache.query.get("cnn_fg")
+                if existing:
+                    existing.data = {"score": score, "rating": data.get("rating", "")}
+                    existing.updated_at = datetime.now(tz.utc)
+                else:
+                    db.session.add(SentimentCache(source="cnn_fg", data={"score": score, "rating": data.get("rating", "")}))
+                db.session.commit()
+        except Exception:
+            pass
 
     if crypto and crypto.data:
         score = crypto.data.get("score", 0)
@@ -145,6 +170,34 @@ def sentiment():
             "score": score,
             "label": crypto.data.get("label") or _fg_label(score),
         }
+    else:
+        try:
+            import urllib.request
+            import json as _json
+            req = urllib.request.Request(
+                "https://api.alternative.me/fng/?limit=1",
+                headers={"User-Agent": "Mozilla/5.0"},
+            )
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                items = _json.loads(resp.read().decode()).get("data", [])
+            if items:
+                score = int(items[0].get("value", 0))
+                label = items[0].get("value_classification", "")
+                result["crypto"] = {
+                    "value": score,
+                    "score": score,
+                    "label": label or _fg_label(score),
+                }
+                from datetime import datetime, timezone as tz
+                existing = SentimentCache.query.get("crypto_fg")
+                if existing:
+                    existing.data = {"score": score, "label": label}
+                    existing.updated_at = datetime.now(tz.utc)
+                else:
+                    db.session.add(SentimentCache(source="crypto_fg", data={"score": score, "label": label}))
+                db.session.commit()
+        except Exception:
+            pass
 
     vix_row = PriceCache.query.get("^VIX")
     vix_val = vix_row.price if vix_row and vix_row.price else 0

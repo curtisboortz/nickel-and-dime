@@ -36,8 +36,59 @@ var NDDiag = (function() {
 
   function getLog() { return _log.slice(); }
 
-  return { track: track, summary: summary, getLog: getLog };
+  function report() {
+    var s = summary();
+    var payload = { widgets: s.widgets, errors: _log.filter(function(e) { return e.status === "error"; }), url: window.location.href };
+    fetch("/api/client-errors", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }).catch(function() {});
+  }
+
+  function showPanel() {
+    var existing = document.getElementById("nd-diag-panel");
+    if (existing) { existing.remove(); return; }
+    var s = summary();
+    var panel = document.createElement("div");
+    panel.id = "nd-diag-panel";
+    panel.style.cssText = "position:fixed;top:10px;right:10px;width:420px;max-height:80vh;overflow:auto;background:rgba(9,9,11,0.97);border:1px solid rgba(255,255,255,0.15);border-radius:12px;padding:16px;z-index:99999;font-family:monospace;font-size:12px;color:#e2e8f0;box-shadow:0 8px 32px rgba(0,0,0,0.5);";
+    var statusColor = s.errors > 0 ? "#f87171" : s.warnings > 0 ? "#fbbf24" : "#34d399";
+    var html = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">';
+    html += '<span style="font-size:14px;font-weight:600;">System Diagnostics</span>';
+    html += '<span style="cursor:pointer;font-size:18px;opacity:0.6;" onclick="document.getElementById(\'nd-diag-panel\').remove();">&times;</span></div>';
+    html += '<div style="display:flex;gap:12px;margin-bottom:12px;">';
+    html += '<div style="background:rgba(52,211,153,0.15);padding:6px 12px;border-radius:6px;"><span style="color:#34d399;font-weight:600;">' + s.ok + '</span> OK</div>';
+    html += '<div style="background:rgba(248,113,113,0.15);padding:6px 12px;border-radius:6px;"><span style="color:#f87171;font-weight:600;">' + s.errors + '</span> Errors</div>';
+    html += '<div style="background:rgba(251,191,36,0.15);padding:6px 12px;border-radius:6px;"><span style="color:#fbbf24;font-weight:600;">' + s.warnings + '</span> Warn</div></div>';
+    html += '<div style="border-top:1px solid rgba(255,255,255,0.1);padding-top:8px;">';
+    Object.keys(s.widgets).forEach(function(w) {
+      var st = s.widgets[w];
+      var c = st === "ok" || st === "loaded" ? "#34d399" : st === "error" ? "#f87171" : st === "warn" ? "#fbbf24" : "#94a3b8";
+      html += '<div style="display:flex;justify-content:space-between;padding:3px 0;"><span>' + w + '</span><span style="color:' + c + ';">' + st + '</span></div>';
+    });
+    html += '</div>';
+    var errors = _log.filter(function(e) { return e.status === "error"; });
+    if (errors.length > 0) {
+      html += '<div style="border-top:1px solid rgba(255,255,255,0.1);margin-top:8px;padding-top:8px;"><div style="color:#f87171;font-weight:600;margin-bottom:4px;">Errors (' + errors.length + ')</div>';
+      errors.slice(-10).forEach(function(e) {
+        html += '<div style="padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.05);"><span style="color:#94a3b8;">[' + e.time + ']</span> <span style="color:#fbbf24;">' + e.widget + '</span>: ' + (e.detail || "").substring(0, 120) + '</div>';
+      });
+      html += '</div>';
+    }
+    html += '<div style="margin-top:12px;display:flex;gap:8px;">';
+    html += '<button onclick="NDDiag.report();this.textContent=\'Sent!\'" style="background:rgba(99,102,241,0.2);border:1px solid rgba(99,102,241,0.4);color:#818cf8;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:11px;">Send Report</button>';
+    html += '<button onclick="fetch(\'/api/diag\').then(r=>r.json()).then(d=>{var w=window.open(\'\',\'_blank\');w.document.write(\'<pre>\'+JSON.stringify(d,null,2)+\'</pre>\');})" style="background:rgba(52,211,153,0.2);border:1px solid rgba(52,211,153,0.4);color:#34d399;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:11px;">Server Health</button>';
+    html += '</div>';
+    panel.innerHTML = html;
+    document.body.appendChild(panel);
+  }
+
+  return { track: track, summary: summary, getLog: getLog, report: report, showPanel: showPanel };
 })();
+
+window.addEventListener("error", function(e) {
+  NDDiag.track("global", "error", (e.filename || "") + ":" + (e.lineno || "") + " " + (e.message || ""));
+});
+window.addEventListener("unhandledrejection", function(e) {
+  NDDiag.track("global", "error", "Unhandled promise: " + (e.reason ? (e.reason.message || String(e.reason)) : "unknown"));
+});
 
 /* Fix candlestick wick-through-body artifact: redraw opaque bodies over wicks.
    CandlestickElement pixel props: x, open, high, low, close, width.
@@ -340,11 +391,12 @@ function saveAllocationTargets() {
 /* ── Allocation Donut ── */
 var _donutChart = null;
 function buildDonut() {
+  NDDiag.track("donut", "loading");
   var data = window.BUCKETS_DATA;
-  if (!data || typeof data !== "object") return;
+  if (!data || typeof data !== "object") { NDDiag.track("donut", "warn", "no BUCKETS_DATA"); return; }
   var labels = Object.keys(data);
   var values = Object.values(data);
-  if (labels.length === 0) return;
+  if (labels.length === 0) { NDDiag.track("donut", "warn", "empty buckets"); return; }
   var colorMap = {
     "Gold":"#d4a017", "Silver":"#c0c0c0", "Equities":"#34d399", "Crypto":"#818cf8",
     "Cash":"#64748b", "RealEstate":"#06b6d4", "Art":"#e879f9", "ManagedBlend":"#fb923c",
@@ -379,6 +431,7 @@ function buildDonut() {
       }
     }
   });
+  NDDiag.track("donut", "ok", labels.length + " slices");
 }
 
 /* ── Portfolio History Chart ── */
@@ -391,8 +444,10 @@ function setHistoryChartType(type) {
 }
 function buildHistoryChart(metric) {
   metric = metric || "total";
+  NDDiag.track("history-chart", "loading", _histChartType + "/" + metric);
   var ctx = document.getElementById("history-chart");
   if (window.historyChart) window.historyChart.destroy();
+  if (!ctx) { NDDiag.track("history-chart", "warn", "no canvas"); return; }
 
   var labels = PRICE_HISTORY_DATA.map(function(r) { return r.date; });
 
@@ -2031,7 +2086,9 @@ function updateProjectionTimelineLabel() {
 }
 
 function buildProjectionChart() {
+  NDDiag.track("projection", "loading");
   updateProjectionChart();
+  NDDiag.track("projection", "ok");
   ["proj-starting", "proj-rate", "proj-monthly", "proj-years"].forEach(function(id) {
     var el = document.getElementById(id);
     if (el) el.addEventListener("input", updateProjectionChart);
@@ -3312,8 +3369,9 @@ function updateGoalAmount(idx) {
 
 /* ── Monte Carlo Simulation ── */
 function runMonteCarlo() {
+  NDDiag.track("monte-carlo", "loading");
   var mcYearsEl = document.getElementById("mc-years");
-  if (!mcYearsEl) return;
+  if (!mcYearsEl) { NDDiag.track("monte-carlo", "warn", "no #mc-years element"); return; }
   var years = parseInt(mcYearsEl.value) || 10;
   var contrib = parseFloat(document.getElementById("mc-contrib").value) || 0;
   var current = window.PORTFOLIO_TOTAL || 0;
@@ -3399,14 +3457,15 @@ function runMonteCarlo() {
       }
     }
   });
+  NDDiag.track("monte-carlo", "ok");
 }
-// Auto-run on Charts tab
 setTimeout(runMonteCarlo, 500);
 
 /* ── Drawdown Analysis ── */
 function buildDrawdownChart() {
-  if (PRICE_HISTORY_DATA.length < 3) return;
-  if (!document.getElementById("drawdown-chart")) return;
+  NDDiag.track("drawdown", "loading");
+  if (PRICE_HISTORY_DATA.length < 3) { NDDiag.track("drawdown", "warn", "insufficient data (" + PRICE_HISTORY_DATA.length + " pts)"); return; }
+  if (!document.getElementById("drawdown-chart")) { NDDiag.track("drawdown", "warn", "no canvas"); return; }
   var labels = [], drawdowns = [];
   var peak = 0;
   var maxDD = 0, maxDDDate = "", recoveryDays = 0, inDD = false, ddStart = "";
@@ -3460,6 +3519,7 @@ function buildDrawdownChart() {
       '<div class="mono" style="font-size:1.1rem;">' + PRICE_HISTORY_DATA.length + '</div>' +
       '</div>';
   }
+  NDDiag.track("drawdown", "ok", PRICE_HISTORY_DATA.length + " data points");
 }
 buildDrawdownChart();
 

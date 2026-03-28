@@ -1,8 +1,25 @@
 """Nickel&Dime application factory."""
 
 import os
+import logging
 from flask import Flask
 from .config import config_by_name
+
+
+def _configure_logging(app):
+    """Set up structured logging for Railway/production visibility."""
+    level = logging.DEBUG if app.debug else logging.INFO
+    fmt = "[%(asctime)s] %(levelname)s %(name)s: %(message)s"
+    handler = logging.StreamHandler()
+    handler.setFormatter(logging.Formatter(fmt, datefmt="%Y-%m-%d %H:%M:%S"))
+
+    for logger_name in ("nd", "nd.client", "nd.scheduler", "nd.market", "nd.sentiment", "nd.fred", "nd.calendar"):
+        lg = logging.getLogger(logger_name)
+        lg.setLevel(level)
+        if not lg.handlers:
+            lg.addHandler(handler)
+
+    app.logger.setLevel(level)
 
 
 def create_app(config_name=None):
@@ -20,6 +37,7 @@ def create_app(config_name=None):
     if hasattr(config_by_name[config_name], "init_app"):
         config_by_name[config_name].init_app(app)
 
+    _configure_logging(app)
     _init_extensions(app)
     _register_blueprints(app)
     _register_error_handlers(app)
@@ -27,7 +45,6 @@ def create_app(config_name=None):
     _register_shell_context(app)
     _register_domain_redirect(app)
 
-    # Start background scheduler only when Gunicorn is serving (not during migrations/CLI)
     if not app.config.get("TESTING") and os.environ.get("RUN_SCHEDULER") == "1":
         _init_scheduler(app)
 

@@ -2,7 +2,7 @@
 
 from datetime import datetime, timezone
 
-from flask import Blueprint, render_template, redirect, url_for, Response, abort, jsonify, send_from_directory, current_app
+from flask import Blueprint, render_template, redirect, url_for, Response, abort, jsonify, send_from_directory, current_app, request as flask_request
 from flask_login import login_required, current_user
 
 from ..utils.auth import is_pro
@@ -126,6 +126,28 @@ def diagnostics():
             "cmc_key_set": bool(os.environ.get("CMC_API_KEY")),
         },
     })
+
+
+@pages_bp.route("/api/client-errors", methods=["POST"])
+@login_required
+def client_errors():
+    """Receive client-side error reports from the NDDiag framework."""
+    import logging
+    data = flask_request.get_json(silent=True) or {}
+    errors = data.get("errors", [])
+    widgets = data.get("widgets", {})
+    user_email = current_user.email if hasattr(current_user, "email") else "unknown"
+    logger = logging.getLogger("nd.client")
+    for err in errors[-20:]:
+        logger.warning(
+            "[ClientError] user=%s widget=%s detail=%s time=%s url=%s",
+            user_email, err.get("widget", "?"), err.get("detail", "?"),
+            err.get("time", "?"), data.get("url", "?"),
+        )
+    failed = [k for k, v in widgets.items() if v == "error"]
+    if failed:
+        logger.warning("[ClientReport] user=%s failed_widgets=%s", user_email, ",".join(failed))
+    return jsonify({"received": len(errors)})
 
 
 @pages_bp.route("/manifest.json")

@@ -1096,6 +1096,12 @@ function showClientDiag() {
   });
   out.textContent = lines.join("\n");
 }
+document.addEventListener("keydown", function(e) {
+  if (e.ctrlKey && e.shiftKey && e.key === "D") {
+    e.preventDefault();
+    if (typeof NDDiag !== "undefined") NDDiag.showPanel();
+  }
+});
 {% endif %}
 </script>
 <script src="{{ url_for('static', filename='js/theme.js') }}?v={{ v }}"></script>

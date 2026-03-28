@@ -375,6 +375,35 @@ def get_ta_tickers():
     return jsonify({"tickers": tickers})
 
 
+@api_portfolio_bp.route("/tax-loss-harvesting")
+@login_required
+def tax_loss_harvesting():
+    """Return holdings with unrealized losses > $50 for TLH opportunities."""
+    holdings = Holding.query.filter_by(user_id=current_user.id).all()
+    rows = []
+    for h in holdings:
+        qty = h.shares or 0
+        cost_total = h.value_override or 0
+        if not qty or not cost_total:
+            continue
+        cost_per = cost_total / qty
+        price_row = PriceCache.query.get(h.ticker)
+        live_price = price_row.price if price_row and price_row.price else 0
+        if not live_price:
+            continue
+        unrealized = (live_price - cost_per) * qty
+        if unrealized < -50:
+            rows.append({
+                "ticker": h.ticker,
+                "qty": round(qty, 3),
+                "cost_basis": round(cost_per, 2),
+                "current": round(live_price, 2),
+                "unrealized": round(unrealized, 0),
+            })
+    rows.sort(key=lambda r: r["unrealized"])
+    return jsonify({"rows": rows})
+
+
 @api_portfolio_bp.route("/perf-attribution")
 @login_required
 def perf_attribution():

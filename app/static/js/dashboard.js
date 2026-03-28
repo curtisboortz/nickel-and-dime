@@ -3479,6 +3479,30 @@ function buildPerfAttribution() {
 }
 buildPerfAttribution();
 
+/* ── Tax-Loss Harvesting ── */
+function loadTLH() {
+  var tbody = document.getElementById("tlh-tbody");
+  if (!tbody) return;
+  fetch("/api/tax-loss-harvesting")
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      var rows = d.rows || [];
+      if (!rows.length) return;
+      document.getElementById("tlh-card").style.display = "";
+      var html = "";
+      rows.forEach(function(r) {
+        html += '<tr><td><strong>' + r.ticker + '</strong></td>' +
+          '<td class="mono">' + r.qty.toFixed(3) + '</td>' +
+          '<td class="mono">$' + r.cost_basis.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}) + '</td>' +
+          '<td class="mono">$' + r.current.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}) + '</td>' +
+          '<td class="mono danger">$' + r.unrealized.toLocaleString() + '</td></tr>';
+      });
+      tbody.innerHTML = html;
+    })
+    .catch(function() {});
+}
+loadTLH();
+
 /* ── Multi-Currency ── */
 var FX_RATES = {};
 var BASE_CURRENCY = localStorage.getItem("wos-currency") || "USD";

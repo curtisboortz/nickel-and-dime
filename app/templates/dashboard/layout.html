@@ -840,6 +840,16 @@
       <div style="flex:1;min-width:250px;" id="perf-attr-table"></div>
     </div>
   </div>
+
+  <!-- Tax-Loss Harvesting -->
+  <div class="card" id="tlh-card" style="display:none;">
+    <div class="card-title">Tax-Loss Harvesting Opportunities</div>
+    <p class="hint" style="margin-bottom:10px;">Holdings with unrealized losses &gt; $50 (based on import value vs live price)</p>
+    <table>
+      <thead><tr><th>Ticker</th><th>Qty</th><th>Cost Basis</th><th>Current</th><th>Unrealized P&amp;L</th></tr></thead>
+      <tbody id="tlh-tbody"></tbody>
+    </table>
+  </div>
 </div>
 
 <!-- ═══ ECONOMICS TAB (lazy-loaded) ═══ -->

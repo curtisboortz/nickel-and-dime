@@ -15,27 +15,49 @@ def refresh_sentiment():
 
 
 def _refresh_cnn_fear_greed():
-    """Fetch CNN Fear & Greed Index."""
-    import urllib.request
-    import json
+    """Fetch CNN Fear & Greed Index via fear-greed library, with raw URL fallback."""
     try:
-        url = "https://production.dataviz.cnn.io/index/fearandgreed/graphdata"
-        req = urllib.request.Request(url, headers={
-            "User-Agent": "Mozilla/5.0",
-            "Accept": "application/json",
-        })
-        with urllib.request.urlopen(req, timeout=10) as resp:
-            data = json.loads(resp.read().decode())
-        score = data.get("fear_and_greed", {}).get("score")
-        rating = data.get("fear_and_greed", {}).get("rating")
+        import fear_greed
+        data = fear_greed.get()
+        score = data.get("score")
+        rating = data.get("rating", "")
         if score is not None:
             _upsert_sentiment("cnn_fg", {
                 "score": round(float(score), 1),
-                "rating": rating or "",
-                "timestamp": data.get("fear_and_greed", {}).get("timestamp", ""),
+                "rating": rating,
             })
+            print(f"[Sentiment] CNN F&G via library: {score} ({rating})")
+            return
     except Exception as e:
-        print(f"[Sentiment] CNN F&G error: {e}")
+        print(f"[Sentiment] fear-greed library error: {e}")
+
+    import urllib.request
+    import json
+    for url in [
+        "https://production.dataviz.cnn.io/index/fearandgreed/graphdata",
+        "https://production.dataviz.cnn.io/index/fearandgreed/current",
+    ]:
+        try:
+            req = urllib.request.Request(url, headers={
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                "Accept": "application/json",
+            })
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                data = json.loads(resp.read().decode())
+            fg = data.get("fear_and_greed", data)
+            score = fg.get("score")
+            rating = fg.get("rating", "")
+            if score is not None:
+                _upsert_sentiment("cnn_fg", {
+                    "score": round(float(score), 1),
+                    "rating": rating,
+                })
+                print(f"[Sentiment] CNN F&G via {url}: {score}")
+                return
+        except Exception as e:
+            print(f"[Sentiment] CNN F&G fallback ({url}) error: {e}")
+            continue
+    print("[Sentiment] All CNN F&G sources failed")
 
 
 def _refresh_crypto_fear_greed():

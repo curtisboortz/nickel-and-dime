@@ -1,6 +1,44 @@
 /* Nickel&Dime — Dashboard JavaScript */
 /* Core chart building, data fetching, and UI interactions */
 
+/* ── Diagnostic Logger ── */
+var NDDiag = (function() {
+  var _log = [];
+  var _widgetStatus = {};
+  var _start = Date.now();
+  function _ts() { return ((Date.now() - _start) / 1000).toFixed(2) + "s"; }
+
+  function track(widget, status, detail) {
+    var entry = { widget: widget, status: status, detail: detail || "", time: _ts(), ts: Date.now() };
+    _log.push(entry);
+    _widgetStatus[widget] = status;
+    if (status === "error") {
+      console.error("[ND:" + widget + "] " + (detail || "unknown error"));
+    } else if (status === "warn") {
+      console.warn("[ND:" + widget + "] " + (detail || ""));
+    } else {
+      console.log("[ND:" + widget + "] " + status + (detail ? " - " + detail : ""));
+    }
+  }
+
+  function summary() {
+    var ok = 0, err = 0, warn = 0, pending = 0;
+    var widgets = Object.keys(_widgetStatus);
+    widgets.forEach(function(w) {
+      var s = _widgetStatus[w];
+      if (s === "ok" || s === "loaded") ok++;
+      else if (s === "error") err++;
+      else if (s === "warn") warn++;
+      else pending++;
+    });
+    return { total: widgets.length, ok: ok, errors: err, warnings: warn, pending: pending, widgets: Object.assign({}, _widgetStatus) };
+  }
+
+  function getLog() { return _log.slice(); }
+
+  return { track: track, summary: summary, getLog: getLog };
+})();
+
 /* Fix candlestick wick-through-body artifact: redraw opaque bodies over wicks.
    CandlestickElement pixel props: x, open, high, low, close, width.
    In canvas coords lower y = higher price, so close < open means price went UP. */
@@ -80,6 +118,7 @@ var _summaryDataLoaded = false;
 function loadSummaryData() {
   if (_summaryDataLoaded) return;
   _summaryDataLoaded = true;
+  NDDiag.track("summary", "loading");
   loadAllocationTable();
   loadMonthlyInvestments();
   if (window.BUCKETS_DATA && Object.keys(window.BUCKETS_DATA).length > 0) {
@@ -2540,6 +2579,7 @@ function fredRefreshSectionPeriod(sectionId, horizon) {
 }
 function fredRenderAll(data) {
   if (!data) data = fredDataCache;
+  var seriesCount = Object.keys(data).length;
   renderFredDebt(data);
   renderFredInflation(data);
   renderFredMonetary(data);
@@ -2551,10 +2591,12 @@ function fredRenderAll(data) {
   renderFredGrowth(data);
   renderFredWui(data);
   renderFredHousing(data);
+  NDDiag.track("fred", "ok", seriesCount + " series rendered");
 }
 var _fredObserver = null;
 var _fredInited = false;
 function loadFredData() {
+  NDDiag.track("fred", "loading");
   var status = document.getElementById("fred-load-status");
   var horizonSelect = document.getElementById("fred-horizon");
   function getHorizon() { return (horizonSelect && horizonSelect.value) || "1y"; }
@@ -3092,10 +3134,10 @@ function saveDividend() {
     else alert(d.error || "Error saving.");
   }).catch(function() { alert("Network error."); });
 }
+var _divChart = null;
 function buildDivChart() {
   var ctx = document.getElementById("div-chart");
   if (!ctx || typeof Chart === "undefined" || DIVIDENDS.length === 0) return;
-  // Group by month
   var months = {};
   DIVIDENDS.forEach(function(d) {
     var m = d.date ? d.date.substring(0, 7) : "unknown";
@@ -3106,7 +3148,8 @@ function buildDivChart() {
   var labels = Object.keys(months).sort().slice(-12);
   var divData = labels.map(function(m) { return months[m].div; });
   var feeData = labels.map(function(m) { return -months[m].fee; });
-  new Chart(ctx, {
+  if (_divChart) { _divChart.destroy(); _divChart = null; }
+  _divChart = new Chart(ctx, {
     type: "bar",
     data: {
       labels: labels,
@@ -3422,8 +3465,10 @@ buildDrawdownChart();
 
 /* ── Performance Attribution ── */
 var PERF_DATA = window.PERF_DATA || {};
+var _perfAttrChart = null;
 function buildPerfAttribution() {
-  if (!document.getElementById("perf-attr-chart")) return;
+  NDDiag.track("perf-attr", "loading");
+  if (!document.getElementById("perf-attr-chart")) { NDDiag.track("perf-attr", "warn", "no canvas element"); return; }
   if (!PERF_DATA.buckets) {
     fetch("/api/perf-attribution")
       .then(function(r) { return r.json(); })
@@ -3431,7 +3476,7 @@ function buildPerfAttribution() {
         PERF_DATA = d;
         buildPerfAttribution();
       })
-      .catch(function(e) { console.error("Perf attribution fetch:", e); });
+      .catch(function(e) { NDDiag.track("perf-attr", "error", e.message || String(e)); });
     return;
   }
   var buckets = PERF_DATA.buckets;
@@ -3444,7 +3489,8 @@ function buildPerfAttribution() {
   var colors = labels.map(function(b) { return colorMap[b] || "#94a3b8"; });
   var ctx = document.getElementById("perf-attr-chart");
   if (!ctx || typeof Chart === "undefined") return;
-  new Chart(ctx, {
+  if (_perfAttrChart) { _perfAttrChart.destroy(); _perfAttrChart = null; }
+  _perfAttrChart = new Chart(ctx, {
     type: "bar",
     data: {
       labels: labels,
@@ -3476,18 +3522,20 @@ function buildPerfAttribution() {
     }
     tableEl.innerHTML = rows;
   }
+  NDDiag.track("perf-attr", "ok", labels.length + " buckets, $" + total.toLocaleString());
 }
 buildPerfAttribution();
 
 /* ── Tax-Loss Harvesting ── */
 function loadTLH() {
+  NDDiag.track("tlh", "loading");
   var tbody = document.getElementById("tlh-tbody");
-  if (!tbody) return;
+  if (!tbody) { NDDiag.track("tlh", "warn", "no #tlh-tbody element"); return; }
   fetch("/api/tax-loss-harvesting")
     .then(function(r) { return r.json(); })
     .then(function(d) {
       var rows = d.rows || [];
-      if (!rows.length) return;
+      if (!rows.length) { NDDiag.track("tlh", "ok", "no harvesting opportunities"); return; }
       document.getElementById("tlh-card").style.display = "";
       var html = "";
       rows.forEach(function(r) {
@@ -3498,8 +3546,9 @@ function loadTLH() {
           '<td class="mono danger">$' + r.unrealized.toLocaleString() + '</td></tr>';
       });
       tbody.innerHTML = html;
+      NDDiag.track("tlh", "ok", rows.length + " opportunities");
     })
-    .catch(function() {});
+    .catch(function(e) { NDDiag.track("tlh", "error", e.message || String(e)); });
 }
 loadTLH();
 
@@ -3587,18 +3636,21 @@ var _sentimentLoaded = false;
 var _sentimentRetries = 0;
 function loadSentimentGauges() {
   if (_sentimentLoaded) return;
+  NDDiag.track("sentiment", "loading", "attempt " + (_sentimentRetries + 1));
   fetch("/api/sentiment")
     .then(function(r) {
-      if (!r.ok) { console.error("[Sentiment] HTTP " + r.status); throw new Error("HTTP " + r.status); }
+      if (!r.ok) { NDDiag.track("sentiment", "error", "HTTP " + r.status); throw new Error("HTTP " + r.status); }
       return r.json();
     })
     .then(function(d) {
-      console.log("[Sentiment] response:", JSON.stringify(d));
+      if (d._error) { NDDiag.track("sentiment", "error", "Server: " + d._error); return; }
       var keys = ["stock", "crypto", "gold", "vix", "yield_curve"];
       var filled = 0;
+      var missing = [];
       keys.forEach(function(k) {
         var info = d[k];
         if (!info) {
+          missing.push(k);
           return;
         }
         filled++;
@@ -3619,13 +3671,17 @@ function loadSentimentGauges() {
       });
       if (filled > 0) {
         _sentimentLoaded = true;
+        NDDiag.track("sentiment", "ok", filled + "/5 gauges" + (missing.length ? ", missing: " + missing.join(",") : ""));
       } else if (_sentimentRetries < 5) {
+        NDDiag.track("sentiment", "warn", "0 gauges, retrying (" + (_sentimentRetries+1) + "/5)");
         _sentimentRetries++;
         setTimeout(loadSentimentGauges, 8000);
+      } else {
+        NDDiag.track("sentiment", "error", "Gave up after 5 retries, 0 gauges");
       }
     })
     .catch(function(e) {
-      console.warn("[Sentiment] fetch failed:", e);
+      NDDiag.track("sentiment", "error", e.message || String(e));
       if (_sentimentRetries < 5) {
         _sentimentRetries++;
         setTimeout(loadSentimentGauges, 8000);
@@ -3894,6 +3950,7 @@ function _openBalMenu(e, id, name, idx, total) {
 function loadBalances() {
   if (_balancesLoaded) return;
   _balancesLoaded = true;
+  NDDiag.track("balances", "loading");
   var wrap = document.getElementById("balances-table-wrap");
   if (!wrap) return;
   fetch("/api/balances")
@@ -3928,9 +3985,11 @@ function loadBalances() {
       html += '<button onclick="addBalance()" style="padding:8px 16px;font-size:0.85rem;background:var(--accent-primary);color:#fff;border:none;border-radius:6px;cursor:pointer;white-space:nowrap;">+ Add Account</button>';
       html += '</div>';
       wrap.innerHTML = html;
+      NDDiag.track("balances", "ok", accts.length + " accounts");
     })
-    .catch(function() {
+    .catch(function(e) {
       wrap.innerHTML = '<p class="hint" style="color:var(--danger);">Failed to load accounts.</p>';
+      NDDiag.track("balances", "error", e.message || String(e));
       _balancesLoaded = false;
     });
 }
@@ -4033,6 +4092,7 @@ var _holdingsLoaded = false;
 function loadHoldings() {
   if (_holdingsLoaded) return;
   _holdingsLoaded = true;
+  NDDiag.track("holdings", "loading");
 
   var stockWrap = document.getElementById("holdings-table-wrap");
   var cryptoWrap = document.getElementById("crypto-tbody");
@@ -4043,9 +4103,11 @@ function loadHoldings() {
       _renderStockHoldings(stockWrap, d.holdings || []);
       _renderCryptoHoldings(cryptoWrap, d.crypto || []);
       _loadPhysicalMetals();
+      NDDiag.track("holdings", "ok", (d.holdings||[]).length + " stocks, " + (d.crypto||[]).length + " crypto");
     })
-    .catch(function() {
+    .catch(function(e) {
       if (stockWrap) stockWrap.innerHTML = '<p class="hint" style="color:var(--danger);">Failed to load holdings.</p>';
+      NDDiag.track("holdings", "error", e.message || String(e));
       _holdingsLoaded = false;
     });
 }

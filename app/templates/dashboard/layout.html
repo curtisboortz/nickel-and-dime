@@ -1007,6 +1007,24 @@
       </div>
     </div>
 
+    {% if current_user.is_admin %}
+    <!-- Admin Diagnostics -->
+    <div style="border:1px solid rgba(212,160,23,0.3);border-radius:var(--radius);padding:18px;margin-top:16px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+        <svg viewBox="0 0 24 24" style="width:24px;height:24px;fill:none;stroke:var(--accent-primary);stroke-width:2;"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>
+        <div>
+          <div style="font-weight:600;font-size:0.95rem;color:var(--accent-primary);">System Diagnostics</div>
+          <div class="hint" style="margin:0;">Admin-only health monitoring</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+        <button type="button" onclick="runDiagnostics()" style="padding:8px 16px;font-size:0.82rem;background:var(--accent-primary);color:#000;border:none;border-radius:var(--radius);cursor:pointer;">Run Server Health Check</button>
+        <button type="button" onclick="showClientDiag()" style="padding:8px 16px;font-size:0.82rem;background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:var(--radius);color:var(--text-primary);cursor:pointer;">Client Widget Status</button>
+      </div>
+      <div id="diag-output" style="display:none;max-height:400px;overflow-y:auto;background:var(--bg-input);border-radius:var(--radius);padding:14px;font-family:var(--mono);font-size:0.72rem;line-height:1.6;white-space:pre-wrap;color:var(--text-secondary);"></div>
+    </div>
+    {% endif %}
+
   </div>
 </div>
 
@@ -1019,6 +1037,66 @@ var IS_PRO = {{ 'true' if is_pro else 'false' }};
 var ACTIVE_TAB = "{{ active_tab }}";
 window.BUCKETS_DATA = {};
 window.PRICE_HISTORY_DATA = [];
+
+{% if current_user.is_admin %}
+function runDiagnostics() {
+  var out = document.getElementById("diag-output");
+  if (!out) return;
+  out.style.display = "block";
+  out.textContent = "Fetching server health...";
+  fetch("/api/diag").then(function(r) { return r.json(); }).then(function(d) {
+    var lines = [];
+    lines.push("=== SERVER HEALTH: " + (d.health || "unknown").toUpperCase() + " ===");
+    lines.push("Timestamp: " + d.timestamp);
+    if (d.issues && d.issues.length) {
+      lines.push("\n!! ISSUES !!");
+      d.issues.forEach(function(i) { lines.push("  - " + i); });
+    }
+    lines.push("\n--- Prices ---");
+    lines.push("Total cached: " + d.prices.total + " | Fresh (<1h): " + d.prices.fresh + " | Stale: " + d.prices.stale);
+    if (d.prices.missing_critical.length) lines.push("Missing critical: " + d.prices.missing_critical.join(", "));
+    lines.push("\n--- FRED Data ---");
+    Object.keys(d.fred || {}).forEach(function(k) {
+      var f = d.fred[k];
+      lines.push("  " + k + ": " + (f.has_data ? "OK" : "EMPTY") + " (age: " + f.age_minutes + "m)");
+    });
+    lines.push("\n--- Sentiment ---");
+    Object.keys(d.sentiment || {}).forEach(function(k) {
+      var s = d.sentiment[k];
+      var score = s.data && s.data.score ? s.data.score : "N/A";
+      lines.push("  " + k + ": score=" + score + " (age: " + s.age_minutes + "m)");
+    });
+    lines.push("\n--- Calendar ---");
+    if (d.calendar) lines.push("  Age: " + d.calendar.age_minutes + "m | Weeks: " + (d.calendar.weeks || []).join(", "));
+    else lines.push("  No calendar data");
+    lines.push("\n--- Users ---");
+    lines.push("  Total: " + d.users.total + " | Subscriptions: " + d.users.subscriptions + " | Active: " + d.users.active_subs);
+    lines.push("\n--- Environment ---");
+    Object.keys(d.env || {}).forEach(function(k) { lines.push("  " + k + ": " + d.env[k]); });
+    out.textContent = lines.join("\n");
+  }).catch(function(e) { out.textContent = "Error: " + e.message; });
+}
+function showClientDiag() {
+  var out = document.getElementById("diag-output");
+  if (!out) return;
+  out.style.display = "block";
+  if (typeof NDDiag === "undefined") { out.textContent = "NDDiag not loaded yet."; return; }
+  var s = NDDiag.summary();
+  var lines = [];
+  lines.push("=== CLIENT WIDGET STATUS ===");
+  lines.push("Total: " + s.total + " | OK: " + s.ok + " | Errors: " + s.errors + " | Warnings: " + s.warnings + " | Pending: " + s.pending);
+  lines.push("");
+  Object.keys(s.widgets).sort().forEach(function(w) {
+    var icon = s.widgets[w] === "ok" || s.widgets[w] === "loaded" ? "[OK]" : s.widgets[w] === "error" ? "[ERR]" : s.widgets[w] === "warn" ? "[WARN]" : "[...]";
+    lines.push("  " + icon + " " + w + ": " + s.widgets[w]);
+  });
+  lines.push("\n--- Event Log ---");
+  NDDiag.getLog().forEach(function(e) {
+    lines.push("  [" + e.time + "] " + e.widget + " -> " + e.status + (e.detail ? " (" + e.detail + ")" : ""));
+  });
+  out.textContent = lines.join("\n");
+}
+{% endif %}
 </script>
 <script src="{{ url_for('static', filename='js/theme.js') }}?v={{ v }}"></script>
 <script src="{{ url_for('static', filename='js/tabs.js') }}?v={{ v }}"></script>
@@ -1028,13 +1106,17 @@ window.PRICE_HISTORY_DATA = [];
 {% endif %}
 <script>
 (function() {
+  if (typeof NDDiag !== "undefined") NDDiag.track("live-data", "loading");
   fetch("/api/live-data").then(function(r) { return r.json(); }).then(function(d) {
     if (typeof applyLiveDataToDOM === "function") applyLiveDataToDOM(d);
     if (d && d.buckets) {
       window.BUCKETS_DATA = d.buckets;
       if (typeof buildDonut === "function") buildDonut();
     }
+    var priceCount = Object.keys(d || {}).filter(function(k) { return k !== "buckets" && k !== "_ratio_ids"; }).length;
+    if (typeof NDDiag !== "undefined") NDDiag.track("live-data", "ok", priceCount + " keys");
     if (!d || (!d.gold && !d.spy && !d.btc)) {
+      if (typeof NDDiag !== "undefined") NDDiag.track("live-data", "warn", "Missing key prices, triggering bg refresh");
       fetch("/api/bg-refresh", { method: "POST" }).then(function() {
         setTimeout(function() {
           fetch("/api/live-data").then(function(r2){ return r2.json(); }).then(function(d2) {
@@ -1043,14 +1125,18 @@ window.PRICE_HISTORY_DATA = [];
         }, 15000);
       }).catch(function(){});
     }
-  }).catch(function() {});
+  }).catch(function(e) { if (typeof NDDiag !== "undefined") NDDiag.track("live-data", "error", e.message || String(e)); });
 
+  if (typeof NDDiag !== "undefined") NDDiag.track("portfolio-history", "loading");
   fetch("/api/portfolio-history").then(function(r) { return r.json(); }).then(function(d) {
     if (d && d.history) {
       window.PRICE_HISTORY_DATA = d.history;
       if (typeof buildHistoryChart === "function") buildHistoryChart("total");
+      if (typeof NDDiag !== "undefined") NDDiag.track("portfolio-history", "ok", d.history.length + " data points");
+    } else {
+      if (typeof NDDiag !== "undefined") NDDiag.track("portfolio-history", "warn", "No history data");
     }
-  }).catch(function() {});
+  }).catch(function(e) { if (typeof NDDiag !== "undefined") NDDiag.track("portfolio-history", "error", e.message || String(e)); });
 
   if (typeof loadSummaryData === "function") loadSummaryData();
 })();

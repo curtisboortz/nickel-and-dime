@@ -16,20 +16,28 @@
     });
   }
 
-  function _postTabInit(t) {
-    if (t === "summary" && typeof loadSummaryData === "function") loadSummaryData();
-    if (t === "economics" && typeof loadFredData === "function") loadFredData();
-    if (t === "history") {
-      if (typeof buildProjectionChart === "function") buildProjectionChart();
-      if (typeof runMonteCarlo === "function") runMonteCarlo();
-      if (typeof buildDrawdownChart === "function") buildDrawdownChart();
-      if (typeof buildPerfAttribution === "function") buildPerfAttribution();
-      if (typeof loadSentimentGauges === "function") loadSentimentGauges();
+  function _safe(fn, label) {
+    try { fn(); } catch(e) {
+      console.error("[TabInit] " + (label||"unknown") + " error:", e);
+      if (typeof NDDiag !== "undefined") NDDiag.track(label||"unknown", "error", e.message || String(e));
     }
-    if (t === "budget" && typeof _initBudgetListeners === "function") _initBudgetListeners();
-    if (t === "technical" && typeof initTechnicalTab === "function") initTechnicalTab();
-    if (t === "balances" && typeof loadBalances === "function") loadBalances();
-    if (t === "holdings" && typeof loadHoldings === "function") loadHoldings();
+  }
+
+  function _postTabInit(t) {
+    if (t === "summary") _safe(function() { if (typeof loadSummaryData === "function") loadSummaryData(); }, "loadSummaryData");
+    if (t === "economics") _safe(function() { if (typeof loadFredData === "function") loadFredData(); }, "loadFredData");
+    if (t === "history") {
+      _safe(function() { if (typeof buildProjectionChart === "function") buildProjectionChart(); }, "buildProjectionChart");
+      _safe(function() { if (typeof runMonteCarlo === "function") runMonteCarlo(); }, "runMonteCarlo");
+      _safe(function() { if (typeof buildDrawdownChart === "function") buildDrawdownChart(); }, "buildDrawdownChart");
+      _safe(function() { if (typeof buildPerfAttribution === "function") buildPerfAttribution(); }, "buildPerfAttribution");
+      _safe(function() { if (typeof loadSentimentGauges === "function") loadSentimentGauges(); }, "loadSentimentGauges");
+      _safe(function() { if (typeof loadTLH === "function") loadTLH(); }, "loadTLH");
+    }
+    if (t === "budget") _safe(function() { if (typeof _initBudgetListeners === "function") _initBudgetListeners(); }, "_initBudgetListeners");
+    if (t === "technical") _safe(function() { if (typeof initTechnicalTab === "function") initTechnicalTab(); }, "initTechnicalTab");
+    if (t === "balances") _safe(function() { if (typeof loadBalances === "function") loadBalances(); }, "loadBalances");
+    if (t === "holdings") _safe(function() { if (typeof loadHoldings === "function") loadHoldings(); }, "loadHoldings");
   }
 
   window.showTab = function(t) {

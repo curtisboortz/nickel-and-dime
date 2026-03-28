@@ -642,6 +642,243 @@ def _compute_fedwatch():
     }
 
 
+_sent_hist_cache = {}
+_SENT_HIST_TTL = 3600 * 6
+
+_SENT_RANGE_MAP = {
+    "1y":  {"yf_period": "1y",  "crypto_limit": 365,  "yc_days": 252},
+    "3y":  {"yf_period": "3y",  "crypto_limit": 1095, "yc_days": 756},
+    "5y":  {"yf_period": "5y",  "crypto_limit": 1825, "yc_days": 1260},
+    "max": {"yf_period": "max", "crypto_limit": 0,    "yc_days": 0},
+}
+
+
+@api_economics_bp.route("/sentiment-history")
+@login_required
+def sentiment_history():
+    """Return daily history for each sentiment gauge. ?range=1y|3y|5y|max"""
+    import time as _time
+    import os
+    now = _time.time()
+
+    rng = flask_request.args.get("range", "1y")
+    if rng not in _SENT_RANGE_MAP:
+        rng = "1y"
+    params = _SENT_RANGE_MAP[rng]
+
+    cached = _sent_hist_cache.get(rng)
+    if cached and cached.get("data") and (now - cached.get("ts", 0)) < _SENT_HIST_TTL:
+        return jsonify(cached["data"])
+
+    from concurrent.futures import ThreadPoolExecutor
+    import urllib.request
+    import json as _json
+    from datetime import datetime as _dt
+    import math as _math
+
+    result = {}
+
+    def _hist_cnn():
+        cnn_data = {}
+        try:
+            import fear_greed
+            hist = fear_greed.get_history(last={"1y": "1y", "3y": "3y", "5y": "5y", "max": "1y"}.get(rng, "1y"))
+            for pt in hist:
+                d = pt.get("date")
+                s = pt.get("score")
+                if d and s is not None:
+                    cnn_data[d] = round(s)
+        except Exception as e:
+            print(f"[SentHist] fear-greed library error: {e}")
+
+        if not cnn_data:
+            try:
+                req = urllib.request.Request(
+                    "https://production.dataviz.cnn.io/index/fearandgreed/graphdata",
+                    headers={
+                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                        "Accept": "application/json",
+                    }
+                )
+                with urllib.request.urlopen(req, timeout=10) as resp:
+                    cnn = _json.loads(resp.read().decode())
+                for pt in cnn.get("fear_and_greed_historical", {}).get("data", []):
+                    ts, val = pt.get("x"), pt.get("y")
+                    if ts is not None and val is not None:
+                        dt = _dt.utcfromtimestamp(ts / 1000).strftime("%Y-%m-%d")
+                        cnn_data[dt] = round(val)
+            except Exception as e:
+                print(f"[SentHist] CNN URL fallback error: {e}")
+
+        if rng == "1y" and cnn_data:
+            return [{"date": d, "value": v} for d, v in sorted(cnn_data.items())]
+
+        try:
+            import yfinance as yf
+            data = yf.download(["^VIX", "SPY"], period=params["yf_period"], progress=False, threads=False)
+            if data is None or data.empty:
+                return [{"date": d, "value": v} for d, v in sorted(cnn_data.items())]
+            spy_close = data[("Close", "SPY")].dropna()
+            spy_ma125 = spy_close.rolling(125).mean()
+            out_map = {}
+            for dt_idx in data.index:
+                dt = dt_idx.strftime("%Y-%m-%d")
+                if dt in cnn_data:
+                    out_map[dt] = cnn_data[dt]
+                    continue
+                try:
+                    vix = float(data[("Close", "^VIX")].loc[dt_idx])
+                    if _math.isnan(vix):
+                        continue
+                    score = _vix_to_score(vix)
+                    spy_val = float(spy_close.loc[dt_idx]) if dt_idx in spy_close.index else 0
+                    spy_ma = float(spy_ma125.loc[dt_idx]) if dt_idx in spy_ma125.index and not _math.isnan(spy_ma125.loc[dt_idx]) else 0
+                    if spy_val and spy_ma:
+                        momentum = (spy_val - spy_ma) / spy_ma
+                        score += max(-15, min(15, momentum * 100))
+                    out_map[dt] = max(0, min(100, round(score)))
+                except Exception:
+                    continue
+            return [{"date": d, "value": v} for d, v in sorted(out_map.items())]
+        except Exception as e:
+            print(f"[SentHist] Stock extended error: {e}")
+            return [{"date": d, "value": v} for d, v in sorted(cnn_data.items())]
+
+    def _hist_crypto():
+        cmc_key = os.environ.get("CMC_API_KEY", "")
+        if cmc_key:
+            try:
+                limit = params["crypto_limit"] or 2000
+                url = f"https://pro-api.coinmarketcap.com/v3/fear-and-greed/historical?limit={limit}"
+                req = urllib.request.Request(url, headers={
+                    "X-CMC_PRO_API_KEY": cmc_key,
+                    "Accept": "application/json",
+                })
+                with urllib.request.urlopen(req, timeout=15) as resp:
+                    body = _json.loads(resp.read().decode())
+                out = []
+                for entry in body.get("data", []):
+                    ts = entry.get("timestamp", "")
+                    val = entry.get("value")
+                    if ts and val is not None:
+                        dt = _dt.utcfromtimestamp(int(ts)).strftime("%Y-%m-%d")
+                        out.append({"date": dt, "value": int(val)})
+                out.sort(key=lambda x: x["date"])
+                if out:
+                    return out
+            except Exception as e:
+                print(f"[SentHist] CMC historical error: {e}")
+        try:
+            limit = params["crypto_limit"]
+            url = "https://api.alternative.me/fng/?limit=0" if limit == 0 else f"https://api.alternative.me/fng/?limit={limit}"
+            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                data = _json.loads(resp.read().decode())
+            out = []
+            for entry in data.get("data", []):
+                ts = entry.get("timestamp")
+                val = entry.get("value")
+                if ts and val:
+                    dt = _dt.utcfromtimestamp(int(ts)).strftime("%Y-%m-%d")
+                    out.append({"date": dt, "value": int(val)})
+            out.sort(key=lambda x: x["date"])
+            return out
+        except Exception as e:
+            print(f"[SentHist] Crypto fallback error: {e}")
+            return []
+
+    def _hist_vix():
+        try:
+            import yfinance as yf
+            tk = yf.Ticker("^VIX")
+            hist = tk.history(period=params["yf_period"])
+            out = []
+            for dt_idx, row in hist.iterrows():
+                dt = dt_idx.strftime("%Y-%m-%d")
+                vix = float(row["Close"])
+                out.append({"date": dt, "value": _vix_to_score(vix)})
+            return out
+        except Exception as e:
+            print(f"[SentHist] VIX error: {e}")
+            return []
+
+    def _hist_gold():
+        try:
+            import yfinance as yf
+            data = yf.download(["GC=F", "DX=F", "^VIX", "^GVZ"],
+                               period=params["yf_period"], progress=False, threads=False)
+            if data is None or data.empty:
+                return []
+            out = []
+            for dt_idx in data.index:
+                dt = dt_idx.strftime("%Y-%m-%d")
+                try:
+                    gold = float(data[("Close", "GC=F")].loc[dt_idx])
+                    dxy = float(data[("Close", "DX=F")].loc[dt_idx]) if ("Close", "DX=F") in data.columns else 0
+                    vix = float(data[("Close", "^VIX")].loc[dt_idx]) if ("Close", "^VIX") in data.columns else 0
+                    gvz = float(data[("Close", "^GVZ")].loc[dt_idx]) if ("Close", "^GVZ") in data.columns else 0
+                    if _math.isnan(gold):
+                        continue
+                    dxy = 0 if _math.isnan(dxy) else dxy
+                    vix = 0 if _math.isnan(vix) else vix
+                    gvz = 0 if _math.isnan(gvz) else gvz
+                    score = _compute_gold_sentiment(gold, vix, dxy, gvz)
+                    out.append({"date": dt, "value": score})
+                except Exception:
+                    continue
+            return out
+        except Exception as e:
+            print(f"[SentHist] Gold error: {e}")
+            return []
+
+    def _hist_yield_curve():
+        try:
+            all_cache = FredCache.query.all()
+            dgs10_pts, dgs2_pts = [], []
+            for c in all_cache:
+                if not isinstance(c.data, dict):
+                    continue
+                if "DGS10" in c.data:
+                    dgs10_pts = c.data["DGS10"]
+                if "DGS2" in c.data:
+                    dgs2_pts = c.data["DGS2"]
+            if not dgs10_pts or not dgs2_pts:
+                return []
+            d2_map = {}
+            for pt in dgs2_pts:
+                if isinstance(pt, (list, tuple)) and len(pt) >= 2 and pt[1] is not None:
+                    d2_map[pt[0]] = pt[1]
+            out = []
+            for pt in dgs10_pts:
+                if isinstance(pt, (list, tuple)) and len(pt) >= 2 and pt[1] is not None:
+                    d = pt[0]
+                    v2 = d2_map.get(d)
+                    if v2 is not None:
+                        spread = pt[1] - v2
+                        out.append({"date": d, "value": _yield_curve_to_score(spread)})
+            yc_days = params["yc_days"]
+            return out[-yc_days:] if yc_days > 0 else out
+        except Exception as e:
+            print(f"[SentHist] Yield curve error: {e}")
+            return []
+
+    with ThreadPoolExecutor(max_workers=5) as pool:
+        f_cnn = pool.submit(_hist_cnn)
+        f_crypto = pool.submit(_hist_crypto)
+        f_vix = pool.submit(_hist_vix)
+        f_gold = pool.submit(_hist_gold)
+        f_yc = pool.submit(_hist_yield_curve)
+
+    result["stock"] = f_cnn.result(timeout=30)
+    result["crypto"] = f_crypto.result(timeout=30)
+    result["vix"] = f_vix.result(timeout=30)
+    result["gold"] = f_gold.result(timeout=30)
+    result["yield_curve"] = f_yc.result(timeout=30)
+
+    _sent_hist_cache[rng] = {"data": result, "ts": now}
+    return jsonify(result)
+
+
 @api_economics_bp.route("/cape")
 @login_required
 def cape():

@@ -3424,6 +3424,16 @@ buildDrawdownChart();
 var PERF_DATA = window.PERF_DATA || {};
 function buildPerfAttribution() {
   if (!document.getElementById("perf-attr-chart")) return;
+  if (!PERF_DATA.buckets) {
+    fetch("/api/perf-attribution")
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        PERF_DATA = d;
+        buildPerfAttribution();
+      })
+      .catch(function(e) { console.error("Perf attribution fetch:", e); });
+    return;
+  }
   var buckets = PERF_DATA.buckets;
   var total = PERF_DATA.total;
   if (!buckets || total <= 0) return;

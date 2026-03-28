@@ -375,6 +375,33 @@ def get_ta_tickers():
     return jsonify({"tickers": tickers})
 
 
+@api_portfolio_bp.route("/perf-attribution")
+@login_required
+def perf_attribution():
+    """Return performance attribution data: bucket values and overall return."""
+    from ..services.portfolio_service import compute_portfolio_value
+
+    pv = compute_portfolio_value(current_user.id)
+    total = pv["total"]
+    buckets = pv.get("breakdown", {})
+
+    snaps = (PortfolioSnapshot.query
+             .filter_by(user_id=current_user.id)
+             .order_by(PortfolioSnapshot.date.asc())
+             .all())
+    overall_return = 0
+    if len(snaps) >= 2:
+        first_total = snaps[0].close or snaps[0].open or 0
+        if first_total > 0:
+            overall_return = ((total - first_total) / first_total) * 100
+
+    return jsonify({
+        "buckets": {b: round(v, 2) for b, v in buckets.items()},
+        "total": round(total, 2),
+        "overall_return": round(overall_return, 2),
+    })
+
+
 @api_portfolio_bp.route("/ta-tickers", methods=["POST"])
 @login_required
 @csrf.exempt

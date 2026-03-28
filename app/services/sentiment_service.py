@@ -61,54 +61,53 @@ def _refresh_cnn_fear_greed():
 
 
 def _refresh_crypto_fear_greed():
-    """Fetch crypto Fear & Greed -- try CoinMarketCap first, fall back to alternative.me."""
+    """Fetch crypto Fear & Greed -- CoinMarketCap first, alternative.me fallback."""
     import os
     import urllib.request
     import json
+    import logging
+
+    log = logging.getLogger("nd.sentiment")
 
     api_key = os.environ.get("CMC_API_KEY", "")
     if api_key:
-        try:
-            url = "https://pro-api.coinmarketcap.com/v3/fear-and-greed/latest"
-            req = urllib.request.Request(url, headers={
-                "X-CMC_PRO_API_KEY": api_key,
-                "Accept": "application/json",
-            })
-            with urllib.request.urlopen(req, timeout=10) as resp:
-                body = json.loads(resp.read().decode())
+        for endpoint in (
+            "https://pro-api.coinmarketcap.com/v3/fear-and-greed/latest",
+            "https://pro-api.coinmarketcap.com/v3/fear-and-greed/historical?limit=1",
+        ):
+            try:
+                req = urllib.request.Request(endpoint, headers={
+                    "X-CMC_PRO_API_KEY": api_key,
+                    "Accept": "application/json",
+                })
+                with urllib.request.urlopen(req, timeout=10) as resp:
+                    body = json.loads(resp.read().decode())
 
-            data = body.get("data", {})
-            if isinstance(data, dict) and data.get("value") is not None:
-                _upsert_sentiment("crypto_fg", {
-                    "score": int(data["value"]),
-                    "label": data.get("value_classification", ""),
-                })
-                return
-            elif isinstance(data, list) and data:
-                latest = data[0]
-                _upsert_sentiment("crypto_fg", {
-                    "score": int(latest.get("value", 0)),
-                    "label": latest.get("value_classification", ""),
-                })
-                return
+                log.info("CMC %s raw response keys: %s", endpoint.split("/")[-1], list(body.keys()))
+                data = body.get("data", {})
+                log.info("CMC data type=%s content=%s", type(data).__name__, str(data)[:300])
 
-            url2 = "https://pro-api.coinmarketcap.com/v3/fear-and-greed/historical?limit=1"
-            req2 = urllib.request.Request(url2, headers={
-                "X-CMC_PRO_API_KEY": api_key,
-                "Accept": "application/json",
-            })
-            with urllib.request.urlopen(req2, timeout=10) as resp2:
-                body2 = json.loads(resp2.read().decode())
-            items = body2.get("data", [])
-            if items:
-                latest = items[0]
-                _upsert_sentiment("crypto_fg", {
-                    "score": int(latest.get("value", 0)),
-                    "label": latest.get("value_classification", ""),
-                })
-                return
-        except Exception as e:
-            print(f"[Sentiment] CMC Crypto F&G error: {e}")
+                if isinstance(data, dict) and "value" in data:
+                    val = int(data["value"])
+                    cls = data.get("value_classification", "")
+                    _upsert_sentiment("crypto_fg", {"score": val, "label": cls})
+                    log.info("Crypto F&G via CMC latest: %d (%s)", val, cls)
+                    return
+                elif isinstance(data, list) and data:
+                    latest = data[0] if isinstance(data[0], dict) else {}
+                    val = int(latest.get("value", 0))
+                    cls = latest.get("value_classification", "")
+                    if val:
+                        _upsert_sentiment("crypto_fg", {"score": val, "label": cls})
+                        log.info("Crypto F&G via CMC list: %d (%s)", val, cls)
+                        return
+                else:
+                    log.warning("CMC %s: unexpected data shape, trying next endpoint", endpoint.split("/")[-1])
+            except Exception as e:
+                log.warning("CMC %s error: %s", endpoint.split("/")[-1], e)
+                continue
+    else:
+        log.warning("CMC_API_KEY not set, skipping CoinMarketCap")
 
     try:
         url = "https://api.alternative.me/fng/?limit=1"
@@ -117,12 +116,12 @@ def _refresh_crypto_fear_greed():
             data = json.loads(resp.read().decode())
         items = data.get("data", [])
         if items:
-            _upsert_sentiment("crypto_fg", {
-                "score": int(items[0].get("value", 0)),
-                "label": items[0].get("value_classification", ""),
-            })
+            val = int(items[0].get("value", 0))
+            cls = items[0].get("value_classification", "")
+            _upsert_sentiment("crypto_fg", {"score": val, "label": cls})
+            log.info("Crypto F&G via alternative.me (fallback): %d (%s)", val, cls)
     except Exception as e:
-        print(f"[Sentiment] alternative.me F&G fallback error: {e}")
+        log.error("alternative.me F&G fallback error: %s", e)
 
 
 def _upsert_sentiment(source, data):

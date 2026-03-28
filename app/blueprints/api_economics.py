@@ -124,6 +124,10 @@ def sentiment():
     a background thread is kicked off to populate it (never blocks response).
     """
     try:
+        refresh = flask_request.args.get("refresh", "").lower() in ("1", "true")
+        if refresh:
+            from ..services.sentiment_service import refresh_sentiment
+            refresh_sentiment()
         return _build_sentiment_response()
     except Exception as e:
         import traceback

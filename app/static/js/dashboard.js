@@ -1198,7 +1198,17 @@ function applyLiveDataToDOM(d) {
   var fxRate = (typeof BASE_CURRENCY !== "undefined" && BASE_CURRENCY !== "USD" && typeof FX_RATES !== "undefined" && FX_RATES[BASE_CURRENCY]) ? FX_RATES[BASE_CURRENCY] : 1;
   var sym = (typeof CURRENCY_SYMBOLS !== "undefined" && BASE_CURRENCY !== "USD" && CURRENCY_SYMBOLS[BASE_CURRENCY]) ? CURRENCY_SYMBOLS[BASE_CURRENCY] : "$";
   var nw = document.getElementById("net-worth-counter");
-  if (nw && typeof d.total === "number") { nw.dataset.target = d.total; nw.textContent = sym + (d.total * fxRate).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}); }
+  if (nw && typeof d.total === "number") {
+    nw.dataset.target = d.total;
+    nw.textContent = sym + (d.total * fxRate).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
+    window.PORTFOLIO_TOTAL = d.total;
+    PROJ_CURRENT = d.total;
+    var projStartEl = document.getElementById("proj-starting");
+    if (projStartEl && !_projStartingSetByUser) {
+      projStartEl.value = Math.round(d.total);
+      if (typeof updateProjectionChart === "function") updateProjectionChart();
+    }
+  }
   var heroChange = document.getElementById("hero-change-badge");
   if (heroChange && typeof d.daily_change === "number" && typeof d.daily_change_pct === "number") {
     var dc = d.daily_change;
@@ -1856,7 +1866,8 @@ function addBenchmark() {
 }
 
 /* ── Phase 3: Projected Growth Chart (interactive) ── */
-var PROJ_CURRENT = window.PORTFOLIO_TOTAL || 0;
+var PROJ_CURRENT = 0;
+var _projStartingSetByUser = false;
 var projectionChart = null;
 var projectionData = { labels: [], values: [] };
 
@@ -1870,7 +1881,8 @@ function projFV(initial, monthly, annualRate, months) {
 function rebuildProjectionData() {
   var projMonthlyEl = document.getElementById("proj-monthly");
   if (!projMonthlyEl) return null;
-  var current = PROJ_CURRENT;
+  var startEl = document.getElementById("proj-starting");
+  var current = startEl ? (parseFloat(startEl.value) || 0) : PROJ_CURRENT;
   var monthly = parseFloat(projMonthlyEl.value) || 0;
   var ratePct = parseFloat(document.getElementById("proj-rate").value) || 7;
   var years = parseInt(document.getElementById("proj-years").value, 10) || 30;
@@ -1890,7 +1902,8 @@ function rebuildProjectionData() {
 }
 
 function updateProjectionSummary(data) {
-  var current = PROJ_CURRENT;
+  var startEl = document.getElementById("proj-starting");
+  var current = startEl ? (parseFloat(startEl.value) || 0) : PROJ_CURRENT;
   var endVal = data.values[data.values.length - 1];
   var totalContrib = data.monthly * (data.years * 12);
   var growth = endVal - current - totalContrib;
@@ -1980,10 +1993,12 @@ function updateProjectionTimelineLabel() {
 
 function buildProjectionChart() {
   updateProjectionChart();
-  ["proj-rate", "proj-monthly", "proj-years"].forEach(function(id) {
+  ["proj-starting", "proj-rate", "proj-monthly", "proj-years"].forEach(function(id) {
     var el = document.getElementById(id);
     if (el) el.addEventListener("input", updateProjectionChart);
   });
+  var startingEl = document.getElementById("proj-starting");
+  if (startingEl) startingEl.addEventListener("input", function() { _projStartingSetByUser = true; });
   var timelineEl = document.getElementById("proj-timeline");
   if (timelineEl) {
     timelineEl.addEventListener("input", updateProjectionTimelineLabel);

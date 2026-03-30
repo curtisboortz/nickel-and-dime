@@ -1,10 +1,14 @@
-"""Authentication routes: register, login, logout, password reset."""
+"""Authentication routes: register, login, logout, password reset, email verification."""
+
+import secrets
+from datetime import datetime, timezone, timedelta
+from urllib.parse import urlparse
 
 from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_user, logout_user, login_required, current_user
 
 from ..extensions import db, bcrypt, limiter
-from ..models.user import User
+from ..models.user import User, Subscription
 from ..models.settings import UserSettings
 
 auth_bp = Blueprint("auth", __name__)
@@ -33,11 +37,12 @@ def register():
             flash("An account with that email already exists.", "error")
             return render_template("auth/register.html")
 
-        from datetime import datetime, timezone, timedelta
-        from ..models.user import Subscription
-
         user = User(email=email, name=name or email.split("@")[0], plan="pro")
         user.set_password(password)
+
+        verify_token = secrets.token_urlsafe(32)
+        user.verify_token = verify_token
+
         db.session.add(user)
 
         settings = UserSettings(user=user)
@@ -52,11 +57,55 @@ def register():
 
         db.session.commit()
 
+        from ..services.email_service import send_email_verification
+        send_email_verification(user, verify_token)
+
         login_user(user)
-        flash("Welcome! Your 14-day Pro trial is active. You have full access to every feature. Upload your holdings and explore!", "success")
+        flash(
+            "Welcome! Your 14-day Pro trial is active. "
+            "Check your email to verify your address.",
+            "success",
+        )
         return redirect(url_for("pages.dashboard_page"))
 
     return render_template("auth/register.html")
+
+
+@auth_bp.route("/verify-email/<token>")
+def verify_email(token):
+    """Verify a user's email address via the token sent at registration."""
+    user = User.query.filter_by(verify_token=token).first()
+    if not user:
+        flash("Invalid or expired verification link.", "error")
+        return redirect(url_for("auth.login"))
+
+    user.email_verified = True
+    user.verify_token = None
+    db.session.commit()
+
+    flash("Email verified! Thank you.", "success")
+    if current_user.is_authenticated:
+        return redirect(url_for("pages.dashboard_page"))
+    return redirect(url_for("auth.login"))
+
+
+@auth_bp.route("/resend-verification")
+@login_required
+def resend_verification():
+    """Resend the email verification link."""
+    if current_user.email_verified:
+        flash("Your email is already verified.", "info")
+        return redirect(url_for("pages.dashboard_page"))
+
+    token = secrets.token_urlsafe(32)
+    current_user.verify_token = token
+    db.session.commit()
+
+    from ..services.email_service import send_email_verification
+    send_email_verification(current_user, token)
+
+    flash("Verification email sent. Check your inbox.", "info")
+    return redirect(url_for("pages.dashboard_page"))
 
 
 @auth_bp.route("/login", methods=["GET", "POST"])
@@ -72,8 +121,6 @@ def login():
 
         user = User.query.filter_by(email=email).first()
         if user and user.check_password(password):
-            from datetime import datetime, timezone
-            from urllib.parse import urlparse
             user.last_login = datetime.now(timezone.utc)
             db.session.commit()
             login_user(user, remember=remember)
@@ -103,13 +150,14 @@ def forgot_password():
         email = request.form.get("email", "").strip().lower()
         user = User.query.filter_by(email=email).first()
         if user:
-            import secrets
-            from datetime import datetime, timezone, timedelta
             token = secrets.token_urlsafe(32)
             user.reset_token = token
             user.reset_token_expiry = datetime.now(timezone.utc) + timedelta(hours=1)
             db.session.commit()
-            # TODO: Send password reset email with token
+
+            from ..services.email_service import send_password_reset
+            send_password_reset(user, token)
+
         flash("If that email exists, a reset link has been sent.", "info")
         return redirect(url_for("auth.login"))
 
@@ -118,9 +166,11 @@ def forgot_password():
 
 @auth_bp.route("/reset-password/<token>", methods=["GET", "POST"])
 def reset_password(token):
-    from datetime import datetime, timezone
     user = User.query.filter_by(reset_token=token).first()
-    if not user or not user.reset_token_expiry or user.reset_token_expiry < datetime.now(timezone.utc):
+    expiry = user.reset_token_expiry if user else None
+    if expiry and expiry.tzinfo is None:
+        expiry = expiry.replace(tzinfo=timezone.utc)
+    if not user or not expiry or expiry < datetime.now(timezone.utc):
         flash("Invalid or expired reset link.", "error")
         return redirect(url_for("auth.login"))
 

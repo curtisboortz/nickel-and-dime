@@ -1,0 +1,11 @@
+Nickel&Dime - Trial Ending Soon
+
+Hi {{ user.name or 'there' }},
+
+Your Nickel&Dime Pro trial ends in {{ days_left }} day{{ 's' if days_left != 1 else '' }}.
+
+After your trial expires, you'll lose access to real-time holdings tracking, technical analysis, and other Pro features. Your data will be safe.
+
+Subscribe to Pro ($12/mo): https://nickelanddime.io/billing/pricing
+
+Questions? Reply to this email and we'll be happy to help.

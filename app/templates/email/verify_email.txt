@@ -1,0 +1,9 @@
+Nickel&Dime - Verify Your Email
+
+Hi {{ user.name or 'there' }},
+
+Welcome to Nickel&Dime! Please verify your email by visiting the link below (expires in 24 hours):
+
+{{ verify_url }}
+
+If you didn't create a Nickel&Dime account, you can ignore this email.

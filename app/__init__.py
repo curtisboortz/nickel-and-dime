@@ -53,7 +53,7 @@ def create_app(config_name=None):
 
 def _init_extensions(app):
     """Bind all Flask extensions to the app instance."""
-    from .extensions import db, migrate, login_manager, bcrypt, csrf, limiter
+    from .extensions import db, migrate, login_manager, bcrypt, csrf, limiter, mail
 
     db.init_app(app)
     migrate.init_app(app, db)
@@ -61,6 +61,7 @@ def _init_extensions(app):
     bcrypt.init_app(app)
     csrf.init_app(app)
     limiter.init_app(app)
+    mail.init_app(app)
 
     from .models.user import User
 
@@ -112,7 +113,7 @@ def _register_error_handlers(app):
     def rate_limited(e):
         if request.path.startswith("/api/"):
             return jsonify({"error": "Too many requests. Please slow down."}), 429
-        return render_template("errors/500.html"), 429
+        return render_template("errors/429.html"), 429
 
     @app.errorhandler(500)
     def server_error(e):

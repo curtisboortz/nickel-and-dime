@@ -20,7 +20,10 @@ def _check_trial_expiry(user):
     if not sub:
         return
     if sub.status == "trialing" and sub.current_period_end:
-        if datetime.now(timezone.utc) > sub.current_period_end:
+        end = sub.current_period_end
+        if end.tzinfo is None:
+            end = end.replace(tzinfo=timezone.utc)
+        if datetime.now(timezone.utc) > end:
             from ..extensions import db
             user.plan = PLAN_FREE
             sub.plan = PLAN_FREE

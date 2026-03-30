@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<body style="margin:0;padding:0;background:#0f172a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;margin:40px auto;background:#1e293b;border-radius:12px;overflow:hidden;">
+    <tr>
+      <td style="padding:32px 40px;text-align:center;">
+        <h1 style="color:#e2e8f0;font-size:22px;margin:0 0 8px;">Nickel&amp;Dime</h1>
+        <p style="color:#94a3b8;font-size:14px;margin:0;">Trial Ending Soon</p>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding:0 40px 32px;">
+        <p style="color:#cbd5e1;font-size:15px;line-height:1.6;">
+          Hi {{ user.name or 'there' }},
+        </p>
+        <p style="color:#cbd5e1;font-size:15px;line-height:1.6;">
+          Your Nickel&amp;Dime Pro trial ends in <strong style="color:#f59e0b;">{{ days_left }} day{{ 's' if days_left != 1 else '' }}</strong>.
+        </p>
+        <p style="color:#cbd5e1;font-size:15px;line-height:1.6;">
+          After your trial expires, you'll lose access to real-time holdings tracking, technical analysis, and other Pro features. Your data will be safe and waiting for you if you decide to subscribe.
+        </p>
+        <div style="text-align:center;margin:28px 0;">
+          <a href="https://nickelanddime.io/billing/pricing" style="display:inline-block;background:#6366f1;color:#fff;text-decoration:none;padding:12px 32px;border-radius:8px;font-size:15px;font-weight:600;">
+            Subscribe to Pro - $12/mo
+          </a>
+        </div>
+        <p style="color:#64748b;font-size:13px;line-height:1.5;">
+          Questions? Reply to this email and we'll be happy to help.
+        </p>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

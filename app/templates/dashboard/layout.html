@@ -192,6 +192,7 @@
       <button class="pulse-remove" onclick="event.stopPropagation();removePulseCard('tnx_10y')" title="Hide">&times;</button>
       <span class="pulse-label">10Y Yield</span>
       <span class="pulse-price" data-pulse-price="tnx_10y">--</span>
+      <canvas class="pulse-spark" id="spark-tnx_10y" width="60" height="24"></canvas>
     </div>
     {% endif %}
     {% if 'tnx_2y' not in hidden_pulse %}
@@ -199,6 +200,7 @@
       <button class="pulse-remove" onclick="event.stopPropagation();removePulseCard('tnx_2y')" title="Hide">&times;</button>
       <span class="pulse-label">2Y Yield</span>
       <span class="pulse-price" data-pulse-price="tnx_2y">--</span>
+      <canvas class="pulse-spark" id="spark-tnx_2y" width="60" height="24"></canvas>
     </div>
     {% endif %}
     {% if 'dxy' not in hidden_pulse %}
@@ -214,6 +216,7 @@
       <button class="pulse-remove" onclick="event.stopPropagation();removePulseCard('vix')" title="Hide">&times;</button>
       <span class="pulse-label">VIX</span>
       <span class="pulse-price" data-pulse-price="vix">--</span>
+      <canvas class="pulse-spark" id="spark-vix" width="60" height="24"></canvas>
     </div>
     {% endif %}
     {% if 'oil' not in hidden_pulse %}
@@ -1043,6 +1046,23 @@ var IS_PRO = {{ 'true' if is_pro else 'false' }};
 var ACTIVE_TAB = "{{ active_tab }}";
 window.BUCKETS_DATA = {};
 window.PRICE_HISTORY_DATA = [];
+window.SAVED_PULSE_ORDER = {{ pulse_order | tojson }};
+
+(function() {
+  var order = window.SAVED_PULSE_ORDER;
+  if (!order || !order.length) return;
+  var bar = document.getElementById("pulse-bar");
+  if (!bar) return;
+  var addBtn = bar.querySelector(".pulse-add");
+  var items = {};
+  bar.querySelectorAll(".pulse-item:not(.pulse-add)").forEach(function(el) {
+    items[el.dataset.pulseId] = el;
+  });
+  order.forEach(function(id) {
+    var el = items[id];
+    if (el) bar.insertBefore(el, addBtn);
+  });
+})();
 
 {% if current_user.is_admin %}
 function runDiagnostics() {

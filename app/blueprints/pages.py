@@ -197,6 +197,7 @@ def dashboard_page(tab="summary"):
     wo = (us.widget_order if us and isinstance(us.widget_order, dict) else {}) or {}
     hidden_pulse = wo.get("hidden_pulse", [])
     pulse_size = wo.get("pulse_size", "compact")
+    pulse_order = us.pulse_order if us and isinstance(us.pulse_order, list) else []
     custom_cards = CustomPulseCard.query.filter_by(
         user_id=current_user.id
     ).order_by(CustomPulseCard.position).all()
@@ -207,6 +208,7 @@ def dashboard_page(tab="summary"):
         is_pro=is_pro(),
         hidden_pulse=hidden_pulse,
         pulse_size=pulse_size,
+        pulse_order=pulse_order,
         custom_pulse_cards=custom_cards,
     )
 

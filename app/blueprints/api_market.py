@@ -129,6 +129,13 @@ def sparklines():
 
     from ..models.settings import CustomPulseCard
 
+    _SPARK_FALLBACKS = [
+        ("5d", "30m"),
+        ("5d", "1h"),
+        ("1mo", "1d"),
+        ("3mo", "1d"),
+    ]
+
     result = {}
     for key in keys:
         lkey = key.lower()
@@ -143,41 +150,44 @@ def sparklines():
             yf_sym = _normalize_ticker(card.ticker)
         else:
             yf_sym = SPARK_SYMBOL_MAP.get(lkey, key)
-        try:
-            ticker = yf.Ticker(yf_sym)
-            hist = ticker.history(period="5d", interval="30m")
-            if hist.empty:
-                hist = ticker.history(period="1mo", interval="1d")
-            closes = [round(row["Close"], 4) for _, row in hist.iterrows()]
-            if len(closes) > 1:
-                result[key] = closes
-        except Exception:
-            pass
+        for period, interval in _SPARK_FALLBACKS:
+            try:
+                hist = yf.Ticker(yf_sym).history(period=period, interval=interval)
+                if not hist.empty:
+                    closes = [round(row["Close"], 4) for _, row in hist.iterrows()]
+                    if len(closes) > 1:
+                        result[key] = closes
+                        break
+            except Exception:
+                continue
 
     return jsonify(result)
 
 
 def _spark_ratio(result, key, ratio_ticker):
     """Build sparkline data for a ratio like GOLD/SILVER."""
+    _RATIO_FALLBACKS = [("5d", "30m"), ("5d", "1h"), ("1mo", "1d"), ("3mo", "1d")]
     parts = ratio_ticker.split("/", 1)
     num_sym = _normalize_ticker(parts[0])
     den_sym = _normalize_ticker(parts[1])
-    try:
-        num_hist = yf.Ticker(num_sym).history(period="5d", interval="30m")
-        den_hist = yf.Ticker(den_sym).history(period="5d", interval="30m")
-        if num_hist.empty or den_hist.empty:
-            return
-        merged = num_hist[["Close"]].rename(columns={"Close": "num"}).join(
-            den_hist[["Close"]].rename(columns={"Close": "den"}), how="inner"
-        )
-        points = []
-        for _, row in merged.iterrows():
-            if row["den"] and row["den"] > 0:
-                points.append(round(row["num"] / row["den"], 4))
-        if len(points) > 1:
-            result[key] = points
-    except Exception:
-        pass
+    for period, interval in _RATIO_FALLBACKS:
+        try:
+            num_hist = yf.Ticker(num_sym).history(period=period, interval=interval)
+            den_hist = yf.Ticker(den_sym).history(period=period, interval=interval)
+            if num_hist.empty or den_hist.empty:
+                continue
+            merged = num_hist[["Close"]].rename(columns={"Close": "num"}).join(
+                den_hist[["Close"]].rename(columns={"Close": "den"}), how="inner"
+            )
+            points = []
+            for _, row in merged.iterrows():
+                if row["den"] and row["den"] > 0:
+                    points.append(round(row["num"] / row["den"], 4))
+            if len(points) > 1:
+                result[key] = points
+                return
+        except Exception:
+            continue
 
 
 _HIST_FALLBACKS = {
@@ -299,9 +309,11 @@ def save_pulse_order():
     data = flask_request.get_json(silent=True) or {}
     order = data.get("order", [])
     settings = UserSettings.query.filter_by(user_id=current_user.id).first()
-    if settings:
-        settings.pulse_order = order
-        db.session.commit()
+    if not settings:
+        settings = UserSettings(user_id=current_user.id)
+        db.session.add(settings)
+    settings.pulse_order = order
+    db.session.commit()
     return jsonify({"success": True})
 
 

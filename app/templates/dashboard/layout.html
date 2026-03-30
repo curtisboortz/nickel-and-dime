@@ -271,7 +271,13 @@
           <button type="button" class="secondary" style="padding:4px 10px;font-size:0.7rem;" id="edit-targets-btn" onclick="toggleEditTargets()">Edit Targets</button>
         </div>
         <table>
-          <thead><tr><th>Bucket</th><th>Value</th><th>%</th><th>Target</th><th>Drift</th></tr></thead>
+          <thead id="alloc-table-head"><tr>
+            <th data-col="bucket" style="cursor:pointer;user-select:none;" onclick="sortAllocTable('bucket')">Bucket<span class="sort-arrow"></span></th>
+            <th data-col="value" style="cursor:pointer;user-select:none;" onclick="sortAllocTable('value')">Value<span class="sort-arrow"></span></th>
+            <th data-col="pct" style="cursor:pointer;user-select:none;" onclick="sortAllocTable('pct')">%<span class="sort-arrow"></span></th>
+            <th data-col="target" style="cursor:pointer;user-select:none;" onclick="sortAllocTable('target')">Target<span class="sort-arrow"></span></th>
+            <th data-col="drift" style="cursor:pointer;user-select:none;" onclick="sortAllocTable('drift')">Drift<span class="sort-arrow"></span></th>
+          </tr></thead>
           <tbody id="alloc-table-body"></tbody>
         </table>
       </div>

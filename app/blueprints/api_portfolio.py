@@ -383,10 +383,9 @@ def tax_loss_harvesting():
     rows = []
     for h in holdings:
         qty = h.shares or 0
-        cost_total = h.value_override or 0
-        if not qty or not cost_total:
+        cost_per = h.cost_basis or 0
+        if not qty or not cost_per:
             continue
-        cost_per = cost_total / qty
         price_row = PriceCache.query.get(h.ticker)
         live_price = price_row.price if price_row and price_row.price else 0
         if not live_price:

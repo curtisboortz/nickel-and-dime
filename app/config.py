@@ -45,6 +45,9 @@ class ProdConfig(Config):
     """Production (Railway / Render / etc.)."""
     DEBUG = False
     SQLALCHEMY_DATABASE_URI = os.environ.get("DATABASE_URL", "")
+    SESSION_COOKIE_SECURE = True
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = "Lax"
 
     @staticmethod
     def init_app(app):

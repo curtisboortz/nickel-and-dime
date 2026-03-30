@@ -116,12 +116,15 @@ def commit_import():
             if mode == "replace":
                 existing.shares = shares
                 existing.notes = description
+                if cost_basis is not None:
+                    existing.cost_basis = cost_basis
                 updated += 1
             elif mode == "merge":
-                # Merge = update shares to latest value
                 existing.shares = shares
                 if description and not existing.notes:
                     existing.notes = description
+                if cost_basis is not None and not existing.cost_basis:
+                    existing.cost_basis = cost_basis
                 updated += 1
             else:
                 skipped += 1
@@ -130,6 +133,7 @@ def commit_import():
                 user_id=current_user.id,
                 ticker=ticker,
                 shares=shares,
+                cost_basis=cost_basis,
                 account=account,
                 bucket="",
                 notes=description,

@@ -73,10 +73,15 @@ def login():
         user = User.query.filter_by(email=email).first()
         if user and user.check_password(password):
             from datetime import datetime, timezone
+            from urllib.parse import urlparse
             user.last_login = datetime.now(timezone.utc)
             db.session.commit()
             login_user(user, remember=remember)
             next_page = request.args.get("next")
+            if next_page:
+                parsed = urlparse(next_page)
+                if parsed.netloc or parsed.scheme:
+                    next_page = None
             return redirect(next_page or url_for("pages.dashboard_page"))
 
         flash("Invalid email or password.", "error")

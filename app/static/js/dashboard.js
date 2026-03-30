@@ -83,6 +83,11 @@ var NDDiag = (function() {
   return { track: track, summary: summary, getLog: getLog, report: report, showPanel: showPanel };
 })();
 
+function _esc(s) {
+  if (typeof s !== "string") return String(s == null ? "" : s);
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
 window.addEventListener("error", function(e) {
   NDDiag.track("global", "error", (e.filename || "") + ":" + (e.lineno || "") + " " + (e.message || ""));
 });
@@ -189,20 +194,57 @@ function loadAllocationTable() {
         return;
       }
       var html = "";
-      rows.forEach(function(r) {
-        var driftCls = r.drift > 1 ? "color:var(--success)" : r.drift < -1 ? "color:var(--danger)" : "color:var(--text-muted)";
-        var driftStr = (r.drift > 0 ? "+" : "") + r.drift.toFixed(1) + "%";
-        html += '<tr>';
-        html += '<td style="padding:8px 6px;">' + r.bucket + '</td>';
-        html += '<td style="padding:8px 6px;font-family:var(--mono);">$' + r.value.toLocaleString(undefined, {maximumFractionDigits:0}) + '</td>';
-        html += '<td style="padding:8px 6px;font-family:var(--mono);">' + r.pct.toFixed(1) + '%</td>';
-        html += '<td style="padding:8px 6px;font-family:var(--mono);">' + r.target + '%</td>';
-        html += '<td style="padding:8px 6px;font-family:var(--mono);' + driftCls + '">' + driftStr + '</td>';
-        html += '</tr>';
-      });
-      tbody.innerHTML = html;
+      _allocData = rows;
+      _renderAllocRows(rows);
     })
     .catch(function() {});
+}
+
+var _allocData = [];
+var _allocSort = { col: null, asc: true };
+
+function sortAllocTable(col) {
+  if (_allocSort.col === col) {
+    _allocSort.asc = !_allocSort.asc;
+  } else {
+    _allocSort.col = col;
+    _allocSort.asc = col === "bucket";
+  }
+  var sorted = _allocData.slice().sort(function(a, b) {
+    var va = a[col], vb = b[col];
+    if (typeof va === "string") va = va.toLowerCase();
+    if (typeof vb === "string") vb = vb.toLowerCase();
+    if (va < vb) return _allocSort.asc ? -1 : 1;
+    if (va > vb) return _allocSort.asc ? 1 : -1;
+    return 0;
+  });
+  _renderAllocRows(sorted);
+  document.querySelectorAll("#alloc-table-head th").forEach(function(th) {
+    var arrow = th.querySelector(".sort-arrow");
+    if (arrow) arrow.textContent = th.dataset.col === col ? (_allocSort.asc ? " \u25B2" : " \u25BC") : "";
+  });
+}
+
+function _renderAllocRows(rows) {
+  var tbody = document.getElementById("alloc-table-body");
+  if (!tbody) return;
+  if (!rows.length) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:16px;color:var(--text-muted);">No allocation data yet.</td></tr>';
+    return;
+  }
+  var html = "";
+  rows.forEach(function(r) {
+    var driftCls = r.drift > 1 ? "color:var(--success)" : r.drift < -1 ? "color:var(--danger)" : "color:var(--text-muted)";
+    var driftStr = (r.drift > 0 ? "+" : "") + r.drift.toFixed(1) + "%";
+    html += '<tr>';
+    html += '<td style="padding:8px 6px;">' + _esc(r.bucket) + '</td>';
+    html += '<td style="padding:8px 6px;font-family:var(--mono);">$' + r.value.toLocaleString(undefined, {maximumFractionDigits:0}) + '</td>';
+    html += '<td style="padding:8px 6px;font-family:var(--mono);">' + r.pct.toFixed(1) + '%</td>';
+    html += '<td style="padding:8px 6px;font-family:var(--mono);">' + r.target + '%</td>';
+    html += '<td style="padding:8px 6px;font-family:var(--mono);' + driftCls + '">' + driftStr + '</td>';
+    html += '</tr>';
+  });
+  tbody.innerHTML = html;
 }
 
 function loadMonthlyInvestments() {
@@ -235,7 +277,7 @@ function loadMonthlyInvestments() {
         totalTarget += c.target;
         totalContrib += c.contributed;
         html += '<tr>';
-        html += '<td style="padding:8px 6px;"><strong>' + c.category + '</strong> <span style="color:var(--text-muted);font-size:0.75rem;">(' + pct + '%)</span></td>';
+        html += '<td style="padding:8px 6px;"><strong>' + _esc(c.category) + '</strong> <span style="color:var(--text-muted);font-size:0.75rem;">(' + pct + '%)</span></td>';
         html += '<td style="padding:8px 6px;text-align:right;font-family:var(--mono);">$' + c.target.toLocaleString(undefined, {maximumFractionDigits:0}) + '</td>';
         html += '<td style="padding:8px 6px;text-align:right;"><input type="number" class="contrib-input num" data-id="' + c.id + '" data-target="' + c.target + '" value="' + c.contributed + '" style="width:80px;text-align:right;" onchange="updateInvestTotals()"></td>';
         html += '<td style="padding:8px 6px;text-align:right;font-family:var(--mono);' + diffCls + '">' + diffStr + '</td>';
@@ -1453,19 +1495,7 @@ function _flashUpdatedPulseCards() {
   }
 }
 
-/* ── Phase 1: Theme Toggle ── */
-function toggleTheme() {
-  document.documentElement.classList.toggle("light");
-  var isLight = document.documentElement.classList.contains("light");
-  localStorage.setItem("wos-theme", isLight ? "light" : "dark");
-  var icon = document.getElementById("theme-icon");
-  if (icon) icon.innerHTML = isLight
-    ? '<path d="M21 12.79A9 9 0 1111.21 3a7 7 0 009.79 9.79z"/>'
-    : '<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>';
-  // Rebuild charts for theme
-  if (window.historyChart) buildHistoryChart("total");
-}
-if (localStorage.getItem("wos-theme") === "light") { document.documentElement.classList.add("light"); }
+/* Theme is managed by theme.js -- toggleTheme() is defined there */
 
 /* ── Phase 1: Command Palette (Ctrl+K) ── */
 var cmdItems = [
@@ -2085,10 +2115,13 @@ function updateProjectionTimelineLabel() {
   }
 }
 
+var _projListenersBound = false;
 function buildProjectionChart() {
   NDDiag.track("projection", "loading");
   updateProjectionChart();
   NDDiag.track("projection", "ok");
+  if (_projListenersBound) return;
+  _projListenersBound = true;
   ["proj-starting", "proj-rate", "proj-monthly", "proj-years"].forEach(function(id) {
     var el = document.getElementById(id);
     if (el) el.addEventListener("input", updateProjectionChart);

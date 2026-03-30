@@ -134,7 +134,7 @@ def sparklines():
         lkey = key.lower()
         if lkey.startswith("custom-"):
             card_id = key.split("-", 1)[1]
-            card = CustomPulseCard.query.filter_by(id=card_id).first()
+            card = CustomPulseCard.query.filter_by(id=int(card_id), user_id=current_user.id).first()
             if not card:
                 continue
             if "/" in card.ticker:
@@ -191,7 +191,7 @@ def historical():
     if symbol.startswith("custom-"):
         from ..models.settings import CustomPulseCard
         card_id = symbol.split("-", 1)[1]
-        card = CustomPulseCard.query.filter_by(id=card_id).first()
+        card = CustomPulseCard.query.filter_by(id=int(card_id), user_id=current_user.id).first()
         if card and "/" in card.ticker:
             return _historical_ratio(card.ticker, period, interval, symbol)
         symbol = _normalize_ticker(card.ticker) if card else symbol

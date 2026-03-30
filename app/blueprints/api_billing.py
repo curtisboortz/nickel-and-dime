@@ -63,8 +63,9 @@ def create_checkout():
     try:
         customer_id = _ensure_customer(stripe, current_user)
 
-        # Check if user has ever had a trial (only one trial per customer)
-        had_trial = Subscription.query.filter_by(user_id=current_user.id).first()
+        had_trial = Subscription.query.filter_by(
+            user_id=current_user.id
+        ).filter(Subscription.stripe_subscription_id.isnot(None)).first()
 
         session_params = dict(
             customer=customer_id,

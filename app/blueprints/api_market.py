@@ -180,6 +180,42 @@ def _spark_ratio(result, key, ratio_ticker):
         pass
 
 
+_HIST_FALLBACKS = {
+    ("1d", "1m"):   [("1d", "2m"), ("1d", "5m"), ("5d", "15m"), ("5d", "30m")],
+    ("1d", "2m"):   [("1d", "5m"), ("5d", "15m"), ("5d", "30m")],
+    ("5d", "5m"):   [("5d", "15m"), ("5d", "30m"), ("1mo", "1d")],
+    ("5d", "15m"):  [("5d", "30m"), ("1mo", "1d")],
+    ("1mo", "15m"): [("1mo", "30m"), ("1mo", "1d")],
+    ("1mo", "30m"): [("1mo", "1d")],
+    ("3mo", "1d"):  [("3mo", "1wk")],
+    ("6mo", "1d"):  [("6mo", "1wk")],
+    ("1y", "1d"):   [("1y", "1wk")],
+    ("5y", "1wk"):  [("5y", "1mo"), ("max", "1mo")],
+    ("max", "1mo"): [("max", "3mo")],
+}
+
+
+def _yf_fetch(symbols, period, interval):
+    """Try fetching OHLC from yfinance for a list of symbol alternatives.
+    Returns (data_list, actual_period, actual_interval) or ([], p, i)."""
+    for sym in symbols:
+        try:
+            hist = yf.Ticker(sym).history(period=period, interval=interval)
+            if not hist.empty:
+                data = [{"date": str(idx),
+                         "o": round(row["Open"], 4),
+                         "h": round(row["High"], 4),
+                         "l": round(row["Low"], 4),
+                         "c": round(row["Close"], 4),
+                         "v": int(row.get("Volume", 0))}
+                        for idx, row in hist.iterrows()]
+                if data:
+                    return data, period, interval
+        except Exception:
+            continue
+    return [], period, interval
+
+
 @api_market_bp.route("/historical")
 @login_required
 def historical():
@@ -196,26 +232,22 @@ def historical():
             return _historical_ratio(card.ticker, period, interval, symbol)
         symbol = _normalize_ticker(card.ticker) if card else symbol
 
-    try:
-        dxy_syms = ["DX-Y.NYB", "DX=F"] if symbol == "DX=F" else [symbol]
-        data = []
-        for actual_sym in dxy_syms:
-            ticker = yf.Ticker(actual_sym)
-            hist = ticker.history(period=period, interval=interval)
-            if not hist.empty:
-                data = [{"t": str(idx),
-                         "o": round(row["Open"], 4),
-                         "h": round(row["High"], 4),
-                         "l": round(row["Low"], 4),
-                         "c": round(row["Close"], 4),
-                         "v": int(row.get("Volume", 0))}
-                        for idx, row in hist.iterrows()]
-                if data:
-                    break
-    except Exception:
-        data = []
+    dxy_syms = ["DX-Y.NYB", "DX=F"] if symbol == "DX=F" else [symbol]
 
-    return jsonify({"symbol": symbol, "period": period, "data": data})
+    data, actual_p, actual_i = _yf_fetch(dxy_syms, period, interval)
+
+    if not data:
+        for fb_p, fb_i in _HIST_FALLBACKS.get((period, interval), []):
+            data, actual_p, actual_i = _yf_fetch(dxy_syms, fb_p, fb_i)
+            if data:
+                break
+
+    return jsonify({
+        "symbol": symbol,
+        "period": actual_p,
+        "interval": actual_i,
+        "data": data,
+    })
 
 
 def _historical_ratio(ratio_ticker, period, interval, label):
@@ -223,32 +255,39 @@ def _historical_ratio(ratio_ticker, period, interval, label):
     parts = ratio_ticker.split("/", 1)
     num_sym = _normalize_ticker(parts[0])
     den_sym = _normalize_ticker(parts[1])
-    try:
-        num_hist = yf.Ticker(num_sym).history(period=period, interval=interval)
-        den_hist = yf.Ticker(den_sym).history(period=period, interval=interval)
-        if num_hist.empty or den_hist.empty:
-            return jsonify({"symbol": label, "period": period, "data": []})
-        merged = num_hist[["Open", "High", "Low", "Close"]].join(
-            den_hist[["Open", "High", "Low", "Close"]], how="inner", lsuffix="_n", rsuffix="_d"
-        )
-        data = []
-        for idx, row in merged.iterrows():
-            d_open = row["Open_d"] or 1
-            d_high = row["High_d"] or 1
-            d_low = row["Low_d"] or 1
-            d_close = row["Close_d"] or 1
-            if d_open > 0 and d_close > 0:
-                data.append({
-                    "t": str(idx),
-                    "o": round(row["Open_n"] / d_open, 4),
-                    "h": round(row["High_n"] / d_low, 4),
-                    "l": round(row["Low_n"] / d_high, 4),
-                    "c": round(row["Close_n"] / d_close, 4),
-                    "v": 0,
-                })
-        return jsonify({"symbol": label, "period": period, "data": data})
-    except Exception:
-        return jsonify({"symbol": label, "period": period, "data": []})
+
+    attempts = [(period, interval)] + _HIST_FALLBACKS.get((period, interval), [])
+
+    for try_p, try_i in attempts:
+        try:
+            num_hist = yf.Ticker(num_sym).history(period=try_p, interval=try_i)
+            den_hist = yf.Ticker(den_sym).history(period=try_p, interval=try_i)
+            if num_hist.empty or den_hist.empty:
+                continue
+            merged = num_hist[["Open", "High", "Low", "Close"]].join(
+                den_hist[["Open", "High", "Low", "Close"]], how="inner", lsuffix="_n", rsuffix="_d"
+            )
+            data = []
+            for idx, row in merged.iterrows():
+                d_open = row["Open_d"] or 1
+                d_high = row["High_d"] or 1
+                d_low = row["Low_d"] or 1
+                d_close = row["Close_d"] or 1
+                if d_open > 0 and d_close > 0:
+                    data.append({
+                        "date": str(idx),
+                        "o": round(row["Open_n"] / d_open, 4),
+                        "h": round(row["High_n"] / d_low, 4),
+                        "l": round(row["Low_n"] / d_high, 4),
+                        "c": round(row["Close_n"] / d_close, 4),
+                        "v": 0,
+                    })
+            if data:
+                return jsonify({"symbol": label, "period": try_p, "interval": try_i, "data": data})
+        except Exception:
+            continue
+
+    return jsonify({"symbol": label, "period": period, "interval": interval, "data": []})
 
 
 @api_market_bp.route("/pulse-order", methods=["POST"])

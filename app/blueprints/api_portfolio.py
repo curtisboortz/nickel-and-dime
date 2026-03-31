@@ -17,15 +17,21 @@ from ..models.snapshot import PortfolioSnapshot
 api_portfolio_bp = Blueprint("api_portfolio", __name__)
 
 
-def _get_price(symbol):
-    """Look up a cached price, falling back to a live yfinance fetch on miss."""
+def _get_price_entry(symbol):
+    """Return the PriceCache row for a symbol, fetching on demand if needed."""
     entry = PriceCache.query.get(symbol)
     if entry and entry.price:
-        return entry.price
+        return entry
     entry = PriceCache.query.get(f"CG:{symbol.lower()}")
     if entry and entry.price:
-        return entry.price
+        return entry
     return _fetch_and_cache(symbol)
+
+
+def _get_price(symbol):
+    """Shorthand: return just the price float."""
+    entry = _get_price_entry(symbol)
+    return entry.price if entry else None
 
 
 def _fetch_and_cache(symbol):
@@ -36,15 +42,19 @@ def _fetch_and_cache(symbol):
         tk = yf.Ticker(symbol)
         info = tk.fast_info
         price = getattr(info, "last_price", None)
+        prev = getattr(info, "previous_close", None)
         if price and price > 0:
             row = PriceCache.query.get(symbol)
             if not row:
                 row = PriceCache(symbol=symbol)
                 db.session.add(row)
             row.price = price
+            row.prev_close = prev
+            if prev and prev > 0:
+                row.change_pct = (price - prev) / prev * 100
             row.updated_at = datetime.now(timezone.utc)
             db.session.commit()
-            return price
+            return row
     except Exception:
         pass
     return None
@@ -61,7 +71,9 @@ def get_holdings():
 
     holdings_out = []
     for h in holdings:
-        price = _get_price(h.ticker)
+        entry = _get_price_entry(h.ticker)
+        price = entry.price if entry else None
+        prev_close = entry.prev_close if entry else None
         qty = h.shares or 0
         vo = h.value_override
         if vo:
@@ -75,7 +87,7 @@ def get_holdings():
             "bucket": h.bucket, "account": h.account,
             "value_override": h.value_override, "notes": h.notes,
             "cost_basis": h.cost_basis,
-            "price": price, "total": total,
+            "price": price, "prev_close": prev_close, "total": total,
         })
 
     crypto_out = []

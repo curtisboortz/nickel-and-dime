@@ -183,6 +183,10 @@ def _parse_fidelity(row: dict) -> dict | None:
     if not symbol or _is_skip(symbol):
         return None
     shares = _to_float(_get(row, "Quantity"))
+    # Money market funds (SPAXX, FDRXX, etc.) often have no quantity in Fidelity
+    # exports. Use "Current Value" as share count since NAV is ~$1.
+    if (shares is None or shares == 0) and _get(row, "Current Value"):
+        shares = _to_float(_get(row, "Current Value"))
     cost_per_share = _to_float(_get(row, "Cost Basis Per Share"))
     if cost_per_share is None:
         cost_total = _to_float(_get(row, "Cost Basis Total"))
@@ -339,6 +343,7 @@ def _parse_generic(row: dict) -> dict | None:
     """Flexible parser that hunts for ticker/shares in any column name."""
     ticker = None
     shares = None
+    current_value = None
     account = ""
     cost_basis = None
     description = ""
@@ -349,6 +354,8 @@ def _parse_generic(row: dict) -> dict | None:
             ticker = val
         elif kl in ("shares", "quantity", "qty", "qty #", "position", "units", "amount"):
             shares = _to_float(val)
+        elif kl in ("current value", "market value", "value"):
+            current_value = _to_float(val)
         elif kl in ("account", "account name", "account number", "account name/number"):
             account = val
         elif kl in ("cost basis", "cost basis per share", "avg cost", "average cost",
@@ -359,6 +366,9 @@ def _parse_generic(row: dict) -> dict | None:
 
     if not ticker or _is_skip(ticker):
         return None
+
+    if (shares is None or shares == 0) and current_value is not None:
+        shares = current_value
 
     return {
         "ticker": _clean_ticker(ticker),

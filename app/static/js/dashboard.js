@@ -1333,12 +1333,12 @@ function applyLiveDataToDOM(d) {
     var opts = { year:"numeric", month:"long", day:"numeric", hour:"numeric", minute:"2-digit", hour12:true };
     ts.textContent = now.toLocaleDateString("en-US", opts);
   }
-  var fxRate = (typeof BASE_CURRENCY !== "undefined" && BASE_CURRENCY !== "USD" && typeof FX_RATES !== "undefined" && FX_RATES[BASE_CURRENCY]) ? FX_RATES[BASE_CURRENCY] : 1;
-  var sym = (typeof CURRENCY_SYMBOLS !== "undefined" && BASE_CURRENCY !== "USD" && CURRENCY_SYMBOLS[BASE_CURRENCY]) ? CURRENCY_SYMBOLS[BASE_CURRENCY] : "$";
+  var fxR = (typeof _fxRate !== "undefined") ? _fxRate : 1;
+  var fxS = (typeof _fxSymbol !== "undefined") ? _fxSymbol : "$";
   var nw = document.getElementById("net-worth-counter");
   if (nw && typeof d.total === "number") {
     nw.dataset.target = d.total;
-    nw.textContent = sym + (d.total * fxRate).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
+    nw.textContent = fxS + (d.total * fxR).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
     window.PORTFOLIO_TOTAL = d.total;
     PROJ_CURRENT = d.total;
     var projStartEl = document.getElementById("proj-starting");
@@ -1349,10 +1349,11 @@ function applyLiveDataToDOM(d) {
   }
   var heroChange = document.getElementById("hero-change-badge");
   if (heroChange && typeof d.daily_change === "number" && typeof d.daily_change_pct === "number") {
-    var dc = d.daily_change;
+    var dc = d.daily_change * fxR;
     var sign = dc >= 0 ? "+" : "";
-    heroChange.textContent = sign + "$" + Math.abs(dc).toLocaleString(undefined, {maximumFractionDigits:0}) + " (" + sign + d.daily_change_pct.toFixed(1) + "%)";
+    heroChange.textContent = sign + fxS + Math.abs(dc).toLocaleString(undefined, {maximumFractionDigits:0}) + " (" + sign + d.daily_change_pct.toFixed(1) + "%)";
     heroChange.className = "hero-change " + (dc >= 0 ? "pos" : "neg");
+    heroChange.dataset.fxUsd = sign + "$" + Math.abs(d.daily_change).toLocaleString(undefined, {maximumFractionDigits:0}) + " (" + sign + d.daily_change_pct.toFixed(1) + "%)";
   }
   var pulseMap = {
     "gold": {val: d.gold, fmt: "dollar0"},
@@ -3659,7 +3660,9 @@ loadTLH();
 /* ── Multi-Currency ── */
 var FX_RATES = {};
 var BASE_CURRENCY = localStorage.getItem("wos-currency") || "USD";
-var CURRENCY_SYMBOLS = { "USD":"$", "EUR":"\u20ac", "GBP":"\u00a3", "JPY":"\u00a5", "CAD":"C$", "AUD":"A$", "CHF":"Fr" };
+var CURRENCY_SYMBOLS = { "USD":"$", "EUR":"\u20ac", "GBP":"\u00a3", "JPY":"\u00a5", "CAD":"C$", "AUD":"A$", "CHF":"Fr", "CNY":"\u00a5", "INR":"\u20b9", "KRW":"\u20a9", "MXN":"MX$", "BRL":"R$", "SEK":"kr", "NOK":"kr", "NZD":"NZ$" };
+var _fxRate = 1;
+var _fxSymbol = "$";
 (function() {
   var sel = document.getElementById("currency-selector");
   if (sel) sel.value = BASE_CURRENCY;
@@ -3669,6 +3672,7 @@ function changeCurrency(currency) {
   localStorage.setItem("wos-currency", currency);
   BASE_CURRENCY = currency;
   if (currency === "USD") {
+    _fxRate = 1; _fxSymbol = "$";
     location.reload();
     return;
   }
@@ -3680,31 +3684,84 @@ function fetchFxAndConvert(currency) {
     .then(function(d) {
       if (d.rate) {
         FX_RATES[currency] = d.rate;
-        convertDisplayCurrency(d.rate, CURRENCY_SYMBOLS[currency] || currency + " ");
+        _fxRate = d.rate;
+        _fxSymbol = CURRENCY_SYMBOLS[currency] || currency + " ";
+        convertDisplayCurrency(d.rate, _fxSymbol);
       }
-    }).catch(function() {});
+    }).catch(function(e) { console.error("[FX] fetch failed:", e); });
+}
+function fxFmt(usdVal, decimals) {
+  if (typeof decimals === "undefined") decimals = 2;
+  var v = usdVal * _fxRate;
+  return _fxSymbol + v.toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+}
+function _fxConvertDollarText(el) {
+  var text = el.textContent.trim();
+  var m = text.match(/^([+-]?)[\s]*\$([\d,]+\.?\d*)/);
+  if (!m) return;
+  if (!el.dataset.fxUsd) el.dataset.fxUsd = text;
+  var sign = m[1] || "";
+  var num = parseFloat(m[2].replace(/,/g, ""));
+  if (isNaN(num)) return;
+  var converted = num * _fxRate;
+  var dec = text.indexOf(".") >= 0 ? 2 : 0;
+  el.textContent = sign + _fxSymbol + converted.toLocaleString(undefined, { minimumFractionDigits: dec, maximumFractionDigits: dec });
 }
 function convertDisplayCurrency(rate, symbol) {
-  // Convert net worth
+  _fxRate = rate;
+  _fxSymbol = symbol;
+
   var nw = document.getElementById("net-worth-counter");
   if (nw) {
     var usdVal = parseFloat(nw.dataset.target) || 0;
-    var converted = usdVal * rate;
-    nw.textContent = symbol + converted.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    nw.textContent = symbol + (usdVal * rate).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
-  // Convert dollar amounts in portfolio-value contexts (not market prices)
-  // Target: allocation table values, holdings totals, goal amounts, budget values
-  document.querySelectorAll("td, .mono, .goal-card .mono, .hero-change").forEach(function(el) {
-    var text = el.textContent.trim();
-    // Only convert values that start with $ and haven't been converted yet
-    if (text.match(/^\$[\d,]+/) && !el.dataset.fxDone) {
-      el.dataset.fxDone = "1";
-      el.dataset.fxOriginal = text;
-      var num = parseFloat(text.replace(/[$,]/g, ""));
-      if (!isNaN(num) && num > 0) {
-        el.textContent = symbol + (num * rate).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
-      }
+
+  var hero = document.getElementById("hero-change-badge");
+  if (hero && hero.dataset.fxUsd) {
+    _fxConvertDollarText(hero);
+  } else if (hero) {
+    var ht = hero.textContent;
+    var hm = ht.match(/([+-]?)\$([\d,]+)/);
+    if (hm) {
+      hero.dataset.fxUsd = ht;
+      var hval = parseFloat(hm[2].replace(/,/g, "")) * rate;
+      var rest = ht.substring(ht.indexOf("("));
+      hero.textContent = hm[1] + symbol + Math.round(hval).toLocaleString() + " " + rest;
     }
+  }
+
+  document.querySelectorAll("[data-pulse-price]").forEach(function(el) {
+    var pid = el.getAttribute("data-pulse-price");
+    if (pid === "dxy" || pid === "vix" || pid === "au_ag" || pid === "gold_oil" || pid === "tnx_10y" || pid === "tnx_2y") return;
+    if (pid && pid.indexOf("custom-") === 0) {
+      if (el.textContent.indexOf("$") === -1) return;
+    }
+    if (!el.dataset.fxUsd) el.dataset.fxUsd = el.textContent;
+    var orig = el.dataset.fxUsd;
+    var pm = orig.match(/^\$([\d,]+\.?\d*)/);
+    if (pm) {
+      var pv = parseFloat(pm[1].replace(/,/g, "")) * rate;
+      var pdec = orig.indexOf(".") >= 0 ? 2 : 0;
+      el.textContent = symbol + pv.toLocaleString(undefined, { minimumFractionDigits: pdec, maximumFractionDigits: pdec });
+    }
+  });
+
+  document.querySelectorAll("#holdings-table-wrap td, #crypto-tbody td, #metals-tbody td, .alloc-table td, .goal-card .mono, #budget-stats .mono, #monthly-inv-table td").forEach(function(el) {
+    if (el.querySelector("input, button, select")) return;
+    _fxConvertDollarText(el);
+  });
+
+  document.querySelectorAll("#holdings-table-wrap span, #crypto-tbody span, #metals-tbody span").forEach(function(el) {
+    _fxConvertDollarText(el);
+  });
+
+  document.querySelectorAll(".bal-total, .balances-grand-total, #balances-total").forEach(function(el) {
+    _fxConvertDollarText(el);
+  });
+
+  document.querySelectorAll("#crypto-total-value, #metals-total-value, #metals-gl").forEach(function(el) {
+    _fxConvertDollarText(el);
   });
 }
 

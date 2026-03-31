@@ -449,3 +449,34 @@ def refresh_prices():
         return jsonify({"success": True})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+_FX_CACHE = {}
+_FX_CACHE_TTL = 300
+
+@api_market_bp.route("/fx-rate")
+@login_required
+def fx_rate():
+    """Return USD-to-target exchange rate via yfinance."""
+    import time
+    target = flask_request.args.get("to", "EUR").upper().strip()
+    if target == "USD":
+        return jsonify({"rate": 1, "currency": "USD"})
+    allowed = {"EUR", "GBP", "JPY", "CAD", "AUD", "CHF", "CNY", "INR", "KRW", "MXN", "BRL", "SEK", "NOK", "NZD"}
+    if target not in allowed:
+        return jsonify({"error": "unsupported currency"}), 400
+
+    cached = _FX_CACHE.get(target)
+    if cached and (time.time() - cached["ts"]) < _FX_CACHE_TTL:
+        return jsonify({"rate": cached["rate"], "currency": target})
+
+    try:
+        pair = f"{target}=X"
+        tk = yf.Ticker(pair)
+        rate = tk.fast_info.last_price
+        if rate and rate > 0:
+            _FX_CACHE[target] = {"rate": rate, "ts": time.time()}
+            return jsonify({"rate": rate, "currency": target})
+        return jsonify({"error": "rate unavailable"}), 502
+    except Exception as e:
+        return jsonify({"error": str(e)}), 502

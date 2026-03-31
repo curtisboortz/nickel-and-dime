@@ -191,7 +191,7 @@ def _parse_fidelity(row: dict) -> dict | None:
     return {
         "ticker": _clean_ticker(symbol),
         "shares": shares,
-        "account": _get(row, "Account Name/Number", "Fidelity"),
+        "account": _get(row, "Account Name/Number", "Account Number", "Account Name", "Account", "Fidelity"),
         "cost_basis": cost_per_share,
         "description": _get(row, "Description"),
         "asset_type": _detect_asset_type(symbol, _get(row, "Description")),

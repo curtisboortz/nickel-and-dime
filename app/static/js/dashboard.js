@@ -4206,29 +4206,74 @@ function loadHoldings() {
     });
 }
 
+var _holdingsSortKey = "ticker";
+var _holdingsSortDir = 1; // 1 = asc, -1 = desc
+var _holdingsCache = null;
+var _holdingsWrapRef = null;
+
+function _sortHoldingsBy(key) {
+  if (_holdingsSortKey === key) {
+    _holdingsSortDir *= -1;
+  } else {
+    _holdingsSortKey = key;
+    _holdingsSortDir = 1;
+  }
+  if (_holdingsCache && _holdingsWrapRef) {
+    _renderStockHoldings(_holdingsWrapRef, _holdingsCache);
+  }
+}
+
 function _renderStockHoldings(wrap, holdings) {
   if (!wrap) return;
+  _holdingsCache = holdings;
+  _holdingsWrapRef = wrap;
   var fmtMoney = function(v) { return v ? "$" + v.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}) : ""; };
   var inputStyle = 'style="background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:4px;color:var(--text-primary);padding:5px 8px;font-size:0.82rem;width:100%;"';
 
+  var sorted = holdings.slice().sort(function(a, b) {
+    var k = _holdingsSortKey;
+    var va, vb;
+    if (k === "account" || k === "ticker" || k === "bucket" || k === "notes") {
+      va = (a[k] || "").toLowerCase();
+      vb = (b[k] || "").toLowerCase();
+      return va < vb ? -_holdingsSortDir : va > vb ? _holdingsSortDir : 0;
+    }
+    if (k === "pl") {
+      var aCost = (a.cost_basis && a.shares) ? a.cost_basis * a.shares : 0;
+      var bCost = (b.cost_basis && b.shares) ? b.cost_basis * b.shares : 0;
+      va = aCost > 0 ? ((a.total || 0) - aCost) / aCost : -Infinity;
+      vb = bCost > 0 ? ((b.total || 0) - bCost) / bCost : -Infinity;
+    } else {
+      va = a[k] || 0;
+      vb = b[k] || 0;
+    }
+    return (va - vb) * _holdingsSortDir;
+  });
+
+  var arrow = function(key) {
+    if (_holdingsSortKey !== key) return ' <span style="opacity:0.3;">&#8597;</span>';
+    return _holdingsSortDir === 1 ? ' &#9650;' : ' &#9660;';
+  };
+  var thStyle = 'style="padding:8px 6px;cursor:pointer;user-select:none;white-space:nowrap;"';
+
   var html = '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:0.82rem;">';
   html += '<thead><tr style="border-bottom:1px solid var(--border-subtle);">';
-  html += '<th style="padding:8px 6px;text-align:left;">Account</th>';
-  html += '<th style="padding:8px 6px;text-align:left;">Ticker</th>';
-  html += '<th style="padding:8px 6px;text-align:left;">Class</th>';
-  html += '<th style="padding:8px 6px;text-align:right;">Qty</th>';
-  html += '<th style="padding:8px 6px;text-align:right;">Cost/Share</th>';
-  html += '<th style="padding:8px 6px;text-align:right;">Price</th>';
-  html += '<th style="padding:8px 6px;text-align:right;">Total</th>';
-  html += '<th style="padding:8px 6px;text-align:right;">P&amp;L</th>';
-  html += '<th style="padding:8px 6px;text-align:left;">Notes</th>';
+  html += '<th ' + thStyle + ' onclick="_sortHoldingsBy(\'account\')">Account' + arrow("account") + '</th>';
+  html += '<th ' + thStyle + ' onclick="_sortHoldingsBy(\'ticker\')">Ticker' + arrow("ticker") + '</th>';
+  html += '<th ' + thStyle + ' onclick="_sortHoldingsBy(\'bucket\')">Class' + arrow("bucket") + '</th>';
+  html += '<th ' + thStyle + ' class="text-right" onclick="_sortHoldingsBy(\'shares\')">Qty' + arrow("shares") + '</th>';
+  html += '<th ' + thStyle + ' class="text-right" onclick="_sortHoldingsBy(\'cost_basis\')">Cost/Share' + arrow("cost_basis") + '</th>';
+  html += '<th ' + thStyle + ' class="text-right" onclick="_sortHoldingsBy(\'price\')">Price' + arrow("price") + '</th>';
+  html += '<th ' + thStyle + ' class="text-right" onclick="_sortHoldingsBy(\'total\')">Total' + arrow("total") + '</th>';
+  html += '<th ' + thStyle + ' class="text-right" onclick="_sortHoldingsBy(\'pl\')">P&amp;L' + arrow("pl") + '</th>';
+  html += '<th style="padding:8px 6px;">Notes</th>';
   html += '<th style="padding:8px 4px;width:32px;"></th>';
   html += '</tr></thead><tbody>';
 
   var grandTotal = 0;
   var grandCost = 0;
   var grandPL = 0;
-  holdings.forEach(function(h) {
+  sorted.forEach(function(h) {
     grandTotal += (h.total || 0);
     var priceStr = h.price ? fmtMoney(h.price) : "";
     var computedTotal = (h.price && h.shares) ? h.price * h.shares : 0;

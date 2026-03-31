@@ -439,6 +439,7 @@ _BUCKET_TICKERS = {
     "Crypto": {
         "COIN", "MARA", "RIOT", "MSTR", "CLSK", "BITF", "HUT", "BITO",
         "GBTC", "ETHE", "IBIT", "ARKB", "FBTC", "BITQ", "WGMI",
+        "EZBC", "HODL", "BTCO", "DEFI", "BLOK",
     },
     "International": {
         "EFA", "EEM", "VEA", "VWO", "VXUS", "IXUS", "IEFA", "IEMG",
@@ -504,12 +505,18 @@ def _detect_asset_type(symbol: str, description: str = "") -> str:
     s = symbol.upper().strip()
     desc = (description or "").lower()
 
+    # Crypto-related ETFs/stocks trade on exchanges -- they are stocks, not crypto.
+    # Check this BEFORE description keywords so "bitcoin ETF" isn't mis-routed.
+    _crypto_etfs = _BUCKET_TICKER_MAP.get("Crypto", set())
+    if s in _crypto_etfs:
+        return "stock"
+
     if any(s.endswith(sfx) for sfx in _CRYPTO_SUFFIXES):
         return "crypto"
     base = s.split("-")[0] if "-" in s else s
     if base in _CRYPTO_BASES:
         return "crypto"
-    if "crypto" in desc or "bitcoin" in desc or "ethereum" in desc:
+    if ("crypto" in desc or "bitcoin" in desc or "ethereum" in desc) and "etf" not in desc:
         return "crypto"
 
     # Mutual funds: 5-letter symbols ending in X

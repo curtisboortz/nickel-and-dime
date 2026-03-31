@@ -4441,9 +4441,12 @@ function _renderStockHoldings(wrap, holdings) {
   html += '<tr style="font-weight:600;border-top:2px solid var(--border-subtle);">';
   html += '<td colspan="5" style="padding:8px 6px;">Holdings Total</td>';
   html += '<td></td>';
+  var grandPrevTotal = grandTotal - grandDayPL;
+  var grandDayPct = grandPrevTotal > 0 ? (grandDayPL / grandPrevTotal) * 100 : 0;
+
   html += '<td style="padding:8px 6px;text-align:right;color:#58a6ff;font-family:var(--mono);">' + fmtMoney(grandTotal) + '</td>';
   html += '<td style="padding:8px 6px;text-align:right;"><span style="color:' + grandDayColor + ';font-family:var(--mono);">' + grandDaySign + '$' + Math.abs(grandDayPL).toLocaleString(undefined, {minimumFractionDigits:0, maximumFractionDigits:0}) + '</span></td>';
-  html += '<td></td>';
+  html += '<td style="padding:8px 6px;text-align:right;"><span style="color:' + grandDayColor + ';font-family:var(--mono);">' + grandDaySign + grandDayPct.toFixed(2) + '%</span></td>';
   html += '<td style="padding:8px 6px;text-align:right;"><span style="color:' + grandPLColor + ';font-family:var(--mono);">' + grandPLSign + '$' + Math.abs(grandPL).toLocaleString(undefined, {minimumFractionDigits:0, maximumFractionDigits:0}) + '</span></td>';
   html += '<td style="padding:8px 6px;text-align:right;">' + (grandCost > 0 ? '<span style="color:' + grandPLColor + ';font-family:var(--mono);">' + grandPLSign + grandPLPct.toFixed(1) + '%</span>' : '') + '</td>';
   html += '<td colspan="2"></td>';

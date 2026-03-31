@@ -428,6 +428,77 @@ def _is_skip(symbol: str) -> bool:
     return False
 
 
+_BUCKET_TICKERS = {
+    "Gold": {
+        "GLD", "IAU", "SGOL", "OUNZ", "PHYS", "GDX", "GDXJ", "JNUG", "NUGT",
+        "GBUG", "RING", "GOAU", "AAAU", "BAR", "GLDM", "GLTR", "UGL", "DGP",
+    },
+    "Silver": {
+        "SLV", "PSLV", "SIL", "SILJ", "SIVR", "SLVP", "AGQ",
+    },
+    "Crypto": {
+        "COIN", "MARA", "RIOT", "MSTR", "CLSK", "BITF", "HUT", "BITO",
+        "GBTC", "ETHE", "IBIT", "ARKB", "FBTC", "BITQ", "WGMI",
+    },
+    "International": {
+        "EFA", "EEM", "VEA", "VWO", "VXUS", "IXUS", "IEFA", "IEMG",
+        "SPDW", "ACWX", "GWX", "SCZ", "FNDF", "SCHE", "SPEM", "DGS",
+        "AVDV", "DFAX", "DFIV", "FNDE",
+    },
+    "Fixed Income": {
+        "AGG", "BND", "IGLB", "LQD", "HYG", "TLT", "IEF", "SHY",
+        "VCIT", "VCSH", "MUB", "SCHZ", "GOVT", "TIP", "BNDX", "EMB",
+        "VGIT", "VGSH", "VGLT", "AOA", "AOR", "AOM", "AOK",
+    },
+    "Real Assets": {
+        "VNQ", "SCHH", "IYR", "XLRE", "DBC", "GSG", "PDBC", "USRT",
+        "REM", "REET", "IFGL", "USCI",
+    },
+    "Cash": {
+        "SPAXX", "FDRXX", "VMFXX", "SWVXX", "VMMXX", "SPRXX", "FZDXX",
+        "TTTXX", "FDLXX",
+    },
+}
+
+_BUCKET_KEYWORDS = {
+    "Gold": ["gold", "gold miner", "precious metal"],
+    "Silver": ["silver"],
+    "Crypto": ["bitcoin", "ethereum", "blockchain", "crypto", "digital asset"],
+    "International": ["international", "emerging market", "foreign", "ex-us",
+                      "ex-u.s.", "global ex", "developed market", "non-u.s."],
+    "Fixed Income": ["bond", "treasury", "fixed income", "investment grade",
+                     "corporate bond", "aggregate bond", "high yield", "municipal"],
+    "Real Assets": ["reit", "real estate", "commodity", "commodities",
+                    "infrastructure", "timber", "natural resource"],
+    "Cash": ["money market", "cash management", "government cash"],
+}
+
+_BUCKET_TICKER_MAP = {}
+for _bkt, _tickers in _BUCKET_TICKERS.items():
+    for _t in _tickers:
+        _BUCKET_TICKER_MAP[_t] = _bkt
+
+
+def detect_bucket(symbol: str, description: str = "", asset_type: str = "") -> str:
+    """Classify a holding into a portfolio bucket based on ticker and description."""
+    s = _clean_ticker(symbol)
+
+    if asset_type == "crypto" or s in _CRYPTO_BASES:
+        return "Crypto"
+
+    bucket = _BUCKET_TICKER_MAP.get(s)
+    if bucket:
+        return bucket
+
+    desc = (description or "").lower()
+    for bkt, keywords in _BUCKET_KEYWORDS.items():
+        for kw in keywords:
+            if kw in desc:
+                return bkt
+
+    return "Equities"
+
+
 def _detect_asset_type(symbol: str, description: str = "") -> str:
     """Guess the asset type from ticker and description."""
     s = symbol.upper().strip()

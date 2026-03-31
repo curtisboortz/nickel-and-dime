@@ -137,14 +137,12 @@ function _renderImportPreview(data) {
   var previewHeader = preview.querySelector("div");
   if (previewHeader) previewHeader.insertAdjacentHTML("afterend", filterHtml);
 
+  var _BUCKET_OPTIONS = ["Equities","Gold","Silver","Crypto","International","Fixed Income","Real Assets","Cash"];
+
   // Render table rows
   var html = "";
   for (var i = 0; i < data.holdings.length; i++) {
     var h = data.holdings[i];
-    var typeLabel = h.asset_type === "crypto" ? "Crypto" :
-                    h.asset_type === "mutual_fund" ? "Fund" : "Stock/ETF";
-    var typeColor = h.asset_type === "crypto" ? "var(--accent-primary)" :
-                    h.asset_type === "mutual_fund" ? "#8b5cf6" : "var(--text-secondary)";
     var dupBadge = h.is_duplicate
       ? '<span style="font-size:0.7rem;padding:2px 6px;background:rgba(234,179,8,0.15);color:#eab308;border-radius:4px;">Existing</span>'
       : '<span style="font-size:0.7rem;padding:2px 6px;background:rgba(52,211,153,0.15);color:var(--accent-primary);border-radius:4px;">New</span>';
@@ -152,6 +150,16 @@ function _renderImportPreview(data) {
     var cbDisplay = h.cost_basis != null
       ? "$" + Number(h.cost_basis).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})
       : '<span style="color:var(--text-muted);">--</span>';
+
+    var bucketVal = h.bucket || "Equities";
+    var selectHtml = '<select class="import-bucket-sel" data-idx="' + i + '" style="background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:4px;color:var(--text-primary);padding:3px 6px;font-size:0.78rem;">';
+    for (var b = 0; b < _BUCKET_OPTIONS.length; b++) {
+      selectHtml += '<option value="' + _BUCKET_OPTIONS[b] + '"' + (_BUCKET_OPTIONS[b] === bucketVal ? ' selected' : '') + '>' + _BUCKET_OPTIONS[b] + '</option>';
+    }
+    if (_BUCKET_OPTIONS.indexOf(bucketVal) === -1) {
+      selectHtml += '<option value="' + bucketVal + '" selected>' + bucketVal + '</option>';
+    }
+    selectHtml += '</select>';
 
     html +=
       '<tr style="border-bottom:1px solid var(--border);" data-account="' + (h.account || "").replace(/"/g, '&quot;') + '">' +
@@ -162,8 +170,8 @@ function _renderImportPreview(data) {
       '<td style="padding:8px 12px;text-align:right;">' +
         (h.shares != null ? Number(h.shares).toLocaleString(undefined, {maximumFractionDigits: 4}) : "—") + "</td>" +
       '<td style="padding:8px 12px;text-align:right;">' + cbDisplay + "</td>" +
+      '<td style="padding:8px 12px;">' + selectHtml + "</td>" +
       '<td style="padding:8px 12px;">' + (h.account || "") + "</td>" +
-      '<td style="padding:8px 12px;"><span style="font-size:0.75rem;color:' + typeColor + ';">' + typeLabel + "</span></td>" +
       '<td style="padding:8px 12px;text-align:center;">' + dupBadge + "</td>" +
       "</tr>";
   }
@@ -201,11 +209,20 @@ function toggleImportSelectAll(checked) {
 
 function commitImport() {
   var boxes = document.querySelectorAll(".import-row-cb");
+  var bucketSels = document.querySelectorAll(".import-bucket-sel");
+  var bucketMap = {};
+  for (var b = 0; b < bucketSels.length; b++) {
+    bucketMap[bucketSels[b].getAttribute("data-idx")] = bucketSels[b].value;
+  }
   var selected = [];
   for (var i = 0; i < boxes.length; i++) {
     if (boxes[i].checked) {
       var idx = parseInt(boxes[i].getAttribute("data-idx"), 10);
-      if (_importPreviewData[idx]) selected.push(_importPreviewData[idx]);
+      if (_importPreviewData[idx]) {
+        var item = Object.assign({}, _importPreviewData[idx]);
+        if (bucketMap[idx] !== undefined) item.bucket = bucketMap[idx];
+        selected.push(item);
+      }
     }
   }
 

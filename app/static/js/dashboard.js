@@ -441,8 +441,9 @@ function buildDonut() {
   if (labels.length === 0) { NDDiag.track("donut", "warn", "empty buckets"); return; }
   var colorMap = {
     "Gold":"#d4a017", "Silver":"#c0c0c0", "Equities":"#34d399", "Crypto":"#818cf8",
-    "Cash":"#64748b", "RealEstate":"#06b6d4", "Art":"#e879f9", "ManagedBlend":"#fb923c",
-    "RetirementBlend":"#a78bfa", "RealAssets":"#06b6d4"
+    "Cash":"#94a3b8", "Fixed Income":"#60a5fa", "International":"#2dd4bf",
+    "Real Assets":"#06b6d4", "RealEstate":"#06b6d4", "Art":"#e879f9",
+    "ManagedBlend":"#fb923c", "RetirementBlend":"#a78bfa", "RealAssets":"#06b6d4"
   };
   var fallback = ["#f87171","#fbbf24","#2dd4bf","#a3e635","#f472b6"];
   var fi = 0;
@@ -3578,7 +3579,7 @@ function buildPerfAttribution() {
   var labels = Object.keys(buckets);
   var values = labels.map(function(b) { return buckets[b]; });
   var pcts = labels.map(function(b) { return ((buckets[b] / total) * 100).toFixed(1); });
-  var colorMap = { "Cash":"#64748b","Equities":"#34d399","Gold":"#d4a017","Silver":"#a0a0a0","Crypto":"#818cf8","RealAssets":"#06b6d4","Art":"#f472b6","ManagedBlend":"#fb923c" };
+  var colorMap = { "Cash":"#94a3b8","Equities":"#34d399","Gold":"#d4a017","Silver":"#c0c0c0","Crypto":"#818cf8","Fixed Income":"#60a5fa","International":"#2dd4bf","Real Assets":"#06b6d4","RealAssets":"#06b6d4","Art":"#e879f9","ManagedBlend":"#fb923c","RetirementBlend":"#a78bfa" };
   var colors = labels.map(function(b) { return colorMap[b] || "#94a3b8"; });
   var ctx = document.getElementById("perf-attr-chart");
   if (!ctx || typeof Chart === "undefined") return;
@@ -4218,37 +4219,41 @@ function _renderStockHoldings(wrap, holdings) {
   html += '<th style="padding:8px 6px;text-align:right;">Qty</th>';
   html += '<th style="padding:8px 6px;text-align:right;">Price</th>';
   html += '<th style="padding:8px 6px;text-align:right;">Total</th>';
-  html += '<th style="padding:8px 6px;text-align:right;">Override</th>';
   html += '<th style="padding:8px 6px;text-align:left;">Notes</th>';
+  html += '<th style="padding:8px 4px;width:32px;"></th>';
   html += '</tr></thead><tbody>';
 
   var grandTotal = 0;
   holdings.forEach(function(h) {
     grandTotal += (h.total || 0);
     var priceStr = h.price ? fmtMoney(h.price) : "";
-    var totalStr = h.total ? fmtMoney(h.total) : "";
+    var computedTotal = (h.price && h.shares) ? h.price * h.shares : 0;
+    var displayTotal = h.total || 0;
+    var isOverridden = h.value_override != null && h.value_override > 0;
+    var totalInputVal = isOverridden ? h.value_override : (computedTotal ? computedTotal.toFixed(2) : "");
+    var totalColor = isOverridden ? "color:var(--warning);" : "";
     var qtyStr = (h.shares !== null && h.shares !== undefined) ? h.shares : "";
-    var voStr = (h.value_override !== null && h.value_override !== undefined) ? h.value_override : "";
-    html += '<tr data-hid="' + h.id + '">';
+    html += '<tr data-hid="' + h.id + '" data-computed="' + computedTotal.toFixed(2) + '">';
     html += '<td style="padding:4px 4px;"><input type="text" data-field="account" value="' + (h.account || "") + '" ' + inputStyle + '></td>';
     html += '<td style="padding:4px 4px;"><input type="text" data-field="ticker" value="' + (h.ticker || "") + '" ' + inputStyle + '></td>';
     html += '<td style="padding:4px 4px;"><input type="text" data-field="bucket" value="' + (h.bucket || "") + '" ' + inputStyle + '></td>';
     html += '<td style="padding:4px 4px;"><input type="text" data-field="shares" value="' + qtyStr + '" class="num" ' + inputStyle + '></td>';
     html += '<td style="padding:8px 6px;text-align:right;color:var(--text-muted);font-family:var(--mono);white-space:nowrap;">' + priceStr + '</td>';
-    html += '<td style="padding:8px 6px;text-align:right;color:var(--text-primary);font-family:var(--mono);font-weight:600;white-space:nowrap;">' + totalStr + '</td>';
-    html += '<td style="padding:4px 4px;"><input type="text" data-field="value_override" value="' + voStr + '" class="num" ' + inputStyle + '></td>';
+    html += '<td style="padding:4px 4px;"><input type="text" data-field="total_edit" value="' + totalInputVal + '" class="num" style="background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:4px;' + totalColor + 'padding:5px 8px;font-size:0.82rem;width:100%;font-family:var(--mono);font-weight:600;"></td>';
     html += '<td style="padding:4px 4px;"><input type="text" data-field="notes" value="' + (h.notes || "") + '" ' + inputStyle + '></td>';
+    html += '<td style="padding:4px 4px;text-align:center;"><button type="button" onclick="deleteHolding(' + h.id + ')" title="Delete" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:1rem;padding:2px 6px;border-radius:4px;" onmouseover="this.style.color=\'var(--danger)\'" onmouseout="this.style.color=\'var(--text-muted)\'">&times;</button></td>';
     html += '</tr>';
   });
 
   html += '<tr>';
   html += '<td style="padding:4px 4px;"><input type="text" data-field="account" placeholder="Account" ' + inputStyle + '></td>';
   html += '<td style="padding:4px 4px;"><input type="text" data-field="ticker" placeholder="Ticker" style="text-transform:uppercase;background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:4px;color:var(--text-primary);padding:5px 8px;font-size:0.82rem;width:100%;"></td>';
-  html += '<td style="padding:4px 4px;"><input type="text" data-field="bucket" placeholder="Asset class" ' + inputStyle + '></td>';
+  html += '<td style="padding:4px 4px;"><input type="text" data-field="bucket" placeholder="Class" ' + inputStyle + '></td>';
   html += '<td style="padding:4px 4px;"><input type="text" data-field="shares" placeholder="Qty" class="num" ' + inputStyle + '></td>';
-  html += '<td></td><td></td>';
-  html += '<td style="padding:4px 4px;"><input type="text" data-field="value_override" placeholder="Override" class="num" ' + inputStyle + '></td>';
+  html += '<td></td>';
+  html += '<td style="padding:4px 4px;"><input type="text" data-field="total_edit" placeholder="Total" class="num" ' + inputStyle + '></td>';
   html += '<td style="padding:4px 4px;"><input type="text" data-field="notes" placeholder="Notes" ' + inputStyle + '></td>';
+  html += '<td></td>';
   html += '</tr>';
 
   html += '<tr style="font-weight:600;border-top:2px solid var(--border-subtle);">';
@@ -4423,17 +4428,25 @@ function saveAllHoldings() {
     if (tr.style && tr.style.fontWeight) return;
     if (tr.querySelector("td[colspan]")) return;
     var hid = tr.getAttribute("data-hid");
+    var computed = parseFloat(tr.getAttribute("data-computed")) || 0;
     var fields = {};
     tr.querySelectorAll("input[data-field]").forEach(function(inp) {
       fields[inp.getAttribute("data-field")] = inp.value;
     });
     if (!fields.ticker || !fields.ticker.trim()) return;
+    var enteredTotal = fields.total_edit ? parseFloat(fields.total_edit) || null : null;
+    var vo = null;
+    if (enteredTotal && computed > 0 && Math.abs(enteredTotal - computed) > 0.01) {
+      vo = enteredTotal;
+    } else if (enteredTotal && !computed) {
+      vo = enteredTotal;
+    }
     var row = {
       ticker: fields.ticker.trim().toUpperCase(),
       shares: fields.shares ? parseFloat(fields.shares) || null : null,
       bucket: fields.bucket || "",
       account: fields.account || "",
-      value_override: fields.value_override ? parseFloat(fields.value_override) || null : null,
+      value_override: vo,
       notes: fields.notes || ""
     };
     if (hid) row.id = parseInt(hid);
@@ -4443,6 +4456,16 @@ function saveAllHoldings() {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ holdings: holdings })
+  }).then(function(r) { return r.json(); }).then(function() {
+    _holdingsLoaded = false;
+    loadHoldings();
+  });
+}
+
+function deleteHolding(holdingId) {
+  if (!confirm("Delete this holding?")) return;
+  fetch("/api/holdings/" + holdingId, {
+    method: "DELETE"
   }).then(function(r) { return r.json(); }).then(function() {
     _holdingsLoaded = false;
     loadHoldings();

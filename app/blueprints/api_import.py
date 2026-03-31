@@ -10,7 +10,7 @@ from flask_login import login_required, current_user
 from ..extensions import db, csrf
 from ..utils.auth import requires_pro
 from ..models.portfolio import Holding, CryptoHolding
-from ..services.import_service import detect_and_parse, get_supported_brokerages
+from ..services.import_service import detect_and_parse, get_supported_brokerages, detect_bucket
 
 api_import_bp = Blueprint("api_import", __name__)
 
@@ -55,6 +55,7 @@ def preview_import():
 
     for h in result["holdings"]:
         h["is_duplicate"] = h["ticker"].upper() in existing_tickers
+        h["bucket"] = detect_bucket(h["ticker"], h.get("description", ""), h.get("asset_type", ""))
 
     return jsonify(result)
 
@@ -97,6 +98,7 @@ def commit_import():
         asset_type = item.get("asset_type", "stock")
         cost_basis = item.get("cost_basis")
         description = item.get("description", "")
+        bucket = item.get("bucket") or detect_bucket(ticker, description, asset_type)
 
         if not ticker:
             skipped += 1
@@ -116,6 +118,7 @@ def commit_import():
             if mode == "replace":
                 existing.shares = shares
                 existing.notes = description
+                existing.bucket = bucket
                 if cost_basis is not None:
                     existing.cost_basis = cost_basis
                 updated += 1
@@ -125,6 +128,8 @@ def commit_import():
                     existing.notes = description
                 if cost_basis is not None and not existing.cost_basis:
                     existing.cost_basis = cost_basis
+                if not existing.bucket or existing.bucket == "Equities":
+                    existing.bucket = bucket
                 updated += 1
             else:
                 skipped += 1
@@ -135,7 +140,7 @@ def commit_import():
                 shares=shares,
                 cost_basis=cost_basis,
                 account=account,
-                bucket="",
+                bucket=bucket,
                 notes=description,
             )
             db.session.add(h)

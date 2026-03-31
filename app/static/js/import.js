@@ -151,6 +151,10 @@ function _renderImportPreview(data) {
       ? '<span style="font-size:0.7rem;padding:2px 6px;background:rgba(234,179,8,0.15);color:#eab308;border-radius:4px;">Existing</span>'
       : '<span style="font-size:0.7rem;padding:2px 6px;background:rgba(52,211,153,0.15);color:var(--accent-primary);border-radius:4px;">New</span>';
 
+    var cbDisplay = h.cost_basis != null
+      ? "$" + Number(h.cost_basis).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})
+      : '<span style="color:var(--text-muted);">--</span>';
+
     html +=
       '<tr style="border-bottom:1px solid var(--border);" data-account="' + (h.account || "").replace(/"/g, '&quot;') + '">' +
       '<td style="padding:8px 12px;"><input type="checkbox" class="import-row-cb" data-idx="' + i + '" checked></td>' +
@@ -159,6 +163,7 @@ function _renderImportPreview(data) {
         (h.description || "") + "</td>" +
       '<td style="padding:8px 12px;text-align:right;">' +
         (h.shares != null ? Number(h.shares).toLocaleString(undefined, {maximumFractionDigits: 4}) : "—") + "</td>" +
+      '<td style="padding:8px 12px;text-align:right;">' + cbDisplay + "</td>" +
       '<td style="padding:8px 12px;">' + (h.account || "") + "</td>" +
       '<td style="padding:8px 12px;"><span style="font-size:0.75rem;color:' + typeColor + ';">' + typeLabel + "</span></td>" +
       '<td style="padding:8px 12px;text-align:center;">' + dupBadge + "</td>" +

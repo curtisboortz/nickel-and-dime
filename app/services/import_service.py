@@ -122,8 +122,10 @@ def _identify_brokerage(headers: list, headers_lower: set) -> tuple:
 
     # Fidelity: "Account Name/Number", "Symbol", "Description", "Quantity",
     #           "Last Price", "Current Value", "Cost Basis Per Share"
-    if "account name/number" in headers_lower or (
-        "current value" in headers_lower and "cost basis per share" in headers_lower
+    fidelity_markers = {"account name/number", "cost basis per share", "cost basis total",
+                        "last price change", "percent of account"}
+    if fidelity_markers & headers_lower or (
+        "current value" in headers_lower and "quantity" in headers_lower and "symbol" in headers_lower
     ):
         return "Fidelity", _parse_fidelity
 
@@ -180,11 +182,17 @@ def _parse_fidelity(row: dict) -> dict | None:
     symbol = _get(row, "Symbol")
     if not symbol or _is_skip(symbol):
         return None
+    shares = _to_float(_get(row, "Quantity"))
+    cost_per_share = _to_float(_get(row, "Cost Basis Per Share"))
+    if cost_per_share is None:
+        cost_total = _to_float(_get(row, "Cost Basis Total"))
+        if cost_total is not None and shares and shares > 0:
+            cost_per_share = round(cost_total / shares, 4)
     return {
         "ticker": _clean_ticker(symbol),
-        "shares": _to_float(_get(row, "Quantity")),
+        "shares": shares,
         "account": _get(row, "Account Name/Number", "Fidelity"),
-        "cost_basis": _to_float(_get(row, "Cost Basis Per Share")),
+        "cost_basis": cost_per_share,
         "description": _get(row, "Description"),
         "asset_type": _detect_asset_type(symbol, _get(row, "Description")),
     }

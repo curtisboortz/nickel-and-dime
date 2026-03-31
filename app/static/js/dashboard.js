@@ -4354,7 +4354,8 @@ function _renderStockHoldings(wrap, holdings) {
     html += '<td style="padding:8px 6px;text-align:right;">' + dayPctHtml + '</td>';
     html += '<td style="padding:8px 6px;text-align:right;">' + plDollarHtml + '</td>';
     html += '<td style="padding:8px 6px;text-align:right;">' + plPctHtml + '</td>';
-    html += '<td style="padding:4px 4px;"><input type="text" data-field="notes" value="' + (h.notes || "") + '" ' + inputStyle + '></td>';
+    var noteVal = (h.notes || "").replace(/"/g, "&quot;");
+    html += '<td style="padding:4px 4px;position:relative;"><input type="text" data-field="notes" value="' + noteVal + '" title="' + noteVal + '" ' + inputStyle.replace('width:100%', 'width:100%;text-overflow:ellipsis') + ' onfocus="this.style.position=\'absolute\';this.style.zIndex=\'10\';this.style.width=\'320px\';this.style.minWidth=\'320px\';" onblur="this.style.position=\'\';this.style.zIndex=\'\';this.style.width=\'100%\';this.style.minWidth=\'\';" ></td>';
     html += '<td style="padding:4px 4px;text-align:center;"><button type="button" onclick="deleteHolding(' + h.id + ')" title="Delete" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:1rem;padding:2px 6px;border-radius:4px;" onmouseover="this.style.color=\'var(--danger)\'" onmouseout="this.style.color=\'var(--text-muted)\'">&times;</button></td>';
     html += '</tr>';
   });
@@ -4368,7 +4369,7 @@ function _renderStockHoldings(wrap, holdings) {
   html += '<td></td>';
   html += '<td style="padding:4px 4px;"><input type="text" data-field="total_edit" placeholder="Total" class="num" ' + inputStyle + '></td>';
   html += '<td></td><td></td><td></td><td></td>';
-  html += '<td style="padding:4px 4px;"><input type="text" data-field="notes" placeholder="Notes" ' + inputStyle + '></td>';
+  html += '<td style="padding:4px 4px;position:relative;"><input type="text" data-field="notes" placeholder="Notes" ' + inputStyle.replace('width:100%', 'width:100%;text-overflow:ellipsis') + ' onfocus="this.style.position=\'absolute\';this.style.zIndex=\'10\';this.style.width=\'320px\';this.style.minWidth=\'320px\';" onblur="this.style.position=\'\';this.style.zIndex=\'\';this.style.width=\'100%\';this.style.minWidth=\'\';" ></td>';
   html += '<td></td>';
   html += '</tr>';
 
@@ -4581,7 +4582,7 @@ function _renderMetals(metals) {
     var noteText = (m.note || m.description || "").replace(/"/g, "&quot;");
     var rowTitle = noteText ? ' title="' + noteText + '" style="cursor:help;"' : '';
     html += '<tr' + rowTitle + '>';
-    var noteHint = noteText ? '<span style="display:block;font-size:0.72rem;color:var(--text-muted);font-weight:400;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + noteText + '">' + noteText + '</span>' : '';
+    var noteHint = noteText ? '<span style="display:block;font-size:0.72rem;color:var(--text-muted);font-weight:400;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:help;" title="' + noteText + '" onclick="if(this.style.whiteSpace===\'normal\'){this.style.whiteSpace=\'nowrap\';this.style.maxWidth=\'120px\';}else{this.style.whiteSpace=\'normal\';this.style.maxWidth=\'320px\';}">' + noteText + '</span>' : '';
     html += '<td style="padding:8px 6px;text-transform:capitalize;font-weight:500;">' + (m.metal || "") + noteHint + '</td>';
     html += '<td style="padding:8px 6px;">' + (m.form || "") + '</td>';
     html += '<td style="padding:8px 6px;text-align:right;" class="mono">' + e.oz + '</td>';

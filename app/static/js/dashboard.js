@@ -2857,7 +2857,16 @@ function renderEconCalendar(d) {
         if (e.forecast && e.forecast !== "-") {
           var af = parseFloat(e.actual.replace(/[%KMB,]/g, ""));
           var ff = parseFloat(e.forecast.replace(/[%KMB,]/g, ""));
-          if (!isNaN(af) && !isNaN(ff) && af < ff) actualColor = "#ef4444";
+          if (!isNaN(af) && !isNaN(ff) && af !== ff) {
+            var evLower = (e.event || "").toLowerCase();
+            var higherIsBad = /inflat|cpi|pce price|core pce|ppi|jobless claim|unemploy|deficit|debt|delinquen|foreclosure|price index|import price|export price|cost|wage/.test(evLower);
+            var beat = af > ff;
+            if (higherIsBad) {
+              actualColor = beat ? "#ef4444" : "#22c55e";
+            } else {
+              actualColor = beat ? "#22c55e" : "#ef4444";
+            }
+          }
         }
       }
       html += '<tr style="border-bottom:1px solid rgba(255,255,255,0.03);">';

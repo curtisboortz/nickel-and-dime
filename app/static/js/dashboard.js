@@ -4318,21 +4318,22 @@ function _renderStockHoldings(wrap, holdings) {
     var qtyStr = (h.shares !== null && h.shares !== undefined) ? h.shares : "";
 
     var muted = '<span style="color:var(--text-muted);">--</span>';
-    var dayDollarHtml = muted, dayPctHtml = muted;
+    var isCash = (h.bucket || "").toLowerCase() === "cash";
+    var dayDollarHtml = muted, dayPctHtml = isCash ? '' : muted;
     if (h.price && h.prev_close && h.shares) {
       var dayDollar = (h.price - h.prev_close) * h.shares;
       var dayPct = (h.prev_close > 0) ? ((h.price - h.prev_close) / h.prev_close) * 100 : 0;
       grandDayPL += dayDollar;
       var dayColor = dayDollar >= 0 ? "var(--success)" : "var(--danger)";
       var daySign = dayDollar >= 0 ? "+" : "";
-      dayDollarHtml = '<span style="color:' + dayColor + ';font-family:var(--mono);white-space:nowrap;">' + daySign + '$' + Math.abs(dayDollar).toLocaleString(undefined, {minimumFractionDigits:0, maximumFractionDigits:0}) + '</span>';
-      dayPctHtml = '<span style="color:' + dayColor + ';font-family:var(--mono);white-space:nowrap;">' + daySign + dayPct.toFixed(2) + '%</span>';
+      dayDollarHtml = isCash ? '' : '<span style="color:' + dayColor + ';font-family:var(--mono);white-space:nowrap;">' + daySign + '$' + Math.abs(dayDollar).toLocaleString(undefined, {minimumFractionDigits:0, maximumFractionDigits:0}) + '</span>';
+      dayPctHtml = isCash ? '' : '<span style="color:' + dayColor + ';font-family:var(--mono);white-space:nowrap;">' + daySign + dayPct.toFixed(2) + '%</span>';
     }
 
     var costTotal = (h.cost_basis && h.shares) ? h.cost_basis * h.shares : 0;
     var currentVal = h.total || 0;
-    var plDollarHtml = muted, plPctHtml = muted;
-    if (costTotal > 0 && currentVal > 0) {
+    var plDollarHtml = isCash ? '' : muted, plPctHtml = isCash ? '' : muted;
+    if (!isCash && costTotal > 0 && currentVal > 0) {
       var plDollar = currentVal - costTotal;
       var plPct = (plDollar / costTotal) * 100;
       grandCost += costTotal;
@@ -4830,4 +4831,13 @@ function disconnectCoinbase() {
     if (status) status.textContent = "";
   });
 }
+
+(function _autoInitTab() {
+  var tab = window.ACTIVE_TAB;
+  if (tab === "holdings" && !_holdingsLoaded) {
+    loadHoldings();
+  } else if (tab === "balances" && typeof loadBalances === "function") {
+    loadBalances();
+  }
+})();
 

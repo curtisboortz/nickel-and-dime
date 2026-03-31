@@ -606,6 +606,7 @@ function buildHistoryChart(metric) {
 function renderSparkCanvas(canvasId, values) {
   var canvas = document.getElementById(canvasId);
   if (!canvas || !values || values.length < 2) return;
+  if (canvas.offsetWidth < 5 || canvas.offsetHeight < 5) return;
   var ctx = canvas.getContext("2d");
   var w = canvas.width = canvas.offsetWidth * 2;
   var h = canvas.height = canvas.offsetHeight * 2;

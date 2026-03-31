@@ -24,7 +24,10 @@
   }
 
   function _postTabInit(t) {
-    if (t === "summary") _safe(function() { if (typeof loadSummaryData === "function") loadSummaryData(); }, "loadSummaryData");
+    if (t === "summary") {
+      _safe(function() { if (typeof loadSummaryData === "function") loadSummaryData(); }, "loadSummaryData");
+      setTimeout(function() { _safe(function() { if (typeof loadAllSparklines === "function") loadAllSparklines(); }, "loadAllSparklines"); }, 200);
+    }
     if (t === "economics") _safe(function() { if (typeof loadFredData === "function") loadFredData(); }, "loadFredData");
     if (t === "history") {
       _safe(function() { if (typeof buildProjectionChart === "function") buildProjectionChart(); }, "buildProjectionChart");

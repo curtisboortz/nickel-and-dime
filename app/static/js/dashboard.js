@@ -4241,6 +4241,10 @@ function _renderStockHoldings(wrap, holdings) {
   var inputStyle = 'style="background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:4px;color:var(--text-primary);padding:5px 8px;font-size:0.82rem;width:100%;"';
 
   var sorted = holdings.slice().sort(function(a, b) {
+    var aCash = (a.bucket || "").toLowerCase() === "cash" ? 1 : 0;
+    var bCash = (b.bucket || "").toLowerCase() === "cash" ? 1 : 0;
+    if (aCash !== bCash) return bCash - aCash;
+
     var k = _holdingsSortKey;
     var va, vb;
     if (k === "account" || k === "ticker" || k === "bucket" || k === "notes") {

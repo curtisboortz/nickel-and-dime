@@ -52,6 +52,7 @@ def get_holdings():
             "id": h.id, "ticker": h.ticker, "shares": h.shares,
             "bucket": h.bucket, "account": h.account,
             "value_override": h.value_override, "notes": h.notes,
+            "cost_basis": h.cost_basis,
             "price": price, "total": total,
         })
 

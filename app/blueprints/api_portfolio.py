@@ -84,7 +84,7 @@ def get_holdings():
             total = 0
         holdings_out.append({
             "id": h.id, "ticker": h.ticker, "shares": h.shares,
-            "bucket": h.bucket, "account": h.account,
+            "bucket": _normalize_bucket(h.bucket), "account": h.account,
             "value_override": h.value_override, "notes": h.notes,
             "cost_basis": h.cost_basis,
             "price": price, "prev_close": prev_close, "total": total,
@@ -145,13 +145,30 @@ def save_holdings():
     return jsonify({"success": True, "id": h.id})
 
 
+_BUCKET_ALIASES = {
+    "realassets": "Real Assets",
+    "real assets": "Real Assets",
+    "fixedincome": "Fixed Income",
+    "fixed income": "Fixed Income",
+    "managedblend": "Managed Blend",
+    "retirementblend": "Retirement Blend",
+    "realestate": "Real Estate",
+}
+
+
+def _normalize_bucket(name):
+    if not name:
+        return name
+    return _BUCKET_ALIASES.get(name.lower().strip(), name)
+
+
 def _apply_holding_fields(h, data):
     if "ticker" in data:
         h.ticker = data["ticker"]
     if "shares" in data:
         h.shares = float(data["shares"]) if data["shares"] else None
     if "bucket" in data:
-        h.bucket = data["bucket"]
+        h.bucket = _normalize_bucket(data["bucket"])
     if "account" in data:
         h.account = data["account"]
     if "value_override" in data:

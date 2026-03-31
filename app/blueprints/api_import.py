@@ -110,9 +110,23 @@ def commit_import():
             imported += 1
             continue
 
-        existing = Holding.query.filter_by(
+        # Match by ticker+account+cost_basis to preserve separate lots
+        # (e.g., same ETF bought at different prices in Margin vs Cash)
+        candidates = Holding.query.filter_by(
             user_id=current_user.id, ticker=ticker, account=account
-        ).first()
+        ).all()
+
+        existing = None
+        if cost_basis is not None:
+            for c in candidates:
+                if c.cost_basis is not None and abs(c.cost_basis - cost_basis) < 0.01:
+                    existing = c
+                    break
+        if existing is None and candidates:
+            for c in candidates:
+                if c.cost_basis is None:
+                    existing = c
+                    break
 
         if existing:
             if mode == "replace":

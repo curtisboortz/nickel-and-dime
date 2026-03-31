@@ -122,22 +122,20 @@ function _renderImportPreview(data) {
   var filterContainer = document.getElementById("import-account-filters");
   if (filterContainer) filterContainer.remove();
 
-  if (acctKeys.length > 1) {
-    var filterHtml = '<div id="import-account-filters" style="margin-bottom:12px;">' +
-      '<span style="font-size:0.8rem;color:var(--text-muted);margin-right:8px;">Filter by account:</span>';
-    for (var k = 0; k < acctKeys.length; k++) {
-      var acctName = acctKeys[k];
-      var acctCount = accounts[acctName];
-      filterHtml += '<button type="button" class="import-acct-pill" data-account="' + acctName.replace(/"/g, '&quot;') + '" ' +
-        'onclick="toggleImportAccount(this)" ' +
-        'style="display:inline-block;margin:3px 4px;padding:4px 12px;font-size:0.78rem;border-radius:20px;' +
-        'border:1px solid var(--accent-primary);background:var(--accent-primary);color:#09090b;cursor:pointer;font-weight:600;">' +
-        acctName + ' (' + acctCount + ')</button>';
-    }
-    filterHtml += '</div>';
-    var previewHeader = preview.querySelector("div");
-    if (previewHeader) previewHeader.insertAdjacentHTML("afterend", filterHtml);
+  var filterHtml = '<div id="import-account-filters" style="margin-bottom:12px;">' +
+    '<span style="font-size:0.8rem;color:var(--text-muted);margin-right:8px;">Accounts:</span>';
+  for (var k = 0; k < acctKeys.length; k++) {
+    var acctName = acctKeys[k];
+    var acctCount = accounts[acctName];
+    filterHtml += '<button type="button" class="import-acct-pill" data-account="' + acctName.replace(/"/g, '&quot;') + '" ' +
+      'onclick="toggleImportAccount(this)" ' +
+      'style="display:inline-block;margin:3px 4px;padding:4px 12px;font-size:0.78rem;border-radius:20px;' +
+      'border:1px solid var(--accent-primary);background:var(--accent-primary);color:#09090b;cursor:pointer;font-weight:600;">' +
+      acctName + ' (' + acctCount + ')</button>';
   }
+  filterHtml += '</div>';
+  var previewHeader = preview.querySelector("div");
+  if (previewHeader) previewHeader.insertAdjacentHTML("afterend", filterHtml);
 
   // Render table rows
   var html = "";

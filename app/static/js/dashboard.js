@@ -2463,8 +2463,8 @@ function _fwRender(idx) {
           title: { display: true, text: "Target Rate (in bps)", color: "#64748b", font: { size: 11 } }
         },
         y: {
-          min: 0, max: 100,
-          ticks: { color: "#64748b", callback: function(v) { return v + "%"; }, stepSize: 20 },
+          min: 0, max: 110,
+          ticks: { color: "#64748b", callback: function(v) { return v <= 100 ? v + "%" : ""; }, stepSize: 20 },
           grid: { color: "rgba(148,163,184,0.08)" },
           title: { display: true, text: "Probability", color: "#64748b", font: { size: 11 } }
         }

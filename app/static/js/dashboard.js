@@ -4254,18 +4254,19 @@ function _renderStockHoldings(wrap, holdings) {
     if (_holdingsSortKey !== key) return ' <span style="opacity:0.3;">&#8597;</span>';
     return _holdingsSortDir === 1 ? ' &#9650;' : ' &#9660;';
   };
-  var thStyle = 'style="padding:8px 6px;cursor:pointer;user-select:none;white-space:nowrap;"';
+  var hthL = 'style="padding:8px 6px;cursor:pointer;user-select:none;white-space:nowrap;text-align:left;"';
+  var hthR = 'style="padding:8px 6px;cursor:pointer;user-select:none;white-space:nowrap;text-align:right;"';
 
   var html = '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:0.82rem;">';
   html += '<thead><tr style="border-bottom:1px solid var(--border-subtle);">';
-  html += '<th ' + thStyle + ' onclick="_sortHoldingsBy(\'account\')">Account' + arrow("account") + '</th>';
-  html += '<th ' + thStyle + ' onclick="_sortHoldingsBy(\'ticker\')">Ticker' + arrow("ticker") + '</th>';
-  html += '<th ' + thStyle + ' onclick="_sortHoldingsBy(\'bucket\')">Class' + arrow("bucket") + '</th>';
-  html += '<th ' + thStyle + ' class="text-right" onclick="_sortHoldingsBy(\'shares\')">Qty' + arrow("shares") + '</th>';
-  html += '<th ' + thStyle + ' class="text-right" onclick="_sortHoldingsBy(\'cost_basis\')">Cost/Share' + arrow("cost_basis") + '</th>';
-  html += '<th ' + thStyle + ' class="text-right" onclick="_sortHoldingsBy(\'price\')">Price' + arrow("price") + '</th>';
-  html += '<th ' + thStyle + ' class="text-right" onclick="_sortHoldingsBy(\'total\')">Total' + arrow("total") + '</th>';
-  html += '<th ' + thStyle + ' class="text-right" onclick="_sortHoldingsBy(\'pl\')">P&amp;L' + arrow("pl") + '</th>';
+  html += '<th ' + hthL + ' onclick="_sortHoldingsBy(\'account\')">Account' + arrow("account") + '</th>';
+  html += '<th ' + hthL + ' onclick="_sortHoldingsBy(\'ticker\')">Ticker' + arrow("ticker") + '</th>';
+  html += '<th ' + hthL + ' onclick="_sortHoldingsBy(\'bucket\')">Class' + arrow("bucket") + '</th>';
+  html += '<th ' + hthR + ' onclick="_sortHoldingsBy(\'shares\')">Qty' + arrow("shares") + '</th>';
+  html += '<th ' + hthR + ' onclick="_sortHoldingsBy(\'cost_basis\')">Cost/Share' + arrow("cost_basis") + '</th>';
+  html += '<th ' + hthR + ' onclick="_sortHoldingsBy(\'price\')">Price' + arrow("price") + '</th>';
+  html += '<th ' + hthR + ' onclick="_sortHoldingsBy(\'total\')">Total' + arrow("total") + '</th>';
+  html += '<th ' + hthR + ' onclick="_sortHoldingsBy(\'pl\')">P&amp;L' + arrow("pl") + '</th>';
   html += '<th style="padding:8px 6px;">Notes</th>';
   html += '<th style="padding:8px 4px;width:32px;"></th>';
   html += '</tr></thead><tbody>';
@@ -4403,15 +4404,16 @@ function _renderCryptoHoldings(wrap, crypto) {
     if (_cryptoSortKey !== key) return ' <span style="opacity:0.3;">&#8597;</span>';
     return _cryptoSortDir === 1 ? ' &#9650;' : ' &#9660;';
   };
-  var thS = 'style="padding:8px 10px;cursor:pointer;user-select:none;white-space:nowrap;"';
+  var thL = 'style="padding:8px 10px;cursor:pointer;user-select:none;white-space:nowrap;text-align:left;"';
+  var thR = 'style="padding:8px 10px;cursor:pointer;user-select:none;white-space:nowrap;text-align:right;"';
   var thead = document.getElementById("crypto-thead");
   if (thead) {
     thead.innerHTML = '<tr style="border-bottom:1px solid var(--border-subtle);">' +
-      '<th ' + thS + ' onclick="_sortCryptoBy(\'symbol\')">Symbol' + arrow("symbol") + '</th>' +
-      '<th ' + thS + ' style="text-align:right;" onclick="_sortCryptoBy(\'quantity\')">Qty' + arrow("quantity") + '</th>' +
-      '<th ' + thS + ' style="text-align:right;" onclick="_sortCryptoBy(\'price\')">Price' + arrow("price") + '</th>' +
-      '<th ' + thS + ' style="text-align:right;" onclick="_sortCryptoBy(\'value\')">Value' + arrow("value") + '</th>' +
-      '<th ' + thS + ' style="text-align:right;" onclick="_sortCryptoBy(\'pct\')">%' + arrow("pct") + '</th>' +
+      '<th ' + thL + ' onclick="_sortCryptoBy(\'symbol\')">Symbol' + arrow("symbol") + '</th>' +
+      '<th ' + thR + ' onclick="_sortCryptoBy(\'quantity\')">Qty' + arrow("quantity") + '</th>' +
+      '<th ' + thR + ' onclick="_sortCryptoBy(\'price\')">Price' + arrow("price") + '</th>' +
+      '<th ' + thR + ' onclick="_sortCryptoBy(\'value\')">Value' + arrow("value") + '</th>' +
+      '<th ' + thR + ' onclick="_sortCryptoBy(\'pct\')">%' + arrow("pct") + '</th>' +
       '<th style="width:32px;"></th></tr>';
   }
 
@@ -4500,18 +4502,19 @@ function _renderMetals(metals) {
     if (_metalsSortKey !== key) return ' <span style="opacity:0.3;">&#8597;</span>';
     return _metalsSortDir === 1 ? ' &#9650;' : ' &#9660;';
   };
-  var thS = 'style="padding:8px 6px;cursor:pointer;user-select:none;white-space:nowrap;"';
+  var mthL = 'style="padding:8px 6px;cursor:pointer;user-select:none;white-space:nowrap;text-align:left;"';
+  var mthR = 'style="padding:8px 6px;cursor:pointer;user-select:none;white-space:nowrap;text-align:right;"';
   var thead = document.getElementById("metals-thead");
   if (thead) {
     thead.innerHTML = '<tr>' +
-      '<th ' + thS + ' onclick="_sortMetalsBy(\'metal\')">Metal' + arrow("metal") + '</th>' +
-      '<th ' + thS + ' onclick="_sortMetalsBy(\'form\')">Form' + arrow("form") + '</th>' +
-      '<th ' + thS + ' style="text-align:right;" onclick="_sortMetalsBy(\'oz\')">Qty (oz)' + arrow("oz") + '</th>' +
-      '<th ' + thS + ' style="text-align:right;" onclick="_sortMetalsBy(\'cost\')">Cost/oz' + arrow("cost") + '</th>' +
-      '<th ' + thS + ' style="text-align:right;" onclick="_sortMetalsBy(\'spot\')">Spot' + arrow("spot") + '</th>' +
-      '<th ' + thS + ' style="text-align:right;" onclick="_sortMetalsBy(\'val\')">Value' + arrow("val") + '</th>' +
-      '<th ' + thS + ' style="text-align:right;" onclick="_sortMetalsBy(\'gl\')">G/L' + arrow("gl") + '</th>' +
-      '<th ' + thS + ' onclick="_sortMetalsBy(\'date\')">Date' + arrow("date") + '</th>' +
+      '<th ' + mthL + ' onclick="_sortMetalsBy(\'metal\')">Metal' + arrow("metal") + '</th>' +
+      '<th ' + mthL + ' onclick="_sortMetalsBy(\'form\')">Form' + arrow("form") + '</th>' +
+      '<th ' + mthR + ' onclick="_sortMetalsBy(\'oz\')">Qty (oz)' + arrow("oz") + '</th>' +
+      '<th ' + mthR + ' onclick="_sortMetalsBy(\'cost\')">Cost/oz' + arrow("cost") + '</th>' +
+      '<th ' + mthR + ' onclick="_sortMetalsBy(\'spot\')">Spot' + arrow("spot") + '</th>' +
+      '<th ' + mthR + ' onclick="_sortMetalsBy(\'val\')">Value' + arrow("val") + '</th>' +
+      '<th ' + mthR + ' onclick="_sortMetalsBy(\'gl\')">G/L' + arrow("gl") + '</th>' +
+      '<th ' + mthL + ' onclick="_sortMetalsBy(\'date\')">Date' + arrow("date") + '</th>' +
       '<th></th></tr>';
   }
 

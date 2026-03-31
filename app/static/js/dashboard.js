@@ -4066,7 +4066,7 @@ function loadBalances() {
           html += '</td>';
           html += '<td class="bal-name-cell" data-acct-id="' + a.id + '" style="padding:14px 10px;border-bottom:1px solid var(--border-subtle);font-size:0.92rem;font-weight:500;">' + (a.name || "Account") + '</td>';
           html += '<td style="text-align:right;padding:14px 10px;border-bottom:1px solid var(--border-subtle);font-family:var(--mono);font-size:0.92rem;font-weight:500;">';
-          html += '<input type="number" step="0.01" class="bal-input" data-acct-id="' + a.id + '" value="' + (a.value || 0) + '" style="width:140px;text-align:right;padding:6px 10px;background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:6px;color:var(--text-primary);font-family:var(--mono);font-size:0.92rem;">';
+          html += '<input type="text" inputmode="decimal" class="bal-input" data-acct-id="' + a.id + '" value="' + (a.value || 0) + '" style="width:140px;text-align:right;padding:6px 10px;background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:6px;color:var(--text-primary);font-family:var(--mono);font-size:0.92rem;">';
           html += '</td></tr>';
         });
         html += '</tbody></table>';
@@ -4075,7 +4075,7 @@ function loadBalances() {
       }
       html += '<div style="display:flex;gap:8px;align-items:end;margin-top:16px;flex-wrap:wrap;">';
       html += '<input type="text" id="new-acct-name" placeholder="Account name (e.g. Fidelity IRA)" style="flex:1;min-width:160px;padding:8px 12px;font-size:0.88rem;background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:6px;color:var(--text-primary);">';
-      html += '<input type="number" id="new-acct-value" placeholder="Balance" step="0.01" style="width:120px;padding:8px 12px;font-size:0.88rem;background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:6px;color:var(--text-primary);text-align:right;">';
+      html += '<input type="text" inputmode="decimal" id="new-acct-value" placeholder="Balance" style="width:120px;padding:8px 12px;font-size:0.88rem;background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:6px;color:var(--text-primary);text-align:right;">';
       html += '<button onclick="addBalance()" style="padding:8px 16px;font-size:0.85rem;background:var(--accent-primary);color:#fff;border:none;border-radius:6px;cursor:pointer;white-space:nowrap;">+ Add Account</button>';
       html += '</div>';
       wrap.innerHTML = html;

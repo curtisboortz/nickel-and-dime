@@ -2,6 +2,29 @@
 
 var _importPreviewData = [];
 
+(function() {
+  var dz = document.getElementById("import-dropzone");
+  if (!dz) return;
+  dz.addEventListener("click", function(e) {
+    if (e.target.tagName === "INPUT") return;
+    var inp = dz.querySelector("input[type=file]");
+    if (inp) inp.click();
+  });
+  dz.addEventListener("dragover", function(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "copy";
+    dz.style.borderColor = "var(--accent-primary)";
+  });
+  dz.addEventListener("dragleave", function() {
+    dz.style.borderColor = "";
+  });
+  dz.addEventListener("drop", function(e) {
+    e.preventDefault();
+    dz.style.borderColor = "";
+    if (e.dataTransfer.files.length > 0) handleImportFile(e.dataTransfer.files[0]);
+  });
+})();
+
 function handleImportDrop(event) {
   var files = event.dataTransfer.files;
   if (files.length > 0) handleImportFile(files[0]);

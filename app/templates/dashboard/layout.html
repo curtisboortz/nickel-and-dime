@@ -659,12 +659,46 @@
   <div class="card">
     <div class="card-title">Import Data</div>
     <p class="hint" style="margin-bottom:16px;">Upload a positions CSV from your brokerage to sync holdings.</p>
-    <div id="import-dropzone" style="border:2px dashed var(--border-subtle);border-radius:var(--radius);padding:24px;text-align:center;cursor:pointer;transition:border-color 0.15s;" onclick="document.getElementById('import-csv-file').click()">
-      <input type="file" id="import-csv-file" accept=".csv" style="display:none;">
+    <div id="import-dropzone" style="border:2px dashed var(--border-subtle);border-radius:var(--radius);padding:24px;text-align:center;cursor:pointer;transition:border-color 0.15s;">
+      <input type="file" id="import-csv-file" accept=".csv,.tsv,.txt" style="display:none" onchange="handleImportFile(this.files[0])">
       <p style="color:var(--text-muted);margin-bottom:8px;">Drag &amp; drop a CSV file, or click to browse</p>
       <p class="hint">Supports Fidelity, Schwab, TD Ameritrade, Vanguard, Robinhood, E*Trade, Interactive Brokers, Webull, and more</p>
     </div>
-    <div id="import-preview" style="display:none;margin-top:16px;"></div>
+
+    <div id="import-result" style="display:none;margin-top:12px;padding:12px 16px;border-radius:var(--radius);"></div>
+
+    <div id="import-preview" style="display:none;margin-top:16px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+        <div>
+          <strong id="import-brokerage"></strong>
+          <span class="hint" id="import-count" style="margin-left:12px;"></span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <select id="import-mode" style="padding:6px 10px;border-radius:var(--radius);background:var(--surface);border:1px solid var(--border);color:var(--text-primary);font-size:0.82rem;">
+            <option value="merge">Merge (update existing)</option>
+            <option value="replace">Replace (overwrite)</option>
+          </select>
+          <button type="button" onclick="commitImport()" style="padding:8px 18px;">Import Selected</button>
+        </div>
+      </div>
+      <div id="import-warnings" style="display:none;margin-bottom:10px;padding:10px 14px;background:rgba(234,179,8,0.1);border:1px solid rgba(234,179,8,0.2);border-radius:var(--radius);color:#eab308;font-size:0.82rem;"></div>
+      <div style="max-height:400px;overflow-y:auto;">
+        <table style="width:100%;border-collapse:collapse;font-size:0.85rem;">
+          <thead>
+            <tr style="border-bottom:2px solid var(--border);text-align:left;">
+              <th style="padding:8px 12px;"><input type="checkbox" checked onchange="toggleImportSelectAll(this.checked)"></th>
+              <th style="padding:8px 12px;">Ticker</th>
+              <th style="padding:8px 12px;">Description</th>
+              <th style="padding:8px 12px;text-align:right;">Shares</th>
+              <th style="padding:8px 12px;">Account</th>
+              <th style="padding:8px 12px;">Type</th>
+              <th style="padding:8px 12px;text-align:center;">Status</th>
+            </tr>
+          </thead>
+          <tbody id="import-table-body"></tbody>
+        </table>
+      </div>
+    </div>
   </div>
 
   <div class="card">

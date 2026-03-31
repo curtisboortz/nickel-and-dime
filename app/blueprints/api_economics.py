@@ -439,14 +439,20 @@ def _fetch_buffett_data():
 
     try:
         import yfinance as yf
-        tk = yf.Ticker("^W5000")
-        latest_w = tk.fast_info.last_price
-        if latest_w and latest_w > 0:
-            latest_gdp = gdp_map.get(gdp_quarters[-1]) if gdp_quarters else None
-            if latest_gdp and latest_gdp > 0:
-                from datetime import date as _date
-                today_str_local = _date.today().strftime("%Y-%m-%d")
-                raw.append({"date": today_str_local, "raw": latest_w / latest_gdp * 100})
+        from datetime import date as _date
+
+        daily = yf.download("^W5000", period="5d", interval="1d", progress=False)
+        if not daily.empty:
+            last_idx = daily.index[-1]
+            last_date = last_idx.strftime("%Y-%m-%d") if hasattr(last_idx, "strftime") else str(last_idx)[:10]
+            last_close = daily.iloc[-1]["Close"]
+            if hasattr(last_close, "values"):
+                last_close = last_close.values[0]
+            last_close = float(last_close)
+            if last_close > 0 and last_date not in wilshire_data:
+                latest_gdp = gdp_map.get(gdp_quarters[-1]) if gdp_quarters else None
+                if latest_gdp and latest_gdp > 0:
+                    raw.append({"date": last_date, "raw": last_close / latest_gdp * 100})
     except Exception:
         pass
 

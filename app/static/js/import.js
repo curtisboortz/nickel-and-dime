@@ -101,7 +101,7 @@ function _renderImportPreview(data) {
     warningLines = warningLines.concat(data.errors);
   }
   if (data.skipped && data.skipped.length > 5) {
-    warningLines.push(data.skipped.length + " rows skipped (cash positions, totals, etc.)");
+    warningLines.push(data.skipped.length + " rows skipped (totals, placeholders, etc.)");
   }
   if (warningLines.length > 0) {
     warnings.style.display = "block";
@@ -110,6 +110,33 @@ function _renderImportPreview(data) {
       .join("");
   } else {
     warnings.style.display = "none";
+  }
+
+  // Build account filter pills if multiple accounts detected
+  var accounts = {};
+  for (var a = 0; a < data.holdings.length; a++) {
+    var acct = data.holdings[a].account || "Unknown";
+    accounts[acct] = (accounts[acct] || 0) + 1;
+  }
+  var acctKeys = Object.keys(accounts);
+  var filterContainer = document.getElementById("import-account-filters");
+  if (filterContainer) filterContainer.remove();
+
+  if (acctKeys.length > 1) {
+    var filterHtml = '<div id="import-account-filters" style="margin-bottom:12px;">' +
+      '<span style="font-size:0.8rem;color:var(--text-muted);margin-right:8px;">Filter by account:</span>';
+    for (var k = 0; k < acctKeys.length; k++) {
+      var acctName = acctKeys[k];
+      var acctCount = accounts[acctName];
+      filterHtml += '<button type="button" class="import-acct-pill" data-account="' + acctName.replace(/"/g, '&quot;') + '" ' +
+        'onclick="toggleImportAccount(this)" ' +
+        'style="display:inline-block;margin:3px 4px;padding:4px 12px;font-size:0.78rem;border-radius:20px;' +
+        'border:1px solid var(--accent-primary);background:var(--accent-primary);color:#09090b;cursor:pointer;font-weight:600;">' +
+        acctName + ' (' + acctCount + ')</button>';
+    }
+    filterHtml += '</div>';
+    var previewHeader = preview.querySelector("div");
+    if (previewHeader) previewHeader.insertAdjacentHTML("afterend", filterHtml);
   }
 
   // Render table rows
@@ -125,7 +152,7 @@ function _renderImportPreview(data) {
       : '<span style="font-size:0.7rem;padding:2px 6px;background:rgba(52,211,153,0.15);color:var(--accent-primary);border-radius:4px;">New</span>';
 
     html +=
-      '<tr style="border-bottom:1px solid var(--border);">' +
+      '<tr style="border-bottom:1px solid var(--border);" data-account="' + (h.account || "").replace(/"/g, '&quot;') + '">' +
       '<td style="padding:8px 12px;"><input type="checkbox" class="import-row-cb" data-idx="' + i + '" checked></td>' +
       '<td style="padding:8px 12px;font-weight:600;">' + h.ticker + "</td>" +
       '<td style="padding:8px 12px;color:var(--text-muted);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' +
@@ -140,6 +167,26 @@ function _renderImportPreview(data) {
   tbody.innerHTML = html;
 
   preview.style.display = "block";
+}
+
+function toggleImportAccount(btn) {
+  var acct = btn.getAttribute("data-account");
+  var isActive = btn.style.background.indexOf("accent-primary") !== -1 ||
+                 btn.style.background.indexOf("var(--accent-primary)") !== -1;
+
+  if (isActive) {
+    btn.style.background = "transparent";
+    btn.style.color = "var(--text-muted)";
+  } else {
+    btn.style.background = "var(--accent-primary)";
+    btn.style.color = "#09090b";
+  }
+
+  var rows = document.querySelectorAll('#import-table-body tr[data-account="' + acct.replace(/"/g, '\\"') + '"]');
+  for (var i = 0; i < rows.length; i++) {
+    var cb = rows[i].querySelector(".import-row-cb");
+    if (cb) cb.checked = !isActive;
+  }
 }
 
 function toggleImportSelectAll(checked) {

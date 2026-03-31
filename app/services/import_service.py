@@ -18,10 +18,11 @@ import re
 
 log = logging.getLogger(__name__)
 
-# Tickers to skip (cash placeholders, pending settlements, totals rows)
+# Tickers to skip (non-investable placeholders, pending settlements, totals rows).
+# Real money market funds (SPAXX, FDRXX, VMFXX, SWVXX, etc.) are NOT skipped
+# because users may want to track them as positions.
 _SKIP_SYMBOLS = {
-    "", "CASH", "SPAXX", "SPAXX**", "FDRXX", "FDRXX**", "FCASH", "CORE",
-    "CORE**", "MMDA1", "VMFXX", "VMFXX**", "VMMXX", "SWVXX", "SWVXX**",
+    "", "CASH", "FCASH", "CORE", "CORE**", "MMDA1",
     "Pending Activity", "Account Total", "Cash & Cash Investments",
     "MARGIN", "SHORT", "N/A", "--",
 }
@@ -401,7 +402,10 @@ def _is_skip(symbol: str) -> bool:
     s = _clean_ticker(symbol)
     if s in _SKIP_SYMBOLS:
         return True
-    if any(kw in s.lower() for kw in ("total", "pending", "cash", "account")):
+    sl = s.lower()
+    if any(kw in sl for kw in ("total", "pending activity", "account total")):
+        return True
+    if sl in ("cash", "cash & cash investments"):
         return True
     return False
 

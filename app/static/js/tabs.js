@@ -97,7 +97,7 @@
     }
   });
 
-  /* Initialize active tab on page load */
+  /* Initialize active tab on page load -- defer so all scripts are parsed first */
   var tabMap = {
     "balances":"balances","budget":"budget","holdings":"holdings",
     "import":"import","history":"history","economics":"economics",
@@ -106,5 +106,5 @@
   var pathParts = window.location.pathname.split("/").filter(Boolean);
   var pathTab = pathParts.length > 1 ? pathParts[pathParts.length - 1] : null;
   var tab = tabMap[pathTab] || new URLSearchParams(window.location.search).get("tab") || window.ACTIVE_TAB || "summary";
-  showTab(tab);
+  setTimeout(function() { showTab(tab); }, 0);
 })();

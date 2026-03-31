@@ -165,6 +165,19 @@ def delete_holding(holding_id):
     return jsonify({"success": True})
 
 
+@api_portfolio_bp.route("/crypto/<int:crypto_id>", methods=["DELETE"])
+@login_required
+@requires_pro
+@csrf.exempt
+def delete_crypto(crypto_id):
+    """Delete a crypto holding."""
+    c = CryptoHolding.query.filter_by(id=crypto_id, user_id=current_user.id).first()
+    if c:
+        db.session.delete(c)
+        db.session.commit()
+    return jsonify({"success": True})
+
+
 @api_portfolio_bp.route("/balances")
 @login_required
 def get_balances():

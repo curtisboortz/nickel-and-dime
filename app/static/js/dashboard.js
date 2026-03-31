@@ -4352,8 +4352,26 @@ function _fmtCryptoQty(qty) {
   return n.toFixed(6);
 }
 
+var _cryptoSortKey = "symbol";
+var _cryptoSortDir = 1;
+var _cryptoCache = null;
+var _cryptoWrapRef = null;
+
+function _sortCryptoBy(key) {
+  if (_cryptoSortKey === key) { _cryptoSortDir *= -1; } else { _cryptoSortKey = key; _cryptoSortDir = 1; }
+  if (_cryptoCache && _cryptoWrapRef) _renderCryptoHoldings(_cryptoWrapRef, _cryptoCache);
+}
+
+function deleteCrypto(id) {
+  if (!confirm("Remove this crypto holding?")) return;
+  fetch("/api/crypto/" + id, { method: "DELETE" })
+    .then(function() { _holdingsLoaded = false; loadHoldings(); });
+}
+
 function _renderCryptoHoldings(wrap, crypto) {
   if (!wrap) return;
+  _cryptoCache = crypto;
+  _cryptoWrapRef = wrap;
   var countEl = document.getElementById("crypto-count");
   var subEl = document.getElementById("crypto-subtitle");
   var headerTotal = document.getElementById("crypto-header-total");
@@ -4362,58 +4380,75 @@ function _renderCryptoHoldings(wrap, crypto) {
   if (subEl) subEl.textContent = hasCb ? "Synced from Coinbase - " + crypto.length + " assets" : crypto.length + " assets";
 
   if (crypto.length === 0) {
-    wrap.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--text-muted);">No crypto holdings. Connect Coinbase in Settings (gear icon) to auto-sync.</td></tr>';
+    wrap.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--text-muted);">No crypto holdings. Connect Coinbase in Settings (gear icon) to auto-sync.</td></tr>';
     return;
   }
 
   var totalVal = 0;
+  crypto.forEach(function(c) { totalVal += (c.value || 0); });
+
+  var sorted = crypto.slice().sort(function(a, b) {
+    var k = _cryptoSortKey;
+    if (k === "symbol") {
+      var va = (a.symbol || "").toLowerCase(), vb = (b.symbol || "").toLowerCase();
+      return va < vb ? -_cryptoSortDir : va > vb ? _cryptoSortDir : 0;
+    }
+    if (k === "pct") {
+      return ((a.value || 0) - (b.value || 0)) * _cryptoSortDir;
+    }
+    return ((a[k] || 0) - (b[k] || 0)) * _cryptoSortDir;
+  });
+
+  var arrow = function(key) {
+    if (_cryptoSortKey !== key) return ' <span style="opacity:0.3;">&#8597;</span>';
+    return _cryptoSortDir === 1 ? ' &#9650;' : ' &#9660;';
+  };
+  var thS = 'style="padding:8px 10px;cursor:pointer;user-select:none;white-space:nowrap;"';
+  var thead = document.getElementById("crypto-thead");
+  if (thead) {
+    thead.innerHTML = '<tr style="border-bottom:1px solid var(--border-subtle);">' +
+      '<th ' + thS + ' onclick="_sortCryptoBy(\'symbol\')">Symbol' + arrow("symbol") + '</th>' +
+      '<th ' + thS + ' style="text-align:right;" onclick="_sortCryptoBy(\'quantity\')">Qty' + arrow("quantity") + '</th>' +
+      '<th ' + thS + ' style="text-align:right;" onclick="_sortCryptoBy(\'price\')">Price' + arrow("price") + '</th>' +
+      '<th ' + thS + ' style="text-align:right;" onclick="_sortCryptoBy(\'value\')">Value' + arrow("value") + '</th>' +
+      '<th ' + thS + ' style="text-align:right;" onclick="_sortCryptoBy(\'pct\')">%' + arrow("pct") + '</th>' +
+      '<th style="width:32px;"></th></tr>';
+  }
+
   var rows = "";
-  crypto.forEach(function(c) {
+  sorted.forEach(function(c) {
     var val = c.value || 0;
-    totalVal += val;
-    var qtyStr = _fmtCryptoQty(c.quantity);
     var priceStr = c.price ? "$" + c.price.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}) : "-";
     var valStr = val ? "$" + val.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}) : "-";
-    var pctStr = "";
+    var pctStr = totalVal > 0 ? ((val / totalVal) * 100).toFixed(1) + "%" : "";
     rows += '<tr class="crypto-row" data-cid="' + c.id + '" data-cgid="' + (c.coingecko_id || "") + '">';
     rows += '<td style="padding:8px 10px;font-weight:600;">' + c.symbol + '</td>';
-    rows += '<td style="padding:8px 10px;text-align:right;font-family:var(--mono);">' + qtyStr + '</td>';
+    rows += '<td style="padding:8px 10px;text-align:right;font-family:var(--mono);">' + _fmtCryptoQty(c.quantity) + '</td>';
     rows += '<td style="padding:8px 10px;text-align:right;font-family:var(--mono);color:var(--text-muted);">' + priceStr + '</td>';
     rows += '<td style="padding:8px 10px;text-align:right;font-family:var(--mono);">' + valStr + '</td>';
     rows += '<td style="padding:8px 10px;text-align:right;color:var(--text-muted);">' + pctStr + '</td>';
+    rows += '<td style="padding:8px 4px;text-align:center;"><button type="button" onclick="deleteCrypto(' + c.id + ')" title="Delete" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:1rem;padding:2px 6px;border-radius:4px;" onmouseover="this.style.color=\'var(--danger)\'" onmouseout="this.style.color=\'var(--text-muted)\'">&times;</button></td>';
     rows += '</tr>';
   });
-
-  if (totalVal > 0) {
-    crypto.forEach(function(c, i) {
-      var pct = ((c.value || 0) / totalVal * 100).toFixed(1) + "%";
-      var row = wrap.parentElement ? null : undefined;
-    });
-    var rowsWithPct = "";
-    crypto.forEach(function(c) {
-      var val = c.value || 0;
-      var priceStr = c.price ? "$" + c.price.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}) : "-";
-      var valStr = val ? "$" + val.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}) : "-";
-      var pctStr = totalVal > 0 ? ((val / totalVal) * 100).toFixed(1) + "%" : "";
-      rowsWithPct += '<tr class="crypto-row" data-cid="' + c.id + '" data-cgid="' + (c.coingecko_id || "") + '">';
-      rowsWithPct += '<td style="padding:8px 10px;font-weight:600;">' + c.symbol + '</td>';
-      rowsWithPct += '<td style="padding:8px 10px;text-align:right;font-family:var(--mono);">' + _fmtCryptoQty(c.quantity) + '</td>';
-      rowsWithPct += '<td style="padding:8px 10px;text-align:right;font-family:var(--mono);color:var(--text-muted);">' + priceStr + '</td>';
-      rowsWithPct += '<td style="padding:8px 10px;text-align:right;font-family:var(--mono);">' + valStr + '</td>';
-      rowsWithPct += '<td style="padding:8px 10px;text-align:right;color:var(--text-muted);">' + pctStr + '</td>';
-      rowsWithPct += '</tr>';
-    });
-    rows = rowsWithPct;
-  }
 
   rows += '<tr style="font-weight:600;border-top:2px solid var(--border-subtle);">';
   rows += '<td style="padding:8px 10px;" colspan="3">Total</td>';
   rows += '<td style="padding:8px 10px;text-align:right;color:#58a6ff;font-family:var(--mono);">$' + totalVal.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}) + '</td>';
   rows += '<td style="padding:8px 10px;text-align:right;">100%</td>';
+  rows += '<td></td>';
   rows += '</tr>';
 
   wrap.innerHTML = rows;
   if (headerTotal) headerTotal.textContent = "$" + totalVal.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+
+var _metalsSortKey = "metal";
+var _metalsSortDir = 1;
+var _metalsCache = null;
+
+function _sortMetalsBy(key) {
+  if (_metalsSortKey === key) { _metalsSortDir *= -1; } else { _metalsSortKey = key; _metalsSortDir = 1; }
+  if (_metalsCache) _renderMetals(_metalsCache);
 }
 
 function _loadPhysicalMetals() {
@@ -4422,66 +4457,112 @@ function _loadPhysicalMetals() {
   fetch("/api/physical-metals")
     .then(function(r) { return r.json(); })
     .then(function(d) {
-      var metals = d.metals || [];
-      if (metals.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:20px;color:var(--text-muted);">No physical metals yet. Click "+ Add Purchase" to start.</td></tr>';
-        return;
-      }
-      var goldSpot = window._lastLiveData && window._lastLiveData.gold ? window._lastLiveData.gold : 0;
-      var silverSpot = window._lastLiveData && window._lastLiveData.silver ? window._lastLiveData.silver : 0;
-      var totalAu = 0, totalAg = 0, totalVal = 0, totalCost = 0;
-      var html = "";
-      metals.forEach(function(m) {
-        var oz = parseFloat(m.oz) || 0;
-        var cost = parseFloat(m.purchase_price) || 0;
-        var isGold = m.metal && m.metal.toLowerCase() === "gold";
-        var spot = isGold ? goldSpot : silverSpot;
-        var val = oz * spot;
-        var totalItemCost = oz * cost;
-        var gl = val - totalItemCost;
-        if (isGold) totalAu += oz; else totalAg += oz;
-        totalVal += val;
-        totalCost += totalItemCost;
-        var glColor = gl >= 0 ? "var(--success)" : "var(--danger)";
-        var glSign = gl >= 0 ? "" : "-";
-        var noteText = (m.note || m.description || "").replace(/"/g, "&quot;");
-        var rowTitle = noteText ? ' title="' + noteText + '" style="cursor:help;"' : '';
-        html += '<tr' + rowTitle + '>';
-        var noteHint = noteText ? '<span style="display:block;font-size:0.72rem;color:var(--text-muted);font-weight:400;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + noteText + '">' + noteText + '</span>' : '';
-        html += '<td style="padding:8px 6px;text-transform:capitalize;font-weight:500;">' + (m.metal || "") + noteHint + '</td>';
-        html += '<td style="padding:8px 6px;">' + (m.form || "") + '</td>';
-        html += '<td style="padding:8px 6px;text-align:right;" class="mono">' + oz + '</td>';
-        html += '<td style="padding:8px 6px;text-align:right;" class="mono">$' + cost.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}) + '</td>';
-        html += '<td style="padding:8px 6px;text-align:right;" class="mono metal-spot-cell" data-metal-spot="' + (isGold ? 'gold' : 'silver') + '" data-metal-qty="' + oz + '" data-metal-cost="' + cost + '">$' + spot.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}) + '</td>';
-        html += '<td style="padding:8px 6px;text-align:right;" class="mono">$' + val.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}) + '</td>';
-        html += '<td style="padding:8px 6px;text-align:right;color:' + glColor + ';" class="mono">' + glSign + '$' + Math.abs(gl).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}) + '</td>';
-        html += '<td style="padding:8px 6px;color:var(--text-muted);font-size:0.82rem;">' + (m.date || "") + '</td>';
-        html += '<td style="padding:8px 4px;text-align:center;"><button onclick="deleteMetal(' + m.id + ')" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:0.75rem;opacity:0.5;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.5">&#10005;</button></td>';
-        html += '</tr>';
-      });
-      var totalGL = totalVal - totalCost;
-      var tglColor = totalGL >= 0 ? "var(--success)" : "var(--danger)";
-      var tglSign = totalGL >= 0 ? "" : "-";
-      html += '<tr style="font-weight:600;border-top:2px solid var(--border-subtle);">';
-      html += '<td style="padding:8px 6px;">Totals</td>';
-      html += '<td style="padding:8px 6px;"></td>';
-      html += '<td style="padding:8px 6px;text-align:right;" class="mono">Au ' + totalAu.toFixed(1) + ' / Ag ' + totalAg.toFixed(0) + '</td>';
-      html += '<td style="padding:8px 6px;text-align:right;" class="mono">$' + totalCost.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}) + '</td>';
-      html += '<td style="padding:8px 6px;"></td>';
-      html += '<td style="padding:8px 6px;text-align:right;color:#58a6ff;" class="mono">$' + totalVal.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}) + '</td>';
-      html += '<td style="padding:8px 6px;text-align:right;color:' + tglColor + ';" class="mono">' + tglSign + '$' + Math.abs(totalGL).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}) + '</td>';
-      html += '<td colspan="2"></td>';
-      html += '</tr>';
-      tbody.innerHTML = html;
-      var elAu = document.getElementById("metals-header-au");
-      var elAg = document.getElementById("metals-header-ag");
-      var elTotal = document.getElementById("metals-header-total");
-      var elGL = document.getElementById("metals-header-gl");
-      if (elAu) elAu.textContent = totalAu.toFixed(1);
-      if (elAg) elAg.textContent = totalAg.toFixed(0);
-      if (elTotal) elTotal.textContent = "$" + totalVal.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
-      if (elGL) { elGL.textContent = tglSign + "$" + Math.abs(totalGL).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}); elGL.style.color = tglColor; }
+      _metalsCache = d.metals || [];
+      _renderMetals(_metalsCache);
     });
+}
+
+function _renderMetals(metals) {
+  var tbody = document.getElementById("metals-tbody");
+  if (!tbody) return;
+
+  if (metals.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:20px;color:var(--text-muted);">No physical metals yet. Click "+ Add Purchase" to start.</td></tr>';
+    return;
+  }
+
+  var goldSpot = window._lastLiveData && window._lastLiveData.gold ? window._lastLiveData.gold : 0;
+  var silverSpot = window._lastLiveData && window._lastLiveData.silver ? window._lastLiveData.silver : 0;
+
+  var enriched = metals.map(function(m) {
+    var oz = parseFloat(m.oz) || 0;
+    var cost = parseFloat(m.purchase_price) || 0;
+    var isGold = m.metal && m.metal.toLowerCase() === "gold";
+    var spot = isGold ? goldSpot : silverSpot;
+    var val = oz * spot;
+    var totalItemCost = oz * cost;
+    return { raw: m, oz: oz, cost: cost, isGold: isGold, spot: spot, val: val, totalCost: totalItemCost, gl: val - totalItemCost };
+  });
+
+  enriched.sort(function(a, b) {
+    var k = _metalsSortKey;
+    if (k === "metal" || k === "form" || k === "date") {
+      var va = (k === "date" ? (a.raw.date || "") : (a.raw[k] || "")).toLowerCase();
+      var vb = (k === "date" ? (b.raw.date || "") : (b.raw[k] || "")).toLowerCase();
+      return va < vb ? -_metalsSortDir : va > vb ? _metalsSortDir : 0;
+    }
+    var na = k === "oz" ? a.oz : k === "cost" ? a.cost : k === "spot" ? a.spot : k === "val" ? a.val : a.gl;
+    var nb = k === "oz" ? b.oz : k === "cost" ? b.cost : k === "spot" ? b.spot : k === "val" ? b.val : b.gl;
+    return (na - nb) * _metalsSortDir;
+  });
+
+  var arrow = function(key) {
+    if (_metalsSortKey !== key) return ' <span style="opacity:0.3;">&#8597;</span>';
+    return _metalsSortDir === 1 ? ' &#9650;' : ' &#9660;';
+  };
+  var thS = 'style="padding:8px 6px;cursor:pointer;user-select:none;white-space:nowrap;"';
+  var thead = document.getElementById("metals-thead");
+  if (thead) {
+    thead.innerHTML = '<tr>' +
+      '<th ' + thS + ' onclick="_sortMetalsBy(\'metal\')">Metal' + arrow("metal") + '</th>' +
+      '<th ' + thS + ' onclick="_sortMetalsBy(\'form\')">Form' + arrow("form") + '</th>' +
+      '<th ' + thS + ' style="text-align:right;" onclick="_sortMetalsBy(\'oz\')">Qty (oz)' + arrow("oz") + '</th>' +
+      '<th ' + thS + ' style="text-align:right;" onclick="_sortMetalsBy(\'cost\')">Cost/oz' + arrow("cost") + '</th>' +
+      '<th ' + thS + ' style="text-align:right;" onclick="_sortMetalsBy(\'spot\')">Spot' + arrow("spot") + '</th>' +
+      '<th ' + thS + ' style="text-align:right;" onclick="_sortMetalsBy(\'val\')">Value' + arrow("val") + '</th>' +
+      '<th ' + thS + ' style="text-align:right;" onclick="_sortMetalsBy(\'gl\')">G/L' + arrow("gl") + '</th>' +
+      '<th ' + thS + ' onclick="_sortMetalsBy(\'date\')">Date' + arrow("date") + '</th>' +
+      '<th></th></tr>';
+  }
+
+  var totalAu = 0, totalAg = 0, totalVal = 0, totalCost = 0;
+  var html = "";
+  enriched.forEach(function(e) {
+    var m = e.raw;
+    if (e.isGold) totalAu += e.oz; else totalAg += e.oz;
+    totalVal += e.val;
+    totalCost += e.totalCost;
+    var glColor = e.gl >= 0 ? "var(--success)" : "var(--danger)";
+    var glSign = e.gl >= 0 ? "" : "-";
+    var noteText = (m.note || m.description || "").replace(/"/g, "&quot;");
+    var rowTitle = noteText ? ' title="' + noteText + '" style="cursor:help;"' : '';
+    html += '<tr' + rowTitle + '>';
+    var noteHint = noteText ? '<span style="display:block;font-size:0.72rem;color:var(--text-muted);font-weight:400;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + noteText + '">' + noteText + '</span>' : '';
+    html += '<td style="padding:8px 6px;text-transform:capitalize;font-weight:500;">' + (m.metal || "") + noteHint + '</td>';
+    html += '<td style="padding:8px 6px;">' + (m.form || "") + '</td>';
+    html += '<td style="padding:8px 6px;text-align:right;" class="mono">' + e.oz + '</td>';
+    html += '<td style="padding:8px 6px;text-align:right;" class="mono">$' + e.cost.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}) + '</td>';
+    html += '<td style="padding:8px 6px;text-align:right;" class="mono metal-spot-cell" data-metal-spot="' + (e.isGold ? 'gold' : 'silver') + '" data-metal-qty="' + e.oz + '" data-metal-cost="' + e.cost + '">$' + e.spot.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}) + '</td>';
+    html += '<td style="padding:8px 6px;text-align:right;" class="mono">$' + e.val.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}) + '</td>';
+    html += '<td style="padding:8px 6px;text-align:right;color:' + glColor + ';" class="mono">' + glSign + '$' + Math.abs(e.gl).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}) + '</td>';
+    html += '<td style="padding:8px 6px;color:var(--text-muted);font-size:0.82rem;">' + (m.date || "") + '</td>';
+    html += '<td style="padding:8px 4px;text-align:center;"><button onclick="deleteMetal(' + m.id + ')" title="Delete" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:1rem;padding:2px 6px;border-radius:4px;" onmouseover="this.style.color=\'var(--danger)\'" onmouseout="this.style.color=\'var(--text-muted)\'">&times;</button></td>';
+    html += '</tr>';
+  });
+
+  var totalGL = totalVal - totalCost;
+  var tglColor = totalGL >= 0 ? "var(--success)" : "var(--danger)";
+  var tglSign = totalGL >= 0 ? "" : "-";
+  html += '<tr style="font-weight:600;border-top:2px solid var(--border-subtle);">';
+  html += '<td style="padding:8px 6px;">Totals</td>';
+  html += '<td style="padding:8px 6px;"></td>';
+  html += '<td style="padding:8px 6px;text-align:right;" class="mono">Au ' + totalAu.toFixed(1) + ' / Ag ' + totalAg.toFixed(0) + '</td>';
+  html += '<td style="padding:8px 6px;text-align:right;" class="mono">$' + totalCost.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}) + '</td>';
+  html += '<td style="padding:8px 6px;"></td>';
+  html += '<td style="padding:8px 6px;text-align:right;color:#58a6ff;" class="mono">$' + totalVal.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}) + '</td>';
+  html += '<td style="padding:8px 6px;text-align:right;color:' + tglColor + ';" class="mono">' + tglSign + '$' + Math.abs(totalGL).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}) + '</td>';
+  html += '<td colspan="2"></td>';
+  html += '</tr>';
+  tbody.innerHTML = html;
+
+  var elAu = document.getElementById("metals-header-au");
+  var elAg = document.getElementById("metals-header-ag");
+  var elTotal = document.getElementById("metals-header-total");
+  var elGL = document.getElementById("metals-header-gl");
+  if (elAu) elAu.textContent = totalAu.toFixed(1);
+  if (elAg) elAg.textContent = totalAg.toFixed(0);
+  if (elTotal) elTotal.textContent = "$" + totalVal.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
+  if (elGL) { elGL.textContent = tglSign + "$" + Math.abs(totalGL).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}); elGL.style.color = tglColor; }
 }
 
 function deleteHolding(id) {

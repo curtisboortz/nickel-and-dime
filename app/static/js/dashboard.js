@@ -4216,8 +4216,11 @@ function loadHoldings() {
     });
 }
 
-var _holdingsSortKey = "ticker";
-var _holdingsSortDir = 1; // 1 = asc, -1 = desc
+var _sortPrefs = JSON.parse(localStorage.getItem("nd-sort-prefs") || "{}");
+function _saveSortPrefs() { localStorage.setItem("nd-sort-prefs", JSON.stringify(_sortPrefs)); }
+
+var _holdingsSortKey = _sortPrefs.hk || "ticker";
+var _holdingsSortDir = _sortPrefs.hd || 1;
 var _holdingsCache = null;
 var _holdingsWrapRef = null;
 
@@ -4228,6 +4231,7 @@ function _sortHoldingsBy(key) {
     _holdingsSortKey = key;
     _holdingsSortDir = 1;
   }
+  _sortPrefs.hk = _holdingsSortKey; _sortPrefs.hd = _holdingsSortDir; _saveSortPrefs();
   if (_holdingsCache && _holdingsWrapRef) {
     _renderStockHoldings(_holdingsWrapRef, _holdingsCache);
   }
@@ -4398,13 +4402,14 @@ function _fmtCryptoQty(qty) {
   return n.toFixed(6);
 }
 
-var _cryptoSortKey = "symbol";
-var _cryptoSortDir = 1;
+var _cryptoSortKey = _sortPrefs.ck || "symbol";
+var _cryptoSortDir = _sortPrefs.cd || 1;
 var _cryptoCache = null;
 var _cryptoWrapRef = null;
 
 function _sortCryptoBy(key) {
   if (_cryptoSortKey === key) { _cryptoSortDir *= -1; } else { _cryptoSortKey = key; _cryptoSortDir = 1; }
+  _sortPrefs.ck = _cryptoSortKey; _sortPrefs.cd = _cryptoSortDir; _saveSortPrefs();
   if (_cryptoCache && _cryptoWrapRef) _renderCryptoHoldings(_cryptoWrapRef, _cryptoCache);
 }
 
@@ -4489,12 +4494,13 @@ function _renderCryptoHoldings(wrap, crypto) {
   if (headerTotal) headerTotal.textContent = "$" + totalVal.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
 }
 
-var _metalsSortKey = "metal";
-var _metalsSortDir = 1;
+var _metalsSortKey = _sortPrefs.mk || "metal";
+var _metalsSortDir = _sortPrefs.md || 1;
 var _metalsCache = null;
 
 function _sortMetalsBy(key) {
   if (_metalsSortKey === key) { _metalsSortDir *= -1; } else { _metalsSortKey = key; _metalsSortDir = 1; }
+  _sortPrefs.mk = _metalsSortKey; _sortPrefs.md = _metalsSortDir; _saveSortPrefs();
   if (_metalsCache) _renderMetals(_metalsCache);
 }
 

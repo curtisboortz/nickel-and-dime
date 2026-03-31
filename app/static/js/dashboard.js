@@ -4247,14 +4247,23 @@ function _renderStockHoldings(wrap, holdings) {
       vb = (b[k] || "").toLowerCase();
       return va < vb ? -_holdingsSortDir : va > vb ? _holdingsSortDir : 0;
     }
-    if (k === "pl") {
+    if (k === "pl_dollar" || k === "pl_pct") {
       var aCost = (a.cost_basis && a.shares) ? a.cost_basis * a.shares : 0;
       var bCost = (b.cost_basis && b.shares) ? b.cost_basis * b.shares : 0;
-      va = aCost > 0 ? ((a.total || 0) - aCost) / aCost : -Infinity;
-      vb = bCost > 0 ? ((b.total || 0) - bCost) / bCost : -Infinity;
-    } else if (k === "daily_pl") {
+      if (k === "pl_dollar") {
+        va = aCost > 0 ? (a.total || 0) - aCost : -Infinity;
+        vb = bCost > 0 ? (b.total || 0) - bCost : -Infinity;
+      } else {
+        va = aCost > 0 ? ((a.total || 0) - aCost) / aCost : -Infinity;
+        vb = bCost > 0 ? ((b.total || 0) - bCost) / bCost : -Infinity;
+      }
+    } else if (k === "day_dollar" || k === "day_pct") {
       va = (a.price && a.prev_close && a.shares) ? (a.price - a.prev_close) * a.shares : -Infinity;
       vb = (b.price && b.prev_close && b.shares) ? (b.price - b.prev_close) * b.shares : -Infinity;
+      if (k === "day_pct") {
+        va = (a.price && a.prev_close) ? (a.price - a.prev_close) / a.prev_close : -Infinity;
+        vb = (b.price && b.prev_close) ? (b.price - b.prev_close) / b.prev_close : -Infinity;
+      }
     } else {
       va = a[k] || 0;
       vb = b[k] || 0;
@@ -4278,8 +4287,10 @@ function _renderStockHoldings(wrap, holdings) {
   html += '<th ' + hthR + ' onclick="_sortHoldingsBy(\'cost_basis\')">Cost/Share' + arrow("cost_basis") + '</th>';
   html += '<th ' + hthR + ' onclick="_sortHoldingsBy(\'price\')">Price' + arrow("price") + '</th>';
   html += '<th ' + hthR + ' onclick="_sortHoldingsBy(\'total\')">Total' + arrow("total") + '</th>';
-  html += '<th ' + hthR + ' onclick="_sortHoldingsBy(\'daily_pl\')">Day P&amp;L' + arrow("daily_pl") + '</th>';
-  html += '<th ' + hthR + ' onclick="_sortHoldingsBy(\'pl\')">Total P&amp;L' + arrow("pl") + '</th>';
+  html += '<th ' + hthR + ' onclick="_sortHoldingsBy(\'day_dollar\')">Day $' + arrow("day_dollar") + '</th>';
+  html += '<th ' + hthR + ' onclick="_sortHoldingsBy(\'day_pct\')">Day %' + arrow("day_pct") + '</th>';
+  html += '<th ' + hthR + ' onclick="_sortHoldingsBy(\'pl_dollar\')">Total $' + arrow("pl_dollar") + '</th>';
+  html += '<th ' + hthR + ' onclick="_sortHoldingsBy(\'pl_pct\')">Total %' + arrow("pl_pct") + '</th>';
   html += '<th style="padding:8px 6px;">Notes</th>';
   html += '<th style="padding:8px 4px;width:32px;"></th>';
   html += '</tr></thead><tbody>';
@@ -4297,35 +4308,30 @@ function _renderStockHoldings(wrap, holdings) {
     var totalColor = isOverridden ? "color:var(--warning);" : "";
     var qtyStr = (h.shares !== null && h.shares !== undefined) ? h.shares : "";
 
-    // Daily P&L
-    var dayPlHtml = '<span style="color:var(--text-muted);">--</span>';
+    var muted = '<span style="color:var(--text-muted);">--</span>';
+    var dayDollarHtml = muted, dayPctHtml = muted;
     if (h.price && h.prev_close && h.shares) {
       var dayDollar = (h.price - h.prev_close) * h.shares;
       var dayPct = (h.prev_close > 0) ? ((h.price - h.prev_close) / h.prev_close) * 100 : 0;
       grandDayPL += dayDollar;
       var dayColor = dayDollar >= 0 ? "var(--success)" : "var(--danger)";
       var daySign = dayDollar >= 0 ? "+" : "";
-      dayPlHtml = '<span style="color:' + dayColor + ';font-family:var(--mono);white-space:nowrap;">' +
-        daySign + '$' + Math.abs(dayDollar).toLocaleString(undefined, {minimumFractionDigits:0, maximumFractionDigits:0}) +
-        '<br><span style="font-size:0.75rem;">' + daySign + dayPct.toFixed(2) + '%</span></span>';
+      dayDollarHtml = '<span style="color:' + dayColor + ';font-family:var(--mono);white-space:nowrap;">' + daySign + '$' + Math.abs(dayDollar).toLocaleString(undefined, {minimumFractionDigits:0, maximumFractionDigits:0}) + '</span>';
+      dayPctHtml = '<span style="color:' + dayColor + ';font-family:var(--mono);white-space:nowrap;">' + daySign + dayPct.toFixed(2) + '%</span>';
     }
 
-    // Total P&L
     var costTotal = (h.cost_basis && h.shares) ? h.cost_basis * h.shares : 0;
     var currentVal = h.total || 0;
-    var plDollar = 0;
-    var plPct = 0;
-    var plHtml = '<span style="color:var(--text-muted);">--</span>';
+    var plDollarHtml = muted, plPctHtml = muted;
     if (costTotal > 0 && currentVal > 0) {
-      plDollar = currentVal - costTotal;
-      plPct = (plDollar / costTotal) * 100;
+      var plDollar = currentVal - costTotal;
+      var plPct = (plDollar / costTotal) * 100;
       grandCost += costTotal;
       grandPL += plDollar;
       var plColor = plDollar >= 0 ? "var(--success)" : "var(--danger)";
       var plSign = plDollar >= 0 ? "+" : "";
-      plHtml = '<span style="color:' + plColor + ';font-family:var(--mono);white-space:nowrap;">' +
-        plSign + '$' + Math.abs(plDollar).toLocaleString(undefined, {minimumFractionDigits:0, maximumFractionDigits:0}) +
-        '<br><span style="font-size:0.75rem;">' + plSign + plPct.toFixed(1) + '%</span></span>';
+      plDollarHtml = '<span style="color:' + plColor + ';font-family:var(--mono);white-space:nowrap;">' + plSign + '$' + Math.abs(plDollar).toLocaleString(undefined, {minimumFractionDigits:0, maximumFractionDigits:0}) + '</span>';
+      plPctHtml = '<span style="color:' + plColor + ';font-family:var(--mono);white-space:nowrap;">' + plSign + plPct.toFixed(1) + '%</span>';
     }
     html += '<tr data-hid="' + h.id + '" data-computed="' + computedTotal.toFixed(2) + '">';
     html += '<td style="padding:4px 4px;"><input type="text" data-field="account" value="' + (h.account || "") + '" ' + inputStyle + '></td>';
@@ -4335,8 +4341,10 @@ function _renderStockHoldings(wrap, holdings) {
     html += '<td style="padding:4px 4px;"><input type="text" inputmode="decimal" data-field="cost_basis" value="' + (h.cost_basis || "") + '" class="num" ' + inputStyle + '></td>';
     html += '<td style="padding:8px 6px;text-align:right;color:var(--text-muted);font-family:var(--mono);white-space:nowrap;">' + priceStr + '</td>';
     html += '<td style="padding:4px 4px;"><input type="text" data-field="total_edit" value="' + totalInputVal + '" class="num" style="background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:4px;' + totalColor + 'padding:5px 8px;font-size:0.82rem;width:100%;font-family:var(--mono);font-weight:600;"></td>';
-    html += '<td style="padding:8px 6px;text-align:right;">' + dayPlHtml + '</td>';
-    html += '<td style="padding:8px 6px;text-align:right;">' + plHtml + '</td>';
+    html += '<td style="padding:8px 6px;text-align:right;">' + dayDollarHtml + '</td>';
+    html += '<td style="padding:8px 6px;text-align:right;">' + dayPctHtml + '</td>';
+    html += '<td style="padding:8px 6px;text-align:right;">' + plDollarHtml + '</td>';
+    html += '<td style="padding:8px 6px;text-align:right;">' + plPctHtml + '</td>';
     html += '<td style="padding:4px 4px;"><input type="text" data-field="notes" value="' + (h.notes || "") + '" ' + inputStyle + '></td>';
     html += '<td style="padding:4px 4px;text-align:center;"><button type="button" onclick="deleteHolding(' + h.id + ')" title="Delete" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:1rem;padding:2px 6px;border-radius:4px;" onmouseover="this.style.color=\'var(--danger)\'" onmouseout="this.style.color=\'var(--text-muted)\'">&times;</button></td>';
     html += '</tr>';
@@ -4350,29 +4358,26 @@ function _renderStockHoldings(wrap, holdings) {
   html += '<td style="padding:4px 4px;"><input type="text" inputmode="decimal" data-field="cost_basis" placeholder="Cost/Share" class="num" ' + inputStyle + '></td>';
   html += '<td></td>';
   html += '<td style="padding:4px 4px;"><input type="text" data-field="total_edit" placeholder="Total" class="num" ' + inputStyle + '></td>';
-  html += '<td></td>';
-  html += '<td></td>';
+  html += '<td></td><td></td><td></td><td></td>';
   html += '<td style="padding:4px 4px;"><input type="text" data-field="notes" placeholder="Notes" ' + inputStyle + '></td>';
   html += '<td></td>';
   html += '</tr>';
 
   var grandDayColor = grandDayPL >= 0 ? "var(--success)" : "var(--danger)";
   var grandDaySign = grandDayPL >= 0 ? "+" : "";
-  var grandDayHtml = '<span style="color:' + grandDayColor + ';font-family:var(--mono);">' + grandDaySign + '$' + Math.abs(grandDayPL).toLocaleString(undefined, {minimumFractionDigits:0, maximumFractionDigits:0}) + '</span>';
 
   var grandPLColor = grandPL >= 0 ? "var(--success)" : "var(--danger)";
   var grandPLSign = grandPL >= 0 ? "+" : "";
   var grandPLPct = grandCost > 0 ? (grandPL / grandCost) * 100 : 0;
-  var grandPLHtml = grandCost > 0
-    ? '<span style="color:' + grandPLColor + ';font-family:var(--mono);">' + grandPLSign + '$' + Math.abs(grandPL).toLocaleString(undefined, {minimumFractionDigits:0, maximumFractionDigits:0}) + ' (' + grandPLSign + grandPLPct.toFixed(1) + '%)</span>'
-    : '';
 
   html += '<tr style="font-weight:600;border-top:2px solid var(--border-subtle);">';
   html += '<td colspan="5" style="padding:8px 6px;">Holdings Total</td>';
   html += '<td></td>';
   html += '<td style="padding:8px 6px;text-align:right;color:#58a6ff;font-family:var(--mono);">' + fmtMoney(grandTotal) + '</td>';
-  html += '<td style="padding:8px 6px;text-align:right;">' + grandDayHtml + '</td>';
-  html += '<td style="padding:8px 6px;text-align:right;">' + grandPLHtml + '</td>';
+  html += '<td style="padding:8px 6px;text-align:right;"><span style="color:' + grandDayColor + ';font-family:var(--mono);">' + grandDaySign + '$' + Math.abs(grandDayPL).toLocaleString(undefined, {minimumFractionDigits:0, maximumFractionDigits:0}) + '</span></td>';
+  html += '<td></td>';
+  html += '<td style="padding:8px 6px;text-align:right;"><span style="color:' + grandPLColor + ';font-family:var(--mono);">' + grandPLSign + '$' + Math.abs(grandPL).toLocaleString(undefined, {minimumFractionDigits:0, maximumFractionDigits:0}) + '</span></td>';
+  html += '<td style="padding:8px 6px;text-align:right;">' + (grandCost > 0 ? '<span style="color:' + grandPLColor + ';font-family:var(--mono);">' + grandPLSign + grandPLPct.toFixed(1) + '%</span>' : '') + '</td>';
   html += '<td colspan="2"></td>';
   html += '</tr>';
 

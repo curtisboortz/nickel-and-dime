@@ -18,13 +18,35 @@ api_portfolio_bp = Blueprint("api_portfolio", __name__)
 
 
 def _get_price(symbol):
-    """Look up a cached price by yfinance symbol or CoinGecko key."""
+    """Look up a cached price, falling back to a live yfinance fetch on miss."""
     entry = PriceCache.query.get(symbol)
     if entry and entry.price:
         return entry.price
     entry = PriceCache.query.get(f"CG:{symbol.lower()}")
     if entry and entry.price:
         return entry.price
+    return _fetch_and_cache(symbol)
+
+
+def _fetch_and_cache(symbol):
+    """One-off yfinance fetch for a ticker not yet in the price cache."""
+    try:
+        import yfinance as yf
+        from datetime import datetime, timezone
+        tk = yf.Ticker(symbol)
+        info = tk.fast_info
+        price = getattr(info, "last_price", None)
+        if price and price > 0:
+            row = PriceCache.query.get(symbol)
+            if not row:
+                row = PriceCache(symbol=symbol)
+                db.session.add(row)
+            row.price = price
+            row.updated_at = datetime.now(timezone.utc)
+            db.session.commit()
+            return price
+    except Exception:
+        pass
     return None
 
 
@@ -122,6 +144,8 @@ def _apply_holding_fields(h, data):
         h.account = data["account"]
     if "value_override" in data:
         h.value_override = float(data["value_override"]) if data["value_override"] else None
+    if "cost_basis" in data:
+        h.cost_basis = float(data["cost_basis"]) if data["cost_basis"] else None
     if "notes" in data:
         h.notes = data["notes"]
 

@@ -4304,7 +4304,7 @@ function _renderStockHoldings(wrap, holdings) {
     html += '<td style="padding:4px 4px;"><input type="text" data-field="ticker" value="' + (h.ticker || "") + '" ' + inputStyle + '></td>';
     html += '<td style="padding:4px 4px;"><input type="text" data-field="bucket" value="' + (h.bucket || "") + '" ' + inputStyle + '></td>';
     html += '<td style="padding:4px 4px;"><input type="text" data-field="shares" value="' + qtyStr + '" class="num" ' + inputStyle + '></td>';
-    html += '<td style="padding:8px 6px;text-align:right;color:var(--text-muted);font-family:var(--mono);white-space:nowrap;">' + cbStr + '</td>';
+    html += '<td style="padding:4px 4px;"><input type="text" inputmode="decimal" data-field="cost_basis" value="' + (h.cost_basis || "") + '" class="num" ' + inputStyle + '></td>';
     html += '<td style="padding:8px 6px;text-align:right;color:var(--text-muted);font-family:var(--mono);white-space:nowrap;">' + priceStr + '</td>';
     html += '<td style="padding:4px 4px;"><input type="text" data-field="total_edit" value="' + totalInputVal + '" class="num" style="background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:4px;' + totalColor + 'padding:5px 8px;font-size:0.82rem;width:100%;font-family:var(--mono);font-weight:600;"></td>';
     html += '<td style="padding:8px 6px;text-align:right;">' + plHtml + '</td>';
@@ -4318,7 +4318,7 @@ function _renderStockHoldings(wrap, holdings) {
   html += '<td style="padding:4px 4px;"><input type="text" data-field="ticker" placeholder="Ticker" style="text-transform:uppercase;background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:4px;color:var(--text-primary);padding:5px 8px;font-size:0.82rem;width:100%;"></td>';
   html += '<td style="padding:4px 4px;"><input type="text" data-field="bucket" placeholder="Class" ' + inputStyle + '></td>';
   html += '<td style="padding:4px 4px;"><input type="text" data-field="shares" placeholder="Qty" class="num" ' + inputStyle + '></td>';
-  html += '<td></td>';
+  html += '<td style="padding:4px 4px;"><input type="text" inputmode="decimal" data-field="cost_basis" placeholder="Cost/Share" class="num" ' + inputStyle + '></td>';
   html += '<td></td>';
   html += '<td style="padding:4px 4px;"><input type="text" data-field="total_edit" placeholder="Total" class="num" ' + inputStyle + '></td>';
   html += '<td></td>';
@@ -4608,6 +4608,7 @@ function saveAllHoldings() {
       bucket: fields.bucket || "",
       account: fields.account || "",
       value_override: vo,
+      cost_basis: fields.cost_basis ? parseFloat(fields.cost_basis) || null : null,
       notes: fields.notes || ""
     };
     if (hid) row.id = parseInt(hid);

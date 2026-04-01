@@ -4108,15 +4108,48 @@ function _openBalMenu(e, id, name, idx, total) {
   setTimeout(function() { document.addEventListener("click", _closeBalsMenu); }, 0);
 }
 
+function _buildBalBucketSelect(selected) {
+  var opts = _bucketOptions.length ? _bucketOptions : STANDARD_BUCKETS_FALLBACK;
+  var s = '<select class="bal-bucket" style="padding:6px 8px;font-size:0.82rem;background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:6px;color:var(--text-primary);appearance:auto;min-width:100px;">';
+  s += '<option value="">Category</option>';
+  opts.forEach(function(b) { s += '<option value="' + b + '"' + (b === selected ? ' selected' : '') + '>' + b + '</option>'; });
+  if (selected && opts.indexOf(selected) === -1) s += '<option value="' + selected + '" selected>' + selected + '</option>';
+  s += '<option value="__custom__">+ Custom...</option>';
+  s += '</select>';
+  return s;
+}
+var STANDARD_BUCKETS_FALLBACK = ["Art","Cash","Crypto","Equities","Fixed Income","Gold","International","Managed Blend","Real Assets","Real Estate","Retirement Blend","Silver"];
+
+function _smartDetectBucket(name) {
+  var n = (name || "").toLowerCase();
+  if (/check|saving|cash|money.?market|spaxx|fzfxx/i.test(n)) return "Cash";
+  if (/ira|401k|403b|roth|retire|target.?date/i.test(n)) return "Retirement Blend";
+  if (/crypto|bitcoin|coinbase|binance/i.test(n)) return "Crypto";
+  if (/gold/i.test(n)) return "Gold";
+  if (/silver/i.test(n)) return "Silver";
+  if (/real.?estate|reit|property/i.test(n)) return "Real Estate";
+  if (/bond|fixed|treasury|tips/i.test(n)) return "Fixed Income";
+  if (/international|foreign|emerg/i.test(n)) return "International";
+  if (/brokerage|stock|equity|etf|index|fund|fidelity|schwab|vanguard|robinhood/i.test(n)) return "Equities";
+  return "";
+}
+
 function loadBalances() {
   if (_balancesLoaded) return;
   _balancesLoaded = true;
   NDDiag.track("balances", "loading");
   var wrap = document.getElementById("balances-table-wrap");
   if (!wrap) return;
-  fetch("/api/balances")
-    .then(function(r) { return r.json(); })
-    .then(function(d) {
+
+  var bucketsP = _bucketOptions.length
+    ? Promise.resolve()
+    : fetch("/api/buckets").then(function(r) { return r.json(); }).then(function(bk) {
+        _bucketOptions = (bk.standard || []).concat(bk.custom || []);
+      }).catch(function() {});
+
+  bucketsP.then(function() {
+    return fetch("/api/balances").then(function(r) { return r.json(); });
+  }).then(function(d) {
       var accts = d.accounts || [];
       var html = "";
       if (accts.length > 0) {
@@ -4124,14 +4157,17 @@ function loadBalances() {
         html += '<thead><tr>';
         html += '<th style="width:28px;padding:10px 0;"></th>';
         html += '<th style="text-align:left;padding:10px 10px;border-bottom:1px solid var(--border-subtle);font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);font-weight:600;">Account</th>';
+        html += '<th style="text-align:left;padding:10px 10px;border-bottom:1px solid var(--border-subtle);font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);font-weight:600;">Category</th>';
         html += '<th style="text-align:right;padding:10px 10px;border-bottom:1px solid var(--border-subtle);font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);font-weight:600;">Value ($)</th>';
         html += '</tr></thead><tbody>';
         accts.forEach(function(a, idx) {
+          var currentBucket = (a.allocations && a.allocations.asset_class) || "";
           html += '<tr class="bal-row" data-acct-id="' + a.id + '">';
           html += '<td style="width:28px;padding:10px 0;border-bottom:1px solid var(--border-subtle);position:relative;">';
           html += '<button class="bal-kebab" onclick="_openBalMenu(event,' + a.id + ',\'' + (a.name || "").replace(/'/g, "\\'") + '\',' + idx + ',' + accts.length + ')" title="Options">&#8942;</button>';
           html += '</td>';
           html += '<td class="bal-name-cell" data-acct-id="' + a.id + '" style="padding:14px 10px;border-bottom:1px solid var(--border-subtle);font-size:0.92rem;font-weight:500;">' + (a.name || "Account") + '</td>';
+          html += '<td style="padding:10px 10px;border-bottom:1px solid var(--border-subtle);">' + _buildBalBucketSelect(currentBucket) + '</td>';
           html += '<td style="text-align:right;padding:14px 10px;border-bottom:1px solid var(--border-subtle);font-family:var(--mono);font-size:0.92rem;font-weight:500;">';
           html += '<input type="text" inputmode="decimal" class="bal-input" data-acct-id="' + a.id + '" value="' + (a.value || 0) + '" style="width:140px;text-align:right;padding:6px 10px;background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:6px;color:var(--text-primary);font-family:var(--mono);font-size:0.92rem;">';
           html += '</td></tr>';
@@ -4142,10 +4178,27 @@ function loadBalances() {
       }
       html += '<div style="display:flex;gap:8px;align-items:end;margin-top:16px;flex-wrap:wrap;">';
       html += '<input type="text" id="new-acct-name" placeholder="Account name (e.g. Fidelity IRA)" style="flex:1;min-width:160px;padding:8px 12px;font-size:0.88rem;background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:6px;color:var(--text-primary);">';
+      html += '<div id="new-acct-bucket-wrap" style="min-width:120px;">' + _buildBalBucketSelect("") + '</div>';
       html += '<input type="text" inputmode="decimal" id="new-acct-value" placeholder="Balance" style="width:120px;padding:8px 12px;font-size:0.88rem;background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:6px;color:var(--text-primary);text-align:right;">';
       html += '<button onclick="addBalance()" style="padding:8px 16px;font-size:0.85rem;background:var(--accent-primary);color:#fff;border:none;border-radius:6px;cursor:pointer;white-space:nowrap;">+ Add Account</button>';
       html += '</div>';
       wrap.innerHTML = html;
+
+      wrap.querySelectorAll("select.bal-bucket").forEach(function(sel) {
+        sel.addEventListener("change", function() { _handleBucketCustom(this); });
+      });
+
+      var nameInput = document.getElementById("new-acct-name");
+      if (nameInput) {
+        nameInput.addEventListener("blur", function() {
+          var detected = _smartDetectBucket(this.value);
+          if (detected) {
+            var bucketSel = document.querySelector("#new-acct-bucket-wrap select.bal-bucket");
+            if (bucketSel && !bucketSel.value) bucketSel.value = detected;
+          }
+        });
+      }
+
       NDDiag.track("balances", "ok", accts.length + " accounts");
     })
     .catch(function(e) {
@@ -4158,11 +4211,14 @@ function loadBalances() {
 function addBalance() {
   var name = document.getElementById("new-acct-name");
   var value = document.getElementById("new-acct-value");
+  var bucketSel = document.querySelector("#new-acct-bucket-wrap select.bal-bucket");
   if (!name || !name.value.trim()) { if (name) name.focus(); return; }
+  var alloc = {};
+  if (bucketSel && bucketSel.value && bucketSel.value !== "__custom__") alloc.asset_class = bucketSel.value;
   fetch("/api/balances", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ new_account: { name: name.value.trim(), value: parseFloat(value && value.value || 0) } })
+    body: JSON.stringify({ new_account: { name: name.value.trim(), value: parseFloat(value && value.value || 0), allocations: alloc } })
   }).then(function() {
     _balancesLoaded = false;
     loadBalances();
@@ -4227,10 +4283,17 @@ function moveBalance(id, direction) {
 }
 
 function saveAllBalances() {
-  var inputs = document.querySelectorAll(".bal-input");
+  var rows = document.querySelectorAll(".bal-row");
   var accounts = [];
-  inputs.forEach(function(inp) {
-    accounts.push({ id: parseInt(inp.getAttribute("data-acct-id")), value: parseFloat(inp.value) || 0 });
+  rows.forEach(function(tr) {
+    var id = parseInt(tr.getAttribute("data-acct-id"));
+    var inp = tr.querySelector(".bal-input");
+    var sel = tr.querySelector("select.bal-bucket");
+    var val = inp ? parseFloat(inp.value) || 0 : 0;
+    var bucket = sel ? sel.value : "";
+    var item = { id: id, value: val };
+    if (bucket && bucket !== "__custom__") item.asset_class = bucket;
+    accounts.push(item);
   });
   fetch("/api/balances", {
     method: "POST",

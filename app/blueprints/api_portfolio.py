@@ -286,8 +286,16 @@ def save_balances():
     updates = data.get("accounts", [])
     for item in updates:
         acct = BlendedAccount.query.filter_by(id=item.get("id"), user_id=current_user.id).first()
-        if acct and "value" in item:
+        if not acct:
+            continue
+        if "value" in item:
             acct.value = float(item["value"])
+        if "asset_class" in item:
+            alloc = dict(acct.allocations or {})
+            alloc["asset_class"] = _normalize_bucket(item["asset_class"])
+            acct.allocations = alloc
+            from sqlalchemy.orm.attributes import flag_modified
+            flag_modified(acct, "allocations")
     db.session.commit()
     return jsonify({"success": True})
 

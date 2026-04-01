@@ -6,6 +6,16 @@ STANDARD_BUCKETS = [
     "Retirement Blend", "Silver",
 ]
 
+BUCKET_PARENTS = {
+    "Managed Blend": "Equities",
+    "Retirement Blend": "Equities",
+    "International": "Equities",
+    "Real Estate": "Real Assets",
+    "Art": "Real Assets",
+    "Gold": "Commodities",
+    "Silver": "Commodities",
+}
+
 _BUCKET_ALIASES = {
     "realassets": "Real Assets",
     "real assets": "Real Assets",
@@ -31,3 +41,23 @@ def normalize_bucket(name):
         if key == sb.lower():
             return sb
     return name
+
+
+def rollup_breakdown(breakdown):
+    """Roll sub-categories into parent categories.
+
+    Returns (rolled_up_dict, children_dict) where children_dict maps
+    parent -> {child: value, ...} for categories that were merged.
+    """
+    rolled = {}
+    children = {}
+    for bucket, value in breakdown.items():
+        normed = normalize_bucket(bucket)
+        parent = BUCKET_PARENTS.get(normed)
+        if parent:
+            rolled[parent] = rolled.get(parent, 0) + value
+            children.setdefault(parent, {})[normed] = \
+                children.get(parent, {}).get(normed, 0) + value
+        else:
+            rolled[normed] = rolled.get(normed, 0) + value
+    return rolled, children

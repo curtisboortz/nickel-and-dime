@@ -482,25 +482,39 @@ def get_allocation_targets():
     """Return the user's allocation targets and current breakdown."""
     from ..models.settings import UserSettings
     from ..services.portfolio_service import compute_portfolio_value
+    from ..utils.buckets import rollup_breakdown, normalize_bucket
     settings = UserSettings.query.filter_by(user_id=current_user.id).first()
     targets = (settings.targets or {}) if settings else {}
     pv = compute_portfolio_value(current_user.id)
     total = pv["total"]
-    breakdown = pv.get("breakdown", {})
+    raw_breakdown = pv.get("breakdown", {})
+    breakdown, children = rollup_breakdown(raw_breakdown)
     active = targets.get("tactical", targets.get("catchup", {}))
 
+    rolled_active = {}
+    for k, v in active.items():
+        nk = normalize_bucket(k)
+        rolled_active[nk] = v
+
     rows = []
-    all_buckets = sorted(set(list(breakdown.keys()) + list(active.keys())))
+    all_buckets = sorted(set(list(breakdown.keys()) + list(rolled_active.keys())))
     for bucket in all_buckets:
         value = breakdown.get(bucket, 0)
         pct = (value / total * 100) if total > 0 else 0
-        target_info = active.get(bucket, {})
+        target_info = rolled_active.get(bucket, {})
         target_pct = target_info.get("target", 0) if isinstance(target_info, dict) else 0
         drift = round(pct - target_pct, 1)
-        rows.append({
+        row = {
             "bucket": bucket, "value": round(value, 2),
             "pct": round(pct, 1), "target": target_pct, "drift": drift,
-        })
+        }
+        if bucket in children:
+            row["children"] = [
+                {"bucket": cb, "value": round(cv, 2),
+                 "pct": round(cv / total * 100, 1) if total > 0 else 0}
+                for cb, cv in sorted(children[bucket].items())
+            ]
+        rows.append(row)
 
     return jsonify({"total": total, "rows": rows, "raw_targets": targets})
 

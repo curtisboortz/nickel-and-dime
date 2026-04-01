@@ -233,16 +233,33 @@ function _renderAllocRows(rows) {
     return;
   }
   var html = "";
-  rows.forEach(function(r) {
+  rows.forEach(function(r, idx) {
     var driftCls = r.drift > 1 ? "color:var(--success)" : r.drift < -1 ? "color:var(--danger)" : "color:var(--text-muted)";
     var driftStr = (r.drift > 0 ? "+" : "") + r.drift.toFixed(1) + "%";
+    var hasChildren = r.children && r.children.length > 0;
+    var toggleId = "alloc-expand-" + idx;
+    var nameHtml = _esc(r.bucket);
+    if (hasChildren) {
+      nameHtml = '<span style="cursor:pointer;user-select:none;" onclick="document.querySelectorAll(\'.' + toggleId + '\').forEach(function(el){el.style.display=el.style.display===\'none\'?\'table-row\':\'none\';});var a=this.querySelector(\'.alloc-arrow\');if(a)a.textContent=a.textContent===\'\\u25B6\'?\'\\u25BC\':\'\\u25B6\';">'
+        + '<span class="alloc-arrow" style="font-size:0.7rem;margin-right:4px;">&#9654;</span>' + _esc(r.bucket) + '</span>';
+    }
     html += '<tr>';
-    html += '<td style="padding:8px 6px;">' + _esc(r.bucket) + '</td>';
+    html += '<td style="padding:8px 6px;font-weight:' + (hasChildren ? '600' : '400') + ';">' + nameHtml + '</td>';
     html += '<td style="padding:8px 6px;font-family:var(--mono);">$' + r.value.toLocaleString(undefined, {maximumFractionDigits:0}) + '</td>';
     html += '<td style="padding:8px 6px;font-family:var(--mono);">' + r.pct.toFixed(1) + '%</td>';
     html += '<td style="padding:8px 6px;font-family:var(--mono);">' + r.target + '%</td>';
     html += '<td style="padding:8px 6px;font-family:var(--mono);' + driftCls + '">' + driftStr + '</td>';
     html += '</tr>';
+    if (hasChildren) {
+      r.children.forEach(function(c) {
+        html += '<tr class="' + toggleId + '" style="display:none;">';
+        html += '<td style="padding:4px 6px 4px 24px;font-size:0.8rem;color:var(--text-muted);">' + _esc(c.bucket) + '</td>';
+        html += '<td style="padding:4px 6px;font-family:var(--mono);font-size:0.8rem;color:var(--text-muted);">$' + c.value.toLocaleString(undefined, {maximumFractionDigits:0}) + '</td>';
+        html += '<td style="padding:4px 6px;font-family:var(--mono);font-size:0.8rem;color:var(--text-muted);">' + c.pct.toFixed(1) + '%</td>';
+        html += '<td colspan="2"></td>';
+        html += '</tr>';
+      });
+    }
   });
   tbody.innerHTML = html;
 }
@@ -440,10 +457,10 @@ function buildDonut() {
   var values = Object.values(data);
   if (labels.length === 0) { NDDiag.track("donut", "warn", "empty buckets"); return; }
   var colorMap = {
-    "Gold":"#d4a017", "Silver":"#c0c0c0", "Equities":"#34d399", "Crypto":"#818cf8",
-    "Cash":"#94a3b8", "Fixed Income":"#60a5fa", "International":"#2dd4bf",
-    "Real Assets":"#06b6d4", "RealEstate":"#06b6d4", "Art":"#e879f9",
-    "ManagedBlend":"#fb923c", "RetirementBlend":"#a78bfa", "RealAssets":"#06b6d4"
+    "Equities":"#34d399", "Cash":"#94a3b8", "Fixed Income":"#60a5fa",
+    "Crypto":"#818cf8", "Commodities":"#d4a017", "Real Assets":"#06b6d4",
+    "Gold":"#d4a017", "Silver":"#c0c0c0", "International":"#2dd4bf",
+    "Art":"#e879f9"
   };
   var fallback = ["#f87171","#fbbf24","#2dd4bf","#a3e635","#f472b6"];
   var fi = 0;

@@ -145,21 +145,36 @@ def save_holdings():
     return jsonify({"success": True, "id": h.id})
 
 
+STANDARD_BUCKETS = [
+    "Art", "Cash", "Crypto", "Equities", "Fixed Income", "Gold",
+    "International", "Managed Blend", "Real Assets", "Real Estate",
+    "Retirement Blend", "Silver",
+]
+
 _BUCKET_ALIASES = {
     "realassets": "Real Assets",
     "real assets": "Real Assets",
     "fixedincome": "Fixed Income",
     "fixed income": "Fixed Income",
     "managedblend": "Managed Blend",
+    "managed blend": "Managed Blend",
     "retirementblend": "Retirement Blend",
+    "retirement blend": "Retirement Blend",
     "realestate": "Real Estate",
+    "real estate": "Real Estate",
 }
 
 
 def _normalize_bucket(name):
     if not name:
         return name
-    return _BUCKET_ALIASES.get(name.lower().strip(), name)
+    key = name.lower().strip()
+    if key in _BUCKET_ALIASES:
+        return _BUCKET_ALIASES[key]
+    for sb in STANDARD_BUCKETS:
+        if key == sb.lower():
+            return sb
+    return name
 
 
 def _apply_holding_fields(h, data):
@@ -517,3 +532,38 @@ def save_ta_tickers():
     flag_modified(settings, "widget_order")
     db.session.commit()
     return jsonify({"ok": True, "tickers": tickers})
+
+
+@api_portfolio_bp.route("/buckets")
+@login_required
+def list_buckets():
+    """Return standard bucket names + any custom ones the user has created."""
+    user_buckets = (
+        db.session.query(Holding.bucket)
+        .filter(Holding.user_id == current_user.id, Holding.bucket.isnot(None))
+        .distinct()
+        .all()
+    )
+    custom = set()
+    for (b,) in user_buckets:
+        normalized = _normalize_bucket(b)
+        if normalized and normalized not in STANDARD_BUCKETS:
+            custom.add(normalized)
+    return jsonify({"standard": STANDARD_BUCKETS, "custom": sorted(custom)})
+
+
+@api_portfolio_bp.route("/normalize-buckets", methods=["POST"])
+@login_required
+@csrf.exempt
+def normalize_buckets():
+    """One-shot: normalize all bucket names for the current user's holdings."""
+    holdings = Holding.query.filter_by(user_id=current_user.id).all()
+    fixed = 0
+    for h in holdings:
+        if h.bucket:
+            normed = _normalize_bucket(h.bucket)
+            if normed != h.bucket:
+                h.bucket = normed
+                fixed += 1
+    db.session.commit()
+    return jsonify({"success": True, "fixed": fixed})

@@ -4250,6 +4250,37 @@ function saveAllBalances() {
    Holdings Tab — fetch /api/holdings, render tables
    ══════════════════════════════════════════════════════ */
 var _holdingsLoaded = false;
+var _bucketOptions = [];
+
+function _buildBucketSelect(selected, isNew) {
+  var sel = '<select data-field="bucket" style="background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:4px;color:var(--text-primary);padding:5px 8px;font-size:0.82rem;width:100%;appearance:auto;">';
+  if (isNew || !selected) sel += '<option value="">Class</option>';
+  _bucketOptions.forEach(function(b) {
+    sel += '<option value="' + b + '"' + (b === selected ? ' selected' : '') + '>' + b + '</option>';
+  });
+  if (selected && _bucketOptions.indexOf(selected) === -1) {
+    sel += '<option value="' + selected + '" selected>' + selected + '</option>';
+  }
+  sel += '<option value="__custom__">+ Custom...</option>';
+  sel += '</select>';
+  return sel;
+}
+
+function _handleBucketCustom(selectEl) {
+  if (selectEl.value === "__custom__") {
+    var custom = prompt("Enter custom category name:");
+    if (custom && custom.trim()) {
+      var val = custom.trim();
+      if (_bucketOptions.indexOf(val) === -1) _bucketOptions.push(val);
+      var opt = document.createElement("option");
+      opt.value = val; opt.textContent = val; opt.selected = true;
+      selectEl.insertBefore(opt, selectEl.querySelector('option[value="__custom__"]'));
+    } else {
+      selectEl.value = "";
+    }
+  }
+}
+
 function loadHoldings() {
   if (_holdingsLoaded) return;
   _holdingsLoaded = true;
@@ -4258,12 +4289,19 @@ function loadHoldings() {
   var stockWrap = document.getElementById("holdings-table-wrap");
   var cryptoWrap = document.getElementById("crypto-tbody");
 
-  fetch("/api/holdings")
-    .then(function(r) { return r.json(); })
-    .then(function(d) {
+  fetch("/api/normalize-buckets", { method: "POST" }).catch(function() {});
+
+  Promise.all([
+    fetch("/api/holdings").then(function(r) { return r.json(); }),
+    fetch("/api/buckets").then(function(r) { return r.json(); }).catch(function() { return { standard: [], custom: [] }; })
+  ]).then(function(results) {
+      var d = results[0];
+      var bk = results[1];
+      _bucketOptions = (bk.standard || []).concat(bk.custom || []);
       _renderStockHoldings(stockWrap, d.holdings || []);
       _renderCryptoHoldings(cryptoWrap, d.crypto || []);
       _loadPhysicalMetals();
+      if (_fxRate !== 1) convertDisplayCurrency(_fxRate, _fxSymbol);
       NDDiag.track("holdings", "ok", (d.holdings||[]).length + " stocks, " + (d.crypto||[]).length + " crypto");
     })
     .catch(function(e) {
@@ -4403,7 +4441,7 @@ function _renderStockHoldings(wrap, holdings) {
     html += '<tr data-hid="' + h.id + '" data-computed="' + computedTotal.toFixed(2) + '">';
     html += '<td style="padding:4px 4px;"><input type="text" data-field="account" value="' + (h.account || "") + '" ' + inputStyle + '></td>';
     html += '<td style="padding:4px 4px;"><input type="text" data-field="ticker" value="' + (h.ticker || "") + '" ' + inputStyle + '></td>';
-    html += '<td style="padding:4px 4px;"><input type="text" data-field="bucket" value="' + (h.bucket || "") + '" ' + inputStyle + '></td>';
+    html += '<td style="padding:4px 4px;">' + _buildBucketSelect(h.bucket || "", false) + '</td>';
     html += '<td style="padding:4px 4px;"><input type="text" data-field="shares" value="' + qtyStr + '" class="num" ' + inputStyle + '></td>';
     html += '<td style="padding:4px 4px;"><input type="text" inputmode="decimal" data-field="cost_basis" value="' + (h.cost_basis || "") + '" class="num" ' + inputStyle + '></td>';
     html += '<td style="padding:8px 6px;text-align:right;color:var(--text-muted);font-family:var(--mono);white-space:nowrap;">' + priceStr + '</td>';
@@ -4421,7 +4459,7 @@ function _renderStockHoldings(wrap, holdings) {
   html += '<tr>';
   html += '<td style="padding:4px 4px;"><input type="text" data-field="account" placeholder="Account" ' + inputStyle + '></td>';
   html += '<td style="padding:4px 4px;"><input type="text" data-field="ticker" placeholder="Ticker" style="text-transform:uppercase;background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:4px;color:var(--text-primary);padding:5px 8px;font-size:0.82rem;width:100%;"></td>';
-  html += '<td style="padding:4px 4px;"><input type="text" data-field="bucket" placeholder="Class" ' + inputStyle + '></td>';
+  html += '<td style="padding:4px 4px;">' + _buildBucketSelect("", true) + '</td>';
   html += '<td style="padding:4px 4px;"><input type="text" data-field="shares" placeholder="Qty" class="num" ' + inputStyle + '></td>';
   html += '<td style="padding:4px 4px;"><input type="text" inputmode="decimal" data-field="cost_basis" placeholder="Cost/Share" class="num" ' + inputStyle + '></td>';
   html += '<td></td>';
@@ -4454,6 +4492,10 @@ function _renderStockHoldings(wrap, holdings) {
 
   html += '</tbody></table></div>';
   wrap.innerHTML = html;
+
+  wrap.querySelectorAll('select[data-field="bucket"]').forEach(function(sel) {
+    sel.addEventListener("change", function() { _handleBucketCustom(this); });
+  });
 }
 
 function _fmtCryptoQty(qty) {
@@ -4704,7 +4746,7 @@ function saveAllHoldings() {
     var hid = tr.getAttribute("data-hid");
     var computed = parseFloat(tr.getAttribute("data-computed")) || 0;
     var fields = {};
-    tr.querySelectorAll("input[data-field]").forEach(function(inp) {
+    tr.querySelectorAll("input[data-field], select[data-field]").forEach(function(inp) {
       fields[inp.getAttribute("data-field")] = inp.value;
     });
     if (!fields.ticker || !fields.ticker.trim()) return;

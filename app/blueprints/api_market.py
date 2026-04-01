@@ -473,8 +473,9 @@ def fx_rate():
     try:
         pair = f"{target}=X"
         tk = yf.Ticker(pair)
-        rate = tk.fast_info.last_price
-        if rate and rate > 0:
+        raw = tk.fast_info.last_price
+        if raw and raw > 0:
+            rate = 1.0 / raw
             _FX_CACHE[target] = {"rate": rate, "ts": time.time()}
             return jsonify({"rate": rate, "currency": target})
         return jsonify({"error": "rate unavailable"}), 502

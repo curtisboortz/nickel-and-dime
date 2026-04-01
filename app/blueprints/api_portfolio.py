@@ -145,36 +145,7 @@ def save_holdings():
     return jsonify({"success": True, "id": h.id})
 
 
-STANDARD_BUCKETS = [
-    "Art", "Cash", "Crypto", "Equities", "Fixed Income", "Gold",
-    "International", "Managed Blend", "Real Assets", "Real Estate",
-    "Retirement Blend", "Silver",
-]
-
-_BUCKET_ALIASES = {
-    "realassets": "Real Assets",
-    "real assets": "Real Assets",
-    "fixedincome": "Fixed Income",
-    "fixed income": "Fixed Income",
-    "managedblend": "Managed Blend",
-    "managed blend": "Managed Blend",
-    "retirementblend": "Retirement Blend",
-    "retirement blend": "Retirement Blend",
-    "realestate": "Real Estate",
-    "real estate": "Real Estate",
-}
-
-
-def _normalize_bucket(name):
-    if not name:
-        return name
-    key = name.lower().strip()
-    if key in _BUCKET_ALIASES:
-        return _BUCKET_ALIASES[key]
-    for sb in STANDARD_BUCKETS:
-        if key == sb.lower():
-            return sb
-    return name
+from ..utils.buckets import STANDARD_BUCKETS, normalize_bucket as _normalize_bucket
 
 
 def _apply_holding_fields(h, data):
@@ -258,10 +229,13 @@ def get_balances():
     if saved_order:
         order_map = {aid: i for i, aid in enumerate(saved_order)}
         blended.sort(key=lambda a: order_map.get(a.id, 9999))
-    return jsonify({
-        "accounts": [{"id": a.id, "name": a.name, "value": a.value,
-                       "allocations": a.allocations} for a in blended],
-    })
+    out = []
+    for a in blended:
+        alloc = dict(a.allocations or {})
+        if "asset_class" in alloc:
+            alloc["asset_class"] = _normalize_bucket(alloc["asset_class"])
+        out.append({"id": a.id, "name": a.name, "value": a.value, "allocations": alloc})
+    return jsonify({"accounts": out})
 
 
 @api_portfolio_bp.route("/balances", methods=["POST"])

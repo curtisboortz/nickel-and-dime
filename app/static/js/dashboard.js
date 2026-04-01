@@ -4108,17 +4108,48 @@ function _openBalMenu(e, id, name, idx, total) {
   setTimeout(function() { document.addEventListener("click", _closeBalsMenu); }, 0);
 }
 
+var STANDARD_BUCKETS_FALLBACK = ["Art","Cash","Crypto","Equities","Fixed Income","Gold","International","Managed Blend","Real Assets","Real Estate","Retirement Blend","Silver"];
+
+var _BUCKET_HINTS = {
+  "Art": "Real Assets", "Gold": "Commodities", "Silver": "Commodities",
+  "International": "Equities", "Managed Blend": "Equities",
+  "Real Assets": "Commodities", "Real Estate": "Alternatives",
+  "Retirement Blend": "Equities", "Crypto": "Alternatives"
+};
+
+var _CLIENT_BUCKET_ALIASES = {
+  "realassets": "Real Assets", "fixedincome": "Fixed Income",
+  "managedblend": "Managed Blend", "retirementblend": "Retirement Blend",
+  "realestate": "Real Estate"
+};
+
+function _normalizeBucketClient(name) {
+  if (!name) return name;
+  var key = name.toLowerCase().replace(/\s+/g, "");
+  if (_CLIENT_BUCKET_ALIASES[key]) return _CLIENT_BUCKET_ALIASES[key];
+  var fb = STANDARD_BUCKETS_FALLBACK;
+  for (var i = 0; i < fb.length; i++) {
+    if (fb[i].toLowerCase().replace(/\s+/g, "") === key) return fb[i];
+  }
+  return name;
+}
+
+function _bucketLabel(b) {
+  var hint = _BUCKET_HINTS[b];
+  return hint ? b + "  (" + hint + ")" : b;
+}
+
 function _buildBalBucketSelect(selected) {
+  selected = _normalizeBucketClient(selected);
   var opts = _bucketOptions.length ? _bucketOptions : STANDARD_BUCKETS_FALLBACK;
   var s = '<select class="bal-bucket" style="padding:6px 8px;font-size:0.82rem;background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:6px;color:var(--text-primary);appearance:auto;min-width:100px;">';
   s += '<option value="">Category</option>';
-  opts.forEach(function(b) { s += '<option value="' + b + '"' + (b === selected ? ' selected' : '') + '>' + b + '</option>'; });
+  opts.forEach(function(b) { s += '<option value="' + b + '"' + (b === selected ? ' selected' : '') + '>' + _bucketLabel(b) + '</option>'; });
   if (selected && opts.indexOf(selected) === -1) s += '<option value="' + selected + '" selected>' + selected + '</option>';
   s += '<option value="__custom__">+ Custom...</option>';
   s += '</select>';
   return s;
 }
-var STANDARD_BUCKETS_FALLBACK = ["Art","Cash","Crypto","Equities","Fixed Income","Gold","International","Managed Blend","Real Assets","Real Estate","Retirement Blend","Silver"];
 
 function _smartDetectBucket(name) {
   var n = (name || "").toLowerCase();
@@ -4316,10 +4347,11 @@ var _holdingsLoaded = false;
 var _bucketOptions = [];
 
 function _buildBucketSelect(selected, isNew) {
+  selected = _normalizeBucketClient(selected);
   var sel = '<select data-field="bucket" style="background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:4px;color:var(--text-primary);padding:5px 8px;font-size:0.82rem;width:100%;appearance:auto;">';
   if (isNew || !selected) sel += '<option value="">Class</option>';
   _bucketOptions.forEach(function(b) {
-    sel += '<option value="' + b + '"' + (b === selected ? ' selected' : '') + '>' + b + '</option>';
+    sel += '<option value="' + b + '"' + (b === selected ? ' selected' : '') + '>' + _bucketLabel(b) + '</option>';
   });
   if (selected && _bucketOptions.indexOf(selected) === -1) {
     sel += '<option value="' + selected + '" selected>' + selected + '</option>';

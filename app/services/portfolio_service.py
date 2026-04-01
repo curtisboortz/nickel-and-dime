@@ -18,6 +18,7 @@ def compute_portfolio_value(user_id):
     breakdown = {}
 
     # Stock / ETF holdings
+    from ..utils.buckets import normalize_bucket as _normalize_bucket
     holdings = Holding.query.filter_by(user_id=user_id).all()
     for h in holdings:
         if h.value_override:
@@ -29,36 +30,26 @@ def compute_portfolio_value(user_id):
         else:
             value = 0
         total += value
-        breakdown.setdefault(h.bucket or "Equities", 0)
-        breakdown[h.bucket or "Equities"] += value
+        bucket = _normalize_bucket(h.bucket) or "Equities"
+        breakdown.setdefault(bucket, 0)
+        breakdown[bucket] += value
 
     # Blended accounts
-    _ASSET_CLASS_TO_BUCKET = {
-        "ManagedBlend": "Equities",
-        "RetirementBlend": "Equities",
-        "RealEstate": "RealAssets",
-        "RealAssets": "RealAssets",
-        "Art": "Art",
-        "Cash": "Cash",
-        "Gold": "Gold",
-        "Silver": "Silver",
-        "Crypto": "Crypto",
-        "Equities": "Equities",
-    }
     blended = BlendedAccount.query.filter_by(user_id=user_id).all()
     for b in blended:
         total += b.value
         alloc = b.allocations or {}
         if "asset_class" in alloc:
-            bucket = _ASSET_CLASS_TO_BUCKET.get(alloc["asset_class"], alloc["asset_class"])
+            bucket = _normalize_bucket(alloc["asset_class"])
             breakdown.setdefault(bucket, 0)
             breakdown[bucket] += b.value
         else:
-            for bucket, pct in alloc.items():
+            for raw_bucket, pct in alloc.items():
                 try:
                     pct_val = float(pct)
                 except (TypeError, ValueError):
                     continue
+                bucket = _normalize_bucket(raw_bucket)
                 breakdown.setdefault(bucket, 0)
                 breakdown[bucket] += b.value * (pct_val / 100.0)
 

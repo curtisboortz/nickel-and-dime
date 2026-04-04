@@ -59,11 +59,12 @@ def live_data():
                 result[f"custom-{card.id}"] = row.price
     result["_ratio_ids"] = [f"custom-{rid}" for rid in ratio_ids]
 
-    from ..utils.buckets import rollup_breakdown
+    from ..utils.buckets import rollup_breakdown, normalize_bucket
     pv = compute_portfolio_value(current_user.id)
     result["total"] = pv["total"]
-    rolled, _children = rollup_breakdown(pv.get("breakdown", {}))
+    rolled, bk_children = rollup_breakdown(pv.get("breakdown", {}))
     result["buckets"] = rolled
+    result["buckets_detail"] = {normalize_bucket(k): v for k, v in pv.get("breakdown", {}).items()}
 
     yesterday = PortfolioSnapshot.query.filter_by(user_id=current_user.id)\
         .filter(PortfolioSnapshot.date < date.today())\

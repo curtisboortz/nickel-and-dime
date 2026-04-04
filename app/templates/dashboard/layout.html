@@ -1080,6 +1080,7 @@ var USER_PLAN = "{{ user.plan if user else 'free' }}";
 var IS_PRO = {{ 'true' if is_pro else 'false' }};
 var ACTIVE_TAB = "{{ active_tab }}";
 window.BUCKETS_DATA = {};
+window.BUCKETS_DETAIL = {};
 window.PRICE_HISTORY_DATA = [];
 window.SAVED_PULSE_ORDER = {{ pulse_order | tojson }};
 
@@ -1178,6 +1179,7 @@ document.addEventListener("keydown", function(e) {
     if (typeof applyLiveDataToDOM === "function") applyLiveDataToDOM(d);
     if (d && d.buckets) {
       window.BUCKETS_DATA = d.buckets;
+      if (d.buckets_detail) window.BUCKETS_DETAIL = d.buckets_detail;
       if (typeof buildDonut === "function") buildDonut();
     }
     var priceCount = Object.keys(d || {}).filter(function(k) { return k !== "buckets" && k !== "_ratio_ids"; }).length;

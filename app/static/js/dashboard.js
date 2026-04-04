@@ -256,7 +256,8 @@ function _renderAllocRows(rows) {
         html += '<td style="padding:4px 6px 4px 24px;font-size:0.8rem;color:var(--text-muted);">' + _esc(c.bucket) + '</td>';
         html += '<td style="padding:4px 6px;font-family:var(--mono);font-size:0.8rem;color:var(--text-muted);">$' + c.value.toLocaleString(undefined, {maximumFractionDigits:0}) + '</td>';
         html += '<td style="padding:4px 6px;font-family:var(--mono);font-size:0.8rem;color:var(--text-muted);">' + c.pct.toFixed(1) + '%</td>';
-        html += '<td colspan="2"></td>';
+        html += '<td style="padding:4px 6px;font-family:var(--mono);font-size:0.8rem;color:var(--text-muted);">' + (c.target ? c.target + '%' : '') + '</td>';
+        html += '<td></td>';
         html += '</tr>';
       });
     }
@@ -407,17 +408,48 @@ function loadAllocationTableEditable() {
       var rows = d.rows || [];
       var html = "";
       rows.forEach(function(r) {
+        var hasChildren = r.children && r.children.length > 0;
         html += '<tr>';
-        html += '<td style="padding:8px 6px;">' + r.bucket + '</td>';
+        html += '<td style="padding:8px 6px;font-weight:' + (hasChildren ? '600' : '400') + ';">' + _esc(r.bucket) + '</td>';
         html += '<td style="padding:8px 6px;font-family:var(--mono);">$' + r.value.toLocaleString(undefined, {maximumFractionDigits:0}) + '</td>';
         html += '<td style="padding:8px 6px;font-family:var(--mono);">' + r.pct.toFixed(1) + '%</td>';
-        html += '<td style="padding:8px 6px;"><input type="number" class="target-input num" data-bucket="' + r.bucket + '" value="' + r.target + '" style="width:60px;text-align:right;" min="0" max="100">%</td>';
-        html += '<td style="padding:8px 6px;font-family:var(--mono);">' + ((r.drift > 0 ? "+" : "") + r.drift.toFixed(1)) + '%</td>';
+        if (hasChildren) {
+          html += '<td style="padding:8px 6px;font-family:var(--mono);color:var(--text-muted);font-size:0.8rem;" title="Set targets on sub-categories below">' + r.target + '% (sum)</td>';
+        } else {
+          html += '<td style="padding:8px 6px;"><input type="number" class="target-input num" data-bucket="' + r.bucket + '" value="' + r.target + '" style="width:60px;text-align:right;" min="0" max="100">%</td>';
+        }
+        html += '<td style="padding:8px 6px;">';
+        if (r.value === 0 && r.target === 0) {
+          html += '<button type="button" onclick="_deleteAllocTarget(\'' + _esc(r.bucket).replace(/'/g, "\\'") + '\')" title="Remove row" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:0.9rem;" onmouseover="this.style.color=\'var(--danger)\'" onmouseout="this.style.color=\'var(--text-muted)\'">&times;</button>';
+        }
+        html += '</td>';
         html += '</tr>';
+        if (hasChildren) {
+          r.children.forEach(function(c) {
+            html += '<tr>';
+            html += '<td style="padding:4px 6px 4px 24px;font-size:0.8rem;color:var(--text-muted);">' + _esc(c.bucket) + '</td>';
+            html += '<td style="padding:4px 6px;font-family:var(--mono);font-size:0.8rem;color:var(--text-muted);">$' + c.value.toLocaleString(undefined, {maximumFractionDigits:0}) + '</td>';
+            html += '<td style="padding:4px 6px;font-family:var(--mono);font-size:0.8rem;color:var(--text-muted);">' + c.pct.toFixed(1) + '%</td>';
+            html += '<td style="padding:4px 6px;"><input type="number" class="target-input num" data-bucket="' + c.bucket + '" value="' + (c.target || 0) + '" style="width:60px;text-align:right;font-size:0.8rem;" min="0" max="100">%</td>';
+            html += '<td></td>';
+            html += '</tr>';
+          });
+        }
       });
       html += '<tr><td colspan="5" style="padding:10px 6px;text-align:right;"><button type="button" onclick="saveAllocationTargets()" style="padding:6px 16px;font-size:0.8rem;">Save Targets</button></td></tr>';
       tbody.innerHTML = html;
     });
+}
+function _deleteAllocTarget(bucket) {
+  if (!confirm("Remove \"" + bucket + "\" from allocation targets?")) return;
+  fetch("/api/allocation-targets/delete", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ bucket: bucket })
+  }).then(function(r) { return r.json(); }).then(function() {
+    if (_editingTargets) loadAllocationTableEditable();
+    else { _allocData = []; loadAllocationTable(); }
+  });
 }
 function saveAllocationTargets() {
   var inputs = document.querySelectorAll(".target-input");
@@ -442,6 +474,8 @@ function saveAllocationTargets() {
       _editingTargets = false;
       var btn = document.getElementById("edit-targets-btn");
       btn.textContent = "Edit Targets";
+      _allocData = [];
+      _summaryDataLoaded = false;
       loadAllocationTable();
     }
   });
@@ -451,36 +485,65 @@ function saveAllocationTargets() {
 var _donutChart = null;
 function buildDonut() {
   NDDiag.track("donut", "loading");
-  var data = window.BUCKETS_DATA;
-  if (!data || typeof data !== "object") { NDDiag.track("donut", "warn", "no BUCKETS_DATA"); return; }
-  var labels = Object.keys(data);
-  var values = Object.values(data);
-  if (labels.length === 0) { NDDiag.track("donut", "warn", "empty buckets"); return; }
+  var parentData = window.BUCKETS_DATA;
+  var detailData = window.BUCKETS_DETAIL || parentData;
+  if (!parentData || typeof parentData !== "object") { NDDiag.track("donut", "warn", "no BUCKETS_DATA"); return; }
   var colorMap = {
     "Equities":"#34d399", "Cash":"#94a3b8", "Fixed Income":"#60a5fa",
     "Crypto":"#818cf8", "Commodities":"#d4a017", "Real Assets":"#06b6d4",
-    "Gold":"#d4a017", "Silver":"#c0c0c0", "International":"#2dd4bf",
-    "Art":"#e879f9"
+    "Gold":"#eab308", "Silver":"#a8a29e", "International":"#2dd4bf",
+    "Art":"#e879f9", "Managed Blend":"#4ade80", "Retirement Blend":"#86efac",
+    "Real Estate":"#22d3ee"
   };
   var fallback = ["#f87171","#fbbf24","#2dd4bf","#a3e635","#f472b6"];
+
+  var innerLabels = Object.keys(parentData).filter(function(k) { return parentData[k] > 0; });
+  var innerValues = innerLabels.map(function(k) { return parentData[k]; });
   var fi = 0;
-  var colors = labels.map(function(l) { return colorMap[l] || fallback[fi++ % fallback.length]; });
+  var innerColors = innerLabels.map(function(l) { return colorMap[l] || fallback[fi++ % fallback.length]; });
+
+  var outerLabels = Object.keys(detailData).filter(function(k) { return detailData[k] > 0; });
+  var outerValues = outerLabels.map(function(k) { return detailData[k]; });
+  fi = 0;
+  var outerColors = outerLabels.map(function(l) { return colorMap[l] || fallback[fi++ % fallback.length]; });
+
+  if (innerLabels.length === 0) { NDDiag.track("donut", "warn", "empty buckets"); return; }
   var ctx = document.getElementById("allocation-donut");
   if (!ctx) { console.warn("buildDonut: canvas #allocation-donut not found"); return; }
   if (typeof Chart === "undefined") { console.warn("buildDonut: Chart.js not loaded"); return; }
   if (_donutChart) { try { _donutChart.destroy(); } catch(e) {} }
+
+  var datasets = [{
+    label: "Category",
+    data: innerValues, backgroundColor: innerColors, borderWidth: 0,
+    hoverBorderWidth: 2, hoverBorderColor: "#fff"
+  }];
+  var legendLabels = innerLabels;
+  if (outerLabels.length > innerLabels.length) {
+    datasets.push({
+      label: "Detail",
+      data: outerValues, backgroundColor: outerColors, borderWidth: 1,
+      borderColor: "rgba(0,0,0,0.3)", hoverBorderWidth: 2, hoverBorderColor: "#fff"
+    });
+    legendLabels = outerLabels;
+  }
+
   _donutChart = new Chart(ctx, {
     type: "doughnut",
-    data: {
-      labels: labels,
-      datasets: [{ data: values, backgroundColor: colors.slice(0, labels.length), borderWidth: 0, hoverBorderWidth: 2, hoverBorderColor: "#fff" }]
-    },
+    data: { labels: legendLabels, datasets: datasets },
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      cutout: "65%",
+      cutout: datasets.length > 1 ? "50%" : "65%",
       plugins: {
-        legend: { position: "right", labels: { color: "#94a3b8", font: { size: 11, family: "Inter" }, padding: 12, usePointStyle: true, pointStyle: "circle" } },
+        legend: { position: "right", labels: { color: "#94a3b8", font: { size: 11, family: "Inter" }, padding: 12, usePointStyle: true, pointStyle: "circle",
+          generateLabels: function(chart) {
+            var ds = chart.data.datasets[chart.data.datasets.length - 1];
+            return chart.data.labels.map(function(label, i) {
+              return { text: label, fillStyle: ds.backgroundColor[i], strokeStyle: "transparent", hidden: false, index: i };
+            });
+          }
+        } },
         tooltip: {
           backgroundColor: "rgba(9,9,11,0.95)",
           titleColor: "#f1f5f9", bodyColor: "#94a3b8",
@@ -491,7 +554,7 @@ function buildDonut() {
       }
     }
   });
-  NDDiag.track("donut", "ok", labels.length + " slices");
+  NDDiag.track("donut", "ok", innerLabels.length + " parent + " + outerLabels.length + " detail slices");
 }
 
 /* ── Portfolio History Chart ── */

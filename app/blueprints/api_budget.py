@@ -482,7 +482,7 @@ def get_allocation_targets():
     """Return the user's allocation targets and current breakdown."""
     from ..models.settings import UserSettings
     from ..services.portfolio_service import compute_portfolio_value
-    from ..utils.buckets import rollup_breakdown, normalize_bucket
+    from ..utils.buckets import rollup_breakdown, normalize_bucket, BUCKET_PARENTS
     settings = UserSettings.query.filter_by(user_id=current_user.id).first()
     targets = (settings.targets or {}) if settings else {}
     pv = compute_portfolio_value(current_user.id)
@@ -491,29 +491,44 @@ def get_allocation_targets():
     breakdown, children = rollup_breakdown(raw_breakdown)
     active = targets.get("tactical", targets.get("catchup", {}))
 
-    rolled_active = {}
+    rolled_targets = {}
+    child_targets = {}
     for k, v in active.items():
         nk = normalize_bucket(k)
-        rolled_active[nk] = v
+        tgt = v.get("target", 0) if isinstance(v, dict) else 0
+        parent = BUCKET_PARENTS.get(nk)
+        if parent:
+            rolled_targets[parent] = rolled_targets.get(parent, 0) + tgt
+            child_targets.setdefault(parent, {})[nk] = tgt
+        else:
+            rolled_targets[nk] = rolled_targets.get(nk, 0) + tgt
+            if nk not in child_targets:
+                child_targets.setdefault(nk, {})
 
     rows = []
-    all_buckets = sorted(set(list(breakdown.keys()) + list(rolled_active.keys())))
+    all_buckets = sorted(set(list(breakdown.keys()) + list(rolled_targets.keys())))
     for bucket in all_buckets:
         value = breakdown.get(bucket, 0)
         pct = (value / total * 100) if total > 0 else 0
-        target_info = rolled_active.get(bucket, {})
-        target_pct = target_info.get("target", 0) if isinstance(target_info, dict) else 0
+        target_pct = rolled_targets.get(bucket, 0)
         drift = round(pct - target_pct, 1)
         row = {
             "bucket": bucket, "value": round(value, 2),
             "pct": round(pct, 1), "target": target_pct, "drift": drift,
         }
-        if bucket in children:
-            row["children"] = [
-                {"bucket": cb, "value": round(cv, 2),
-                 "pct": round(cv / total * 100, 1) if total > 0 else 0}
-                for cb, cv in sorted(children[bucket].items())
-            ]
+        val_children = children.get(bucket, {})
+        tgt_children = child_targets.get(bucket, {})
+        all_child_keys = sorted(set(list(val_children.keys()) + list(tgt_children.keys())))
+        if all_child_keys:
+            row["children"] = []
+            for ck in all_child_keys:
+                cv = val_children.get(ck, 0)
+                ct = tgt_children.get(ck, 0)
+                cp = round(cv / total * 100, 1) if total > 0 else 0
+                row["children"].append({
+                    "bucket": ck, "value": round(cv, 2),
+                    "pct": cp, "target": ct,
+                })
         rows.append(row)
 
     return jsonify({"total": total, "rows": rows, "raw_targets": targets})
@@ -535,8 +550,42 @@ def save_allocation_targets():
     for key, val in incoming.items():
         existing[key] = val
     settings.targets = existing
+    from sqlalchemy.orm.attributes import flag_modified
+    flag_modified(settings, "targets")
     db.session.commit()
     return jsonify({"success": True})
+
+
+@api_budget_bp.route("/allocation-targets/delete", methods=["POST"])
+@login_required
+@csrf.exempt
+def delete_allocation_target():
+    """Remove a bucket from the user's allocation targets."""
+    from ..models.settings import UserSettings
+    from ..utils.buckets import normalize_bucket
+    data = flask_request.get_json(silent=True) or {}
+    bucket = data.get("bucket", "")
+    if not bucket:
+        return jsonify({"error": "missing bucket"}), 400
+    settings = UserSettings.query.filter_by(user_id=current_user.id).first()
+    if not settings or not settings.targets:
+        return jsonify({"success": True})
+    existing = dict(settings.targets or {})
+    active_key = "tactical" if "tactical" in existing else "catchup"
+    active = existing.get(active_key, {})
+    normed = normalize_bucket(bucket)
+    removed = False
+    for k in list(active.keys()):
+        if normalize_bucket(k) == normed:
+            del active[k]
+            removed = True
+    if removed:
+        existing[active_key] = active
+        settings.targets = existing
+        from sqlalchemy.orm.attributes import flag_modified
+        flag_modified(settings, "targets")
+        db.session.commit()
+    return jsonify({"success": True, "removed": removed})
 
 
 def _auto_categorize(user_id, description):

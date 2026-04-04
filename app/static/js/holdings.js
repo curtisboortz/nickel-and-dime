@@ -275,6 +275,61 @@ function deleteCrypto(id) {
     .then(function() { _holdingsLoaded = false; loadHoldings(); });
 }
 
+function showAddCryptoForm() {
+  var wrap = document.getElementById("crypto-add-form");
+  if (!wrap) return;
+  if (wrap.style.display === "flex") { wrap.style.display = "none"; return; }
+  wrap.style.display = "flex";
+  var inp = wrap.querySelector("#crypto-add-symbol");
+  if (inp) inp.focus();
+}
+
+function submitAddCrypto() {
+  var symbol = (document.getElementById("crypto-add-symbol").value || "").trim().toUpperCase();
+  var qty = parseFloat(document.getElementById("crypto-add-qty").value) || 0;
+  var cbVal = document.getElementById("crypto-add-cb").value;
+  var costBasis = cbVal ? parseFloat(cbVal) : null;
+  if (!symbol) { alert("Enter a symbol (e.g. BTC, ETH, SOL)"); return; }
+  if (qty <= 0) { alert("Quantity must be greater than 0"); return; }
+  var btn = document.getElementById("crypto-add-btn");
+  if (btn) btn.disabled = true;
+  fetch("/api/crypto", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ symbol: symbol, quantity: qty, cost_basis: costBasis })
+  }).then(function(r) { return r.json(); }).then(function(d) {
+    if (d.error) { alert(d.error); return; }
+    document.getElementById("crypto-add-symbol").value = "";
+    document.getElementById("crypto-add-qty").value = "";
+    document.getElementById("crypto-add-cb").value = "";
+    document.getElementById("crypto-add-form").style.display = "none";
+    _holdingsLoaded = false;
+    loadHoldings();
+  }).catch(function(e) { alert("Failed to add crypto: " + e.message); })
+    .finally(function() { if (btn) btn.disabled = false; });
+}
+
+function editCrypto(id) {
+  var row = document.querySelector('.crypto-row[data-cid="' + id + '"]');
+  if (!row) return;
+  var cells = row.querySelectorAll("td");
+  var sym = cells[0].textContent.trim();
+  var oldQty = cells[1].textContent.trim().replace(/,/g, "");
+  var newQty = prompt("Edit quantity for " + sym + ":", oldQty);
+  if (newQty === null) return;
+  var q = parseFloat(newQty);
+  if (isNaN(q) || q < 0) { alert("Invalid quantity"); return; }
+  fetch("/api/crypto/" + id, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ quantity: q })
+  }).then(function(r) { return r.json(); }).then(function(d) {
+    if (d.error) { alert(d.error); return; }
+    _holdingsLoaded = false;
+    loadHoldings();
+  });
+}
+
 function _renderCryptoHoldings(wrap, crypto) {
   if (!wrap) return;
   _cryptoCache = crypto;
@@ -287,7 +342,7 @@ function _renderCryptoHoldings(wrap, crypto) {
   if (subEl) subEl.textContent = hasCb ? "Synced from Coinbase - " + crypto.length + " assets" : crypto.length + " assets";
 
   if (crypto.length === 0) {
-    wrap.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--text-muted);">No crypto holdings. Connect Coinbase in Settings (gear icon) to auto-sync.</td></tr>';
+    wrap.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--text-muted);">No crypto holdings yet. Add manually or connect Coinbase in Settings.</td></tr>';
     return;
   }
 
@@ -326,8 +381,8 @@ function _renderCryptoHoldings(wrap, crypto) {
   var rows = "";
   sorted.forEach(function(c) {
     var val = c.value || 0;
-    var priceStr = c.price ? "$" + c.price.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}) : "-";
-    var valStr = val ? "$" + val.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}) : "-";
+    var priceStr = c.price ? fxFmt(c.price) : "-";
+    var valStr = val ? fxFmt(val) : "-";
     var pctStr = totalVal > 0 ? ((val / totalVal) * 100).toFixed(1) + "%" : "";
     rows += '<tr class="crypto-row" data-cid="' + c.id + '" data-cgid="' + (c.coingecko_id || "") + '">';
     rows += '<td style="padding:8px 10px;font-weight:600;">' + c.symbol + '</td>';
@@ -335,19 +390,24 @@ function _renderCryptoHoldings(wrap, crypto) {
     rows += '<td style="padding:8px 10px;text-align:right;font-family:var(--mono);color:var(--text-muted);">' + priceStr + '</td>';
     rows += '<td style="padding:8px 10px;text-align:right;font-family:var(--mono);">' + valStr + '</td>';
     rows += '<td style="padding:8px 10px;text-align:right;color:var(--text-muted);">' + pctStr + '</td>';
-    rows += '<td style="padding:8px 4px;text-align:center;"><button type="button" onclick="deleteCrypto(' + c.id + ')" title="Delete" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:1rem;padding:2px 6px;border-radius:4px;" onmouseover="this.style.color=\'var(--danger)\'" onmouseout="this.style.color=\'var(--text-muted)\'">&times;</button></td>';
-    rows += '</tr>';
+    var isManual = (c.source || "manual") === "manual";
+    rows += '<td style="padding:8px 4px;text-align:center;white-space:nowrap;">';
+    if (isManual) {
+      rows += '<button type="button" onclick="editCrypto(' + c.id + ')" title="Edit" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:0.85rem;padding:2px 5px;" onmouseover="this.style.color=\'var(--accent-primary)\'" onmouseout="this.style.color=\'var(--text-muted)\'">&#9998;</button>';
+    }
+    rows += '<button type="button" onclick="deleteCrypto(' + c.id + ')" title="Delete" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:1rem;padding:2px 5px;" onmouseover="this.style.color=\'var(--danger)\'" onmouseout="this.style.color=\'var(--text-muted)\'">&times;</button>';
+    rows += '</td></tr>';
   });
 
   rows += '<tr style="font-weight:600;border-top:2px solid var(--border-subtle);">';
   rows += '<td style="padding:8px 10px;" colspan="3">Total</td>';
-  rows += '<td style="padding:8px 10px;text-align:right;color:#58a6ff;font-family:var(--mono);">$' + totalVal.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}) + '</td>';
+  rows += '<td style="padding:8px 10px;text-align:right;color:#58a6ff;font-family:var(--mono);">' + fxFmt(totalVal) + '</td>';
   rows += '<td style="padding:8px 10px;text-align:right;">100%</td>';
   rows += '<td></td>';
   rows += '</tr>';
 
   wrap.innerHTML = rows;
-  if (headerTotal) headerTotal.textContent = "$" + totalVal.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
+  if (headerTotal) headerTotal.textContent = fxFmt(totalVal);
 }
 
 var _metalsSortKey = _sortPrefs.mk || "metal";
@@ -360,6 +420,7 @@ function _sortMetalsBy(key) {
   if (_metalsCache) _renderMetals(_metalsCache);
 }
 
+var _metalsSpot = {};
 function _loadPhysicalMetals() {
   var tbody = document.getElementById("metals-tbody");
   if (!tbody) return;
@@ -367,6 +428,7 @@ function _loadPhysicalMetals() {
     .then(function(r) { return r.json(); })
     .then(function(d) {
       _metalsCache = d.metals || [];
+      _metalsSpot = d.spot || {};
       _renderMetals(_metalsCache);
     });
 }
@@ -380,8 +442,24 @@ function _renderMetals(metals) {
     return;
   }
 
-  var goldSpot = window._lastLiveData && window._lastLiveData.gold ? window._lastLiveData.gold : 0;
-  var silverSpot = window._lastLiveData && window._lastLiveData.silver ? window._lastLiveData.silver : 0;
+  var goldSpot = (_metalsSpot.gold && _metalsSpot.gold.price) || (window._lastLiveData && window._lastLiveData.gold ? window._lastLiveData.gold : 0);
+  var silverSpot = (_metalsSpot.silver && _metalsSpot.silver.price) || (window._lastLiveData && window._lastLiveData.silver ? window._lastLiveData.silver : 0);
+  var goldChg = (_metalsSpot.gold && _metalsSpot.gold.change_pct) || null;
+  var silverChg = (_metalsSpot.silver && _metalsSpot.silver.change_pct) || null;
+
+  var spotEl = document.getElementById("metals-spot-info");
+  if (spotEl) {
+    var parts = [];
+    if (goldSpot) {
+      var gc = goldChg != null ? (' <span style="color:' + (goldChg >= 0 ? 'var(--success)' : 'var(--danger)') + ';">(' + (goldChg >= 0 ? '+' : '') + goldChg.toFixed(2) + '%)</span>') : '';
+      parts.push('Gold: ' + fxFmt(goldSpot) + '/oz' + gc);
+    }
+    if (silverSpot) {
+      var sc = silverChg != null ? (' <span style="color:' + (silverChg >= 0 ? 'var(--success)' : 'var(--danger)') + ';">(' + (silverChg >= 0 ? '+' : '') + silverChg.toFixed(2) + '%)</span>') : '';
+      parts.push('Silver: ' + fxFmt(silverSpot) + '/oz' + sc);
+    }
+    if (parts.length) spotEl.innerHTML = parts.join(' &nbsp;&middot;&nbsp; ');
+  }
 
   var enriched = metals.map(function(m) {
     var oz = parseFloat(m.oz) || 0;

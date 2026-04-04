@@ -20,6 +20,7 @@ class PortfolioSnapshot(db.Model):
     silver_price = db.Column(db.Float, nullable=True)
     tnx_10y = db.Column(db.Float, nullable=True)
     tnx_2y = db.Column(db.Float, nullable=True)
+    breakdown = db.Column(db.JSON, nullable=True)
 
     __table_args__ = (
         db.UniqueConstraint("user_id", "date", name="uq_snapshot_user_date"),

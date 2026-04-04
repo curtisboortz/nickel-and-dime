@@ -30,6 +30,12 @@ def serve_favicon():
     return send_from_directory(current_app.static_folder + "/img", "favicon.ico")
 
 
+@pages_bp.route("/sw.js")
+def serve_sw():
+    return send_from_directory(current_app.static_folder, "sw.js",
+                               mimetype="application/javascript")
+
+
 @pages_bp.route("/health")
 def health():
     """Lightweight healthcheck endpoint for Railway. No DB or template needed."""

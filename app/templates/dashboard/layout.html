@@ -281,7 +281,7 @@
             <th data-col="target" style="cursor:pointer;user-select:none;" onclick="sortAllocTable('target')">Target<span class="sort-arrow"></span></th>
             <th data-col="drift" style="cursor:pointer;user-select:none;" onclick="sortAllocTable('drift')">Drift<span class="sort-arrow"></span></th>
           </tr></thead>
-          <tbody id="alloc-table-body"></tbody>
+          <tbody id="alloc-table-body"><script>document.write(_skeletonRows(5,4).replace(/<\/?table[^>]*>/g,''))</script></tbody>
         </table>
       </div>
     </div>
@@ -364,7 +364,7 @@
     <div class="card-title">Account Balances</div>
     <p class="hint" style="margin-bottom:14px;">Managed accounts, manually updated. Free for all users.</p>
     <div id="balances-table-wrap">
-      <p class="hint">Loading accounts...</p>
+      <script>document.write(_skeletonRows(4,3))</script>
     </div>
     <button type="button" onclick="saveAllBalances()" class="success" style="margin-top:16px;">Save Balances</button>
   </div>
@@ -387,17 +387,34 @@
   <div class="card">
     <div class="card-title">Holdings</div>
     <p class="hint" style="margin-bottom:14px;">Stocks &amp; ETFs with live prices. Edit Total to override the computed value (highlighted in gold).</p>
-    <div id="holdings-table-wrap"><p class="hint">Loading holdings...</p></div>
+    <div id="holdings-table-wrap"><script>document.write(_skeletonRows(6,6))</script></div>
     <button type="button" onclick="saveAllHoldings()" class="success" style="margin-top:16px;">Save Holdings</button>
   </div>
 
   <!-- Crypto Holdings -->
   <div class="card">
-    <div class="card-header">
+    <div class="card-header" style="display:flex;justify-content:space-between;align-items:flex-start;">
       <div>
         <div class="card-title">Crypto Holdings</div>
         <div class="card-subtitle" id="crypto-subtitle">Synced from your exchange</div>
       </div>
+      <button type="button" onclick="showAddCryptoForm()" style="padding:6px 14px;font-size:0.82rem;white-space:nowrap;">+ Add Crypto</button>
+    </div>
+    <!-- Inline add form (hidden by default) -->
+    <div id="crypto-add-form" style="display:none;gap:8px;align-items:flex-end;flex-wrap:wrap;margin-bottom:12px;padding:12px;background:var(--bg-input);border-radius:var(--radius);">
+      <div style="flex:1;min-width:80px;">
+        <label class="hint" style="display:block;margin-bottom:4px;">Symbol</label>
+        <input id="crypto-add-symbol" type="text" placeholder="BTC" style="width:100%;padding:6px 10px;font-size:0.85rem;text-transform:uppercase;">
+      </div>
+      <div style="flex:1;min-width:100px;">
+        <label class="hint" style="display:block;margin-bottom:4px;">Quantity</label>
+        <input id="crypto-add-qty" type="number" step="any" placeholder="0.5" style="width:100%;padding:6px 10px;font-size:0.85rem;">
+      </div>
+      <div style="flex:1;min-width:100px;">
+        <label class="hint" style="display:block;margin-bottom:4px;">Cost Basis ($)</label>
+        <input id="crypto-add-cb" type="number" step="any" placeholder="Optional" style="width:100%;padding:6px 10px;font-size:0.85rem;">
+      </div>
+      <button type="button" id="crypto-add-btn" onclick="submitAddCrypto()" class="success" style="padding:6px 16px;font-size:0.85rem;">Add</button>
     </div>
     <div style="display:flex;gap:20px;margin-bottom:12px;">
       <div style="padding:10px 16px;background:var(--bg-input);border-radius:var(--radius);flex:1;text-align:center;">
@@ -423,6 +440,7 @@
       <div>
         <div class="card-title">Physical Metals</div>
         <div class="card-subtitle">Track gold &amp; silver purchases. Values update with live spot prices.</div>
+        <div id="metals-spot-info" class="mono" style="font-size:0.82rem;margin-top:4px;"></div>
       </div>
       <button type="button" class="secondary" style="padding:5px 10px;font-size:0.75rem;" onclick="toggleMetalForm()">+ Add Purchase</button>
     </div>
@@ -861,6 +879,7 @@
     <div style="position:relative;height:300px;">
       <canvas id="mc-chart"></canvas>
     </div>
+    <div id="mc-model-info" style="margin-top:8px;text-align:center;"></div>
   </div>
 
   <!-- Drawdown Analysis -->
@@ -888,19 +907,32 @@
   <!-- Tax-Loss Harvesting -->
   <div class="card" id="tlh-card" style="display:none;">
     <div class="card-title">Tax-Loss Harvesting Opportunities</div>
-    <p class="hint" style="margin-bottom:10px;">Holdings with unrealized losses &gt; $50 (based on import value vs live price)</p>
-    <table>
-      <thead><tr><th>Ticker</th><th>Qty</th><th>Cost Basis</th><th>Current</th><th>Unrealized P&amp;L</th></tr></thead>
-      <tbody id="tlh-tbody"></tbody>
-    </table>
+    <p class="hint" style="margin-bottom:10px;">Holdings with unrealized losses &gt; $50. <span style="background:rgba(248,113,113,0.15);color:#f87171;padding:1px 5px;border-radius:4px;font-size:0.72rem;font-weight:600;">WASH</span> = purchased within 30 days (potential wash sale). Substitute ETFs shown where available.</p>
+    <div style="overflow-x:auto;">
+      <table>
+        <thead><tr><th>Ticker / Substitute</th><th>Qty</th><th>Cost/Share</th><th>Current</th><th>Unrealized P&amp;L</th></tr></thead>
+        <tbody id="tlh-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Tax Report Export -->
+  <div class="card" style="text-align:center;padding:24px;">
+    <div class="card-title" style="margin-bottom:8px;">Tax Report</div>
+    <p class="hint" style="margin-bottom:16px;">Download a CSV with cost basis, unrealized gains/losses, and TLH candidates for all holdings.</p>
+    <a href="/api/tax-report" class="success" style="display:inline-block;padding:10px 24px;text-decoration:none;border-radius:var(--radius);font-weight:600;font-size:0.88rem;">Download Tax Report (CSV)</a>
   </div>
 </div>
 
 <!-- ═══ ECONOMICS TAB (lazy-loaded) ═══ -->
 <div id="tab-economics" class="tab{% if active_tab == 'economics' %} active{% endif %}">
-  <div data-lazy-tab="economics" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 20px;color:var(--text-muted);">
-    <div style="width:32px;height:32px;border:3px solid rgba(255,255,255,0.1);border-top-color:var(--accent-primary);border-radius:50%;animation:spin 0.8s linear infinite;"></div>
-    <p style="margin-top:16px;">Loading economics data...</p>
+  <div data-lazy-tab="economics" style="padding:20px;">
+    <div class="skeleton" style="height:24px;width:40%;margin-bottom:16px;"></div>
+    <div class="skeleton" style="height:200px;width:100%;border-radius:8px;margin-bottom:20px;"></div>
+    <div style="display:flex;gap:16px;">
+      <div class="skeleton" style="height:160px;flex:1;border-radius:8px;"></div>
+      <div class="skeleton" style="height:160px;flex:1;border-radius:8px;"></div>
+    </div>
   </div>
 </div>
 

@@ -212,10 +212,68 @@ def delete_holding(holding_id):
     return jsonify({"success": True})
 
 
+@api_portfolio_bp.route("/crypto", methods=["POST"])
+@login_required
+@requires_pro
+def create_crypto():
+    """Add a new manual crypto holding."""
+    from ..services.coinbase_service import COINGECKO_MAP
+    data = request.get_json(silent=True) or {}
+    symbol = (data.get("symbol") or "").strip().upper()
+    if not symbol:
+        return jsonify({"error": "Symbol is required"}), 400
+    try:
+        qty = float(data.get("quantity", 0))
+    except (TypeError, ValueError):
+        qty = 0
+    cost_basis = None
+    if data.get("cost_basis") is not None:
+        try:
+            cost_basis = float(data["cost_basis"])
+        except (TypeError, ValueError):
+            pass
+    cg_id = data.get("coingecko_id") or COINGECKO_MAP.get(symbol, symbol.lower())
+    c = CryptoHolding(
+        user_id=current_user.id,
+        symbol=symbol,
+        quantity=qty,
+        coingecko_id=cg_id,
+        cost_basis=cost_basis,
+        source="manual",
+    )
+    db.session.add(c)
+    db.session.commit()
+    return jsonify({"success": True, "id": c.id})
+
+
+@api_portfolio_bp.route("/crypto/<int:crypto_id>", methods=["PUT"])
+@login_required
+@requires_pro
+def update_crypto(crypto_id):
+    """Update an existing crypto holding."""
+    c = CryptoHolding.query.filter_by(id=crypto_id, user_id=current_user.id).first()
+    if not c:
+        return jsonify({"error": "Not found"}), 404
+    data = request.get_json(silent=True) or {}
+    if "quantity" in data:
+        try:
+            c.quantity = float(data["quantity"])
+        except (TypeError, ValueError):
+            pass
+    if "cost_basis" in data:
+        try:
+            c.cost_basis = float(data["cost_basis"]) if data["cost_basis"] is not None else None
+        except (TypeError, ValueError):
+            pass
+    if "coingecko_id" in data:
+        c.coingecko_id = data["coingecko_id"]
+    db.session.commit()
+    return jsonify({"success": True})
+
+
 @api_portfolio_bp.route("/crypto/<int:crypto_id>", methods=["DELETE"])
 @login_required
 @requires_pro
-
 def delete_crypto(crypto_id):
     """Delete a crypto holding."""
     c = CryptoHolding.query.filter_by(id=crypto_id, user_id=current_user.id).first()
@@ -350,12 +408,21 @@ def physical_metals():
     """CRUD for physical metal holdings."""
     if flask_request.method == "GET":
         metals = PhysicalMetal.query.filter_by(user_id=current_user.id).all()
-        return jsonify({"metals": [
-            {"id": m.id, "metal": m.metal, "oz": m.oz,
-             "purchase_price": m.purchase_price, "description": m.description,
-             "form": m.form, "date": m.date, "note": m.note}
-            for m in metals
-        ]})
+        gold_row = PriceCache.query.get("GC=F")
+        silver_row = PriceCache.query.get("SI=F")
+        spot = {
+            "gold": {"price": gold_row.price if gold_row else None, "change_pct": gold_row.change_pct if gold_row else None},
+            "silver": {"price": silver_row.price if silver_row else None, "change_pct": silver_row.change_pct if silver_row else None},
+        }
+        return jsonify({
+            "metals": [
+                {"id": m.id, "metal": m.metal, "oz": m.oz,
+                 "purchase_price": m.purchase_price, "description": m.description,
+                 "form": m.form, "date": m.date, "note": m.note}
+                for m in metals
+            ],
+            "spot": spot,
+        })
 
     if flask_request.method == "POST":
         data = flask_request.get_json(silent=True) or {}
@@ -419,6 +486,91 @@ def export_data():
     )
 
 
+@api_portfolio_bp.route("/tax-report")
+@login_required
+@requires_pro
+def tax_report():
+    """Generate a tax-ready CSV with cost basis, market value, unrealized gains, and TLH flags."""
+    import io
+    import csv
+    from flask import Response
+    from datetime import date as _date
+
+    holdings = Holding.query.filter_by(user_id=current_user.id).all()
+    crypto = CryptoHolding.query.filter_by(user_id=current_user.id).all()
+    metals = PhysicalMetal.query.filter_by(user_id=current_user.id).all()
+
+    tickers = list({h.ticker for h in holdings if h.ticker})
+    cg_keys = list({f"CG:{c.coingecko_id}" for c in crypto if c.coingecko_id})
+    all_syms = tickers + cg_keys + ["GC=F", "SI=F"]
+    price_map = {}
+    if all_syms:
+        price_map = {r.symbol: r for r in PriceCache.query.filter(PriceCache.symbol.in_(all_syms)).all()}
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow([
+        "Asset Type", "Ticker/Symbol", "Account", "Category", "Shares/Qty",
+        "Cost Basis/Share", "Total Cost Basis", "Current Price", "Market Value",
+        "Unrealized Gain/Loss", "Unrealized %", "TLH Candidate", "Substitute ETF",
+    ])
+
+    for h in holdings:
+        qty = h.shares or 0
+        cost_per = h.cost_basis or 0
+        pr = price_map.get(h.ticker)
+        price = pr.price if pr else 0
+        mv = h.value_override or (qty * price)
+        total_cost = qty * cost_per
+        gl = mv - total_cost if cost_per else 0
+        gl_pct = (gl / total_cost * 100) if total_cost else 0
+        is_tlh = "Yes" if gl < -50 else ""
+        sub = SUBSTITUTE_ETFS.get(h.ticker, "") if gl < -50 else ""
+        writer.writerow([
+            "Stock/ETF", h.ticker, h.account or "", h.bucket or "",
+            round(qty, 4), round(cost_per, 2), round(total_cost, 2),
+            round(price, 2), round(mv, 2), round(gl, 2),
+            f"{gl_pct:.1f}%", is_tlh, sub,
+        ])
+
+    for c in crypto:
+        cg_key = f"CG:{c.coingecko_id}" if c.coingecko_id else None
+        pr = price_map.get(cg_key) if cg_key else None
+        price = pr.price if pr else 0
+        mv = c.quantity * price
+        total_cost = c.quantity * (c.cost_basis or 0)
+        gl = mv - total_cost if c.cost_basis else 0
+        gl_pct = (gl / total_cost * 100) if total_cost else 0
+        writer.writerow([
+            "Crypto", c.symbol, "", "Crypto",
+            round(c.quantity, 8), round(c.cost_basis or 0, 2), round(total_cost, 2),
+            round(price, 2), round(mv, 2), round(gl, 2),
+            f"{gl_pct:.1f}%", "", "",
+        ])
+
+    for m in metals:
+        sym = "GC=F" if m.metal.lower() == "gold" else "SI=F"
+        pr = price_map.get(sym)
+        spot = pr.price if pr else 0
+        mv = m.oz * spot
+        total_cost = m.oz * (m.purchase_price or 0)
+        gl = mv - total_cost
+        gl_pct = (gl / total_cost * 100) if total_cost else 0
+        writer.writerow([
+            "Physical Metal", m.metal, "", m.metal,
+            round(m.oz, 4), round(m.purchase_price or 0, 2), round(total_cost, 2),
+            round(spot, 2), round(mv, 2), round(gl, 2),
+            f"{gl_pct:.1f}%", "", "",
+        ])
+
+    today = _date.today().isoformat()
+    return Response(
+        output.getvalue(),
+        mimetype="text/csv",
+        headers={"Content-Disposition": f"attachment; filename=nickeldime_tax_report_{today}.csv"},
+    )
+
+
 DEFAULT_TA_TICKERS = ["SPY", "GC=F", "SI=F", "BTC-USD", "DX=F", "^TNX"]
 
 
@@ -447,15 +599,44 @@ def get_ta_tickers():
     return jsonify({"tickers": tickers})
 
 
+SUBSTITUTE_ETFS = {
+    "SPY": "IVV", "IVV": "VOO", "VOO": "SPY",
+    "QQQ": "QQQM", "QQQM": "QQQ",
+    "VTI": "ITOT", "ITOT": "VTI",
+    "VXUS": "IXUS", "IXUS": "VXUS",
+    "VEA": "IEFA", "IEFA": "VEA",
+    "VWO": "IEMG", "IEMG": "VWO",
+    "BND": "AGG", "AGG": "BND",
+    "TLT": "VGLT", "VGLT": "TLT",
+    "GLD": "IAU", "IAU": "GLD",
+    "SLV": "SIVR", "SIVR": "SLV",
+    "XLE": "VDE", "VDE": "XLE",
+    "XLF": "VFH", "VFH": "XLF",
+    "XLK": "VGT", "VGT": "XLK",
+    "ARKK": "QQQM", "SCHD": "VYM", "VYM": "SCHD",
+    "IWM": "VTWO", "VTWO": "IWM",
+    "EFA": "VEA", "EEM": "VWO",
+}
+
+
 @api_portfolio_bp.route("/tax-loss-harvesting")
 @login_required
 def tax_loss_harvesting():
-    """Return holdings with unrealized losses > $50 for TLH opportunities."""
+    """Return TLH opportunities with wash-sale warnings and substitute ETFs."""
+    from datetime import timedelta
     holdings = Holding.query.filter_by(user_id=current_user.id).all()
     tickers = list({h.ticker for h in holdings if h.ticker})
     price_map = {}
     if tickers:
         price_map = {r.symbol: r for r in PriceCache.query.filter(PriceCache.symbol.in_(tickers)).all()}
+
+    now = datetime.now(timezone.utc)
+    wash_window = now - timedelta(days=30)
+    recent_tickers = set()
+    for h in holdings:
+        if h.added_at and h.added_at >= wash_window:
+            recent_tickers.add(h.ticker)
+
     rows = []
     for h in holdings:
         qty = h.shares or 0
@@ -468,12 +649,16 @@ def tax_loss_harvesting():
             continue
         unrealized = (live_price - cost_per) * qty
         if unrealized < -50:
+            wash_risk = h.ticker in recent_tickers
+            substitute = SUBSTITUTE_ETFS.get(h.ticker)
             rows.append({
                 "ticker": h.ticker,
                 "qty": round(qty, 3),
                 "cost_basis": round(cost_per, 2),
                 "current": round(live_price, 2),
                 "unrealized": round(unrealized, 0),
+                "wash_sale_risk": wash_risk,
+                "substitute": substitute,
             })
     rows.sort(key=lambda r: r["unrealized"])
     return jsonify({"rows": rows})
@@ -482,7 +667,7 @@ def tax_loss_harvesting():
 @api_portfolio_bp.route("/perf-attribution")
 @login_required
 def perf_attribution():
-    """Return performance attribution data: bucket values and overall return."""
+    """Return performance attribution with per-bucket returns from snapshot history."""
     from ..services.portfolio_service import compute_portfolio_value
     from ..utils.buckets import rollup_breakdown
 
@@ -498,16 +683,47 @@ def perf_attribution():
              .filter_by(user_id=current_user.id)
              .order_by(PortfolioSnapshot.date.asc())
              .all())
+
     overall_return = 0
     if len(snaps) >= 2:
         first_total = snaps[0].close or snaps[0].open or 0
         if first_total > 0:
             overall_return = ((total - first_total) / first_total) * 100
 
+    bucket_returns = {}
+    first_bd = None
+    for s in snaps:
+        if s.breakdown and isinstance(s.breakdown, dict):
+            first_bd = s.breakdown
+            break
+
+    if first_bd:
+        current_rolled, _ = rollup_breakdown(raw_buckets, overrides=overrides)
+        first_rolled, _ = rollup_breakdown(first_bd, overrides=overrides)
+        for bucket in current_rolled:
+            curr_val = current_rolled.get(bucket, 0)
+            first_val = first_rolled.get(bucket, 0)
+            if first_val > 0:
+                bucket_returns[bucket] = round(((curr_val - first_val) / first_val) * 100, 2)
+            elif curr_val > 0:
+                bucket_returns[bucket] = None
+            else:
+                bucket_returns[bucket] = 0
+
+    history = []
+    for s in snaps:
+        entry = {"date": s.date.isoformat(), "total": s.close or s.total}
+        if s.breakdown and isinstance(s.breakdown, dict):
+            bd_rolled, _ = rollup_breakdown(s.breakdown, overrides=overrides)
+            entry["breakdown"] = {b: round(v, 2) for b, v in bd_rolled.items()}
+        history.append(entry)
+
     return jsonify({
         "buckets": {b: round(v, 2) for b, v in rolled.items()},
         "total": round(total, 2),
         "overall_return": round(overall_return, 2),
+        "bucket_returns": bucket_returns,
+        "history": history,
     })
 
 
@@ -566,3 +782,56 @@ def normalize_buckets():
                 fixed += 1
     db.session.commit()
     return jsonify({"success": True, "fixed": fixed})
+
+
+ASSET_CLASS_PARAMS = {
+    "Equities":        {"return": 0.10,  "vol": 0.16},
+    "International":   {"return": 0.08,  "vol": 0.18},
+    "Managed Blend":   {"return": 0.09,  "vol": 0.14},
+    "Retirement Blend":{"return": 0.08,  "vol": 0.13},
+    "Fixed Income":    {"return": 0.04,  "vol": 0.05},
+    "Cash":            {"return": 0.04,  "vol": 0.01},
+    "Gold":            {"return": 0.06,  "vol": 0.15},
+    "Silver":          {"return": 0.05,  "vol": 0.22},
+    "Crypto":          {"return": 0.15,  "vol": 0.60},
+    "Alternatives":    {"return": 0.08,  "vol": 0.20},
+    "Real Assets":     {"return": 0.07,  "vol": 0.14},
+    "Real Estate":     {"return": 0.07,  "vol": 0.13},
+    "Art":             {"return": 0.06,  "vol": 0.18},
+}
+
+
+@api_portfolio_bp.route("/mc-params")
+@login_required
+def mc_params():
+    """Return portfolio-weighted Monte Carlo parameters."""
+    from ..services.portfolio_service import compute_portfolio_value
+    from ..utils.buckets import rollup_breakdown
+
+    pv = compute_portfolio_value(current_user.id)
+    total = pv["total"]
+    raw = pv.get("breakdown", {})
+
+    settings = UserSettings.query.filter_by(user_id=current_user.id).first()
+    overrides = (settings.bucket_rollup if settings and hasattr(settings, "bucket_rollup") else None)
+    rolled, _ = rollup_breakdown(raw, overrides=overrides)
+
+    if total <= 0:
+        return jsonify({"annual_return": 0.07, "annual_vol": 0.15, "total": 0, "weights": {}})
+
+    weighted_return = 0
+    weighted_var = 0
+    weights = {}
+    for bucket, value in rolled.items():
+        w = value / total
+        params = ASSET_CLASS_PARAMS.get(bucket, {"return": 0.07, "vol": 0.15})
+        weighted_return += w * params["return"]
+        weighted_var += (w ** 2) * (params["vol"] ** 2)
+        weights[bucket] = {"weight": round(w * 100, 1), "return": params["return"], "vol": params["vol"]}
+
+    return jsonify({
+        "annual_return": round(weighted_return, 4),
+        "annual_vol": round(weighted_var ** 0.5, 4),
+        "total": round(total, 2),
+        "weights": weights,
+    })

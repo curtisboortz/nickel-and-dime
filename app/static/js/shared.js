@@ -89,6 +89,28 @@ function _esc(s) {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
+function _skeletonRows(rows, cols) {
+  var html = "";
+  for (var r = 0; r < (rows || 5); r++) {
+    html += '<tr>';
+    for (var c = 0; c < (cols || 4); c++) {
+      var w = c === 0 ? "60%" : (30 + Math.random() * 40) + "%";
+      html += '<td style="padding:10px 10px;"><div class="skeleton" style="height:14px;width:' + w + ';"></div></td>';
+    }
+    html += '</tr>';
+  }
+  return '<table style="width:100%;">' + html + '</table>';
+}
+
+function _skeletonCard() {
+  return '<div style="display:flex;flex-direction:column;gap:12px;padding:8px 0;">' +
+    '<div class="skeleton" style="height:20px;width:35%;"></div>' +
+    '<div class="skeleton" style="height:14px;width:80%;"></div>' +
+    '<div class="skeleton" style="height:14px;width:65%;"></div>' +
+    '<div class="skeleton" style="height:180px;width:100%;border-radius:8px;"></div>' +
+    '</div>';
+}
+
 window.addEventListener("error", function(e) {
   NDDiag.track("global", "error", (e.filename || "") + ":" + (e.lineno || "") + " " + (e.message || ""));
 });

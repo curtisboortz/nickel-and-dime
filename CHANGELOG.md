@@ -4,6 +4,30 @@ All notable changes to Nickel&Dime are documented here.
 
 ---
 
+## [2.1.0] — 2026-04-04 — Feature Polish & Analytics
+
+### Added
+- **Crypto CRUD** — manual add/edit/delete for crypto holdings beyond Coinbase sync; inline "Add Crypto" form with symbol, quantity, and cost basis fields; edit button for manual entries
+- **Skeleton loading states** — shimmer placeholders on allocation table, balances, holdings, and economics tab replacing blank "Loading..." text
+- **Performance Attribution v2** — per-bucket returns computed from snapshot history; new `breakdown` JSON column on snapshots; Return column in attribution table
+- **Monte Carlo v2** — `GET /api/mc-params` returns portfolio-weighted return and volatility from per-asset-class assumptions; frontend uses real parameters instead of hardcoded 7%/15%; model inputs displayed below chart
+- **TLH wash-sale awareness** — 30-day purchase window detection with WASH badge; substitute ETF suggestions for 30+ ticker pairs; estimated tax savings summary row
+- **PWA service worker** — `sw.js` with stale-while-revalidate caching for static assets; served from root scope via `/sw.js` route
+- **Multi-currency at render time** — crypto and metals tables now use `fxFmt()` for values, converting at display time rather than post-render DOM sweep
+- **Physical metals spot data** — API returns live spot prices with daily change %; spot info bar with gold/silver price and change rendered above metals table
+- **Tax report CSV** — `GET /api/tax-report` generates downloadable CSV with cost basis, market value, unrealized P&L, TLH flags, and substitute ETFs across stocks, crypto, and metals; download button on portfolio tab
+
+### Changed
+- Performance Attribution chart sorted by value descending; tooltips show per-bucket return percentage
+- TLH table shows "Potential Tax Savings (est. 25%)" footer row with total estimated savings
+- Economics lazy-load placeholder upgraded from spinner to skeleton shimmer blocks
+
+### Database
+- Migration `d003`: Added `breakdown` JSON column to `portfolio_snapshots` table
+- Snapshot service now persists per-bucket breakdown on every daily snapshot
+
+---
+
 ## [2.0.0] — 2026-04-04 — Code Quality, Security & Refactoring
 
 ### Architecture

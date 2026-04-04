@@ -677,15 +677,30 @@ function updateGoalAmount(idx) {
 
 /* ── Monte Carlo Simulation ── */
 
+var _mcParams = null;
+function _fetchMcParams(cb) {
+  if (_mcParams) { cb(_mcParams); return; }
+  fetch("/api/mc-params").then(function(r) { return r.json(); }).then(function(d) {
+    _mcParams = d;
+    cb(d);
+  }).catch(function() { cb({ annual_return: 0.07, annual_vol: 0.15, total: window.PORTFOLIO_TOTAL || 0 }); });
+}
+
 function runMonteCarlo() {
   NDDiag.track("monte-carlo", "loading");
   var mcYearsEl = document.getElementById("mc-years");
   if (!mcYearsEl) { NDDiag.track("monte-carlo", "warn", "no #mc-years element"); return; }
+
+  _fetchMcParams(function(params) { _runMcWithParams(params); });
+}
+
+function _runMcWithParams(params) {
+  var mcYearsEl = document.getElementById("mc-years");
   var years = parseInt(mcYearsEl.value) || 10;
   var contrib = parseFloat(document.getElementById("mc-contrib").value) || 0;
-  var current = window.PORTFOLIO_TOTAL || 0;
-  var annualReturn = 0.07;
-  var annualVol = 0.15;  // ~15% annual volatility (historical S&P)
+  var current = params.total || window.PORTFOLIO_TOTAL || 0;
+  var annualReturn = params.annual_return || 0.07;
+  var annualVol = params.annual_vol || 0.15;
   var monthlyReturn = annualReturn / 12;
   var monthlyVol = annualVol / Math.sqrt(12);
   var months = years * 12;
@@ -766,6 +781,12 @@ function runMonteCarlo() {
       }
     }
   });
+  var mcInfo = document.getElementById("mc-model-info");
+  if (mcInfo) {
+    mcInfo.innerHTML = '<span class="hint">Model inputs: </span>' +
+      '<span class="mono" style="font-size:0.82rem;">Expected return ' + (annualReturn * 100).toFixed(1) + '% &middot; Volatility ' + (annualVol * 100).toFixed(1) + '%</span>' +
+      ' <span class="hint">(portfolio-weighted)</span>';
+  }
   NDDiag.track("monte-carlo", "ok");
 }
 setTimeout(runMonteCarlo, 500);
@@ -835,6 +856,8 @@ buildDrawdownChart();
 /* ── Performance Attribution ── */
 var PERF_DATA = window.PERF_DATA || {};
 var _perfAttrChart = null;
+var _perfAttrColorMap = { "Cash":"#94a3b8","Equities":"#34d399","Gold":"#eab308","Silver":"#a8a29e","Crypto":"#a78bfa","Alternatives":"#818cf8","Fixed Income":"#60a5fa","International":"#2dd4bf","Real Assets":"#06b6d4","Art":"#e879f9","Managed Blend":"#4ade80","Retirement Blend":"#86efac","Real Estate":"#22d3ee" };
+
 function buildPerfAttribution() {
   NDDiag.track("perf-attr", "loading");
   if (!document.getElementById("perf-attr-chart")) { NDDiag.track("perf-attr", "warn", "no canvas element"); return; }
@@ -851,11 +874,12 @@ function buildPerfAttribution() {
   var buckets = PERF_DATA.buckets;
   var total = PERF_DATA.total;
   if (!buckets || total <= 0) return;
-  var labels = Object.keys(buckets);
+  var labels = Object.keys(buckets).sort(function(a, b) { return (buckets[b] || 0) - (buckets[a] || 0); });
   var values = labels.map(function(b) { return buckets[b]; });
   var pcts = labels.map(function(b) { return ((buckets[b] / total) * 100).toFixed(1); });
-  var colorMap = { "Cash":"#94a3b8","Equities":"#34d399","Gold":"#eab308","Silver":"#a8a29e","Crypto":"#a78bfa","Alternatives":"#818cf8","Fixed Income":"#60a5fa","International":"#2dd4bf","Real Assets":"#06b6d4","Art":"#e879f9","Managed Blend":"#4ade80","Retirement Blend":"#86efac","Real Estate":"#22d3ee" };
-  var colors = labels.map(function(b) { return colorMap[b] || "#94a3b8"; });
+  var colors = labels.map(function(b) { return _perfAttrColorMap[b] || "#94a3b8"; });
+  var bReturns = PERF_DATA.bucket_returns || {};
+
   var ctx = document.getElementById("perf-attr-chart");
   if (!ctx || typeof Chart === "undefined") return;
   if (_perfAttrChart) { _perfAttrChart.destroy(); _perfAttrChart = null; }
@@ -868,20 +892,30 @@ function buildPerfAttribution() {
     options: {
       indexAxis: "y", responsive: true, maintainAspectRatio: false,
       plugins: { legend: { display: false },
-        tooltip: { callbacks: { label: function(ctx) { return "$" + ctx.raw.toLocaleString() + " (" + pcts[ctx.dataIndex] + "%)"; } } }
+        tooltip: { callbacks: { label: function(c) {
+          var ret = bReturns[labels[c.dataIndex]];
+          var retStr = ret != null ? " | Return: " + (ret >= 0 ? "+" : "") + ret.toFixed(1) + "%" : "";
+          return "$" + c.raw.toLocaleString() + " (" + pcts[c.dataIndex] + "%)" + retStr;
+        } } }
       },
       scales: {
-        x: { ticks: { color: "#64748b", font: { size: 10 }, callback: function(v) { return "$" + (v/1000).toFixed(0) + "K"; } }, grid: { color: "rgba(255,255,255,0.03)" } },
+        x: { ticks: { color: "#64748b", font: { size: 10 }, callback: function(v) { return v >= 1000000 ? "$" + (v/1000000).toFixed(1) + "M" : "$" + (v/1000).toFixed(0) + "K"; } }, grid: { color: "rgba(255,255,255,0.03)" } },
         y: { ticks: { color: "#94a3b8", font: { size: 11 } }, grid: { display: false } }
       }
     }
   });
-  // Build table
+
   var tableEl = document.getElementById("perf-attr-table");
   if (tableEl) {
-    var rows = '<table><thead><tr><th>Asset Class</th><th style="text-align:right">Value</th><th style="text-align:right">Weight</th></tr></thead><tbody>';
+    var rows = '<table><thead><tr><th>Asset Class</th><th style="text-align:right">Value</th><th style="text-align:right">Weight</th><th style="text-align:right">Return</th></tr></thead><tbody>';
     labels.forEach(function(b, i) {
-      rows += '<tr><td><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:' + colors[i] + ';margin-right:8px;"></span>' + b + '</td><td class="mono" style="text-align:right">$' + values[i].toLocaleString() + '</td><td class="mono" style="text-align:right">' + pcts[i] + '%</td></tr>';
+      var ret = bReturns[b];
+      var retStr = ret != null ? (ret >= 0 ? "+" : "") + ret.toFixed(1) + "%" : "-";
+      var retColor = ret != null ? (ret >= 0 ? "var(--success)" : "var(--danger)") : "var(--text-muted)";
+      rows += '<tr><td><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:' + colors[i] + ';margin-right:8px;"></span>' + b + '</td>';
+      rows += '<td class="mono" style="text-align:right">$' + values[i].toLocaleString() + '</td>';
+      rows += '<td class="mono" style="text-align:right">' + pcts[i] + '%</td>';
+      rows += '<td class="mono" style="text-align:right;color:' + retColor + ';">' + retStr + '</td></tr>';
     });
     rows += '</tbody></table>';
     if (PERF_DATA.overall_return !== 0) {
@@ -904,18 +938,38 @@ function loadTLH() {
     .then(function(r) { return r.json(); })
     .then(function(d) {
       var rows = d.rows || [];
-      if (!rows.length) { NDDiag.track("tlh", "ok", "no harvesting opportunities"); return; }
+      if (!rows.length) {
+        NDDiag.track("tlh", "ok", "no harvesting opportunities");
+        var card = document.getElementById("tlh-card");
+        if (card) card.style.display = "";
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--text-muted);">No tax-loss harvesting opportunities right now.</td></tr>';
+        return;
+      }
       document.getElementById("tlh-card").style.display = "";
+      var totalLoss = 0;
       var html = "";
       rows.forEach(function(r) {
-        html += '<tr><td><strong>' + r.ticker + '</strong></td>' +
-          '<td class="mono">' + r.qty.toFixed(3) + '</td>' +
-          '<td class="mono">$' + r.cost_basis.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}) + '</td>' +
-          '<td class="mono">$' + r.current.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}) + '</td>' +
-          '<td class="mono danger">$' + r.unrealized.toLocaleString() + '</td></tr>';
+        totalLoss += r.unrealized;
+        var washBadge = r.wash_sale_risk
+          ? ' <span title="Purchased within 30 days — potential wash sale" style="background:rgba(248,113,113,0.15);color:#f87171;padding:2px 6px;border-radius:4px;font-size:0.72rem;font-weight:600;cursor:help;">WASH</span>'
+          : '';
+        var subHint = r.substitute
+          ? '<span class="hint" style="font-size:0.75rem;"> → ' + r.substitute + '</span>'
+          : '';
+        html += '<tr>';
+        html += '<td><strong>' + r.ticker + '</strong>' + washBadge + subHint + '</td>';
+        html += '<td class="mono">' + r.qty.toFixed(3) + '</td>';
+        html += '<td class="mono">$' + r.cost_basis.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}) + '</td>';
+        html += '<td class="mono">$' + r.current.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}) + '</td>';
+        html += '<td class="mono danger">$' + r.unrealized.toLocaleString() + '</td>';
+        html += '</tr>';
       });
+      html += '<tr style="font-weight:600;border-top:2px solid var(--border-subtle);">';
+      html += '<td colspan="4">Potential Tax Savings (est. 25%)</td>';
+      html += '<td class="mono" style="color:var(--success);">$' + Math.round(Math.abs(totalLoss) * 0.25).toLocaleString() + '</td>';
+      html += '</tr>';
       tbody.innerHTML = html;
-      NDDiag.track("tlh", "ok", rows.length + " opportunities");
+      NDDiag.track("tlh", "ok", rows.length + " opportunities, $" + Math.abs(totalLoss).toLocaleString() + " losses");
     })
     .catch(function(e) { NDDiag.track("tlh", "error", e.message || String(e)); });
 }

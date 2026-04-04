@@ -99,10 +99,11 @@ def compute_portfolio_value(user_id):
 
 
 def snapshot_portfolio(user_id):
-    """Create or update today's portfolio snapshot."""
+    """Create or update today's portfolio snapshot with per-bucket breakdown."""
     today = date.today()
     value_data = compute_portfolio_value(user_id)
     total = value_data["total"]
+    breakdown = {k: round(v, 2) for k, v in value_data.get("breakdown", {}).items() if v}
 
     existing = PortfolioSnapshot.query.filter_by(
         user_id=user_id, date=today
@@ -121,6 +122,7 @@ def snapshot_portfolio(user_id):
         existing.silver_price = silver.price if silver else None
         existing.tnx_10y = tnx10.price if tnx10 else None
         existing.tnx_2y = tnx2.price if tnx2 else None
+        existing.breakdown = breakdown
     else:
         db.session.add(PortfolioSnapshot(
             user_id=user_id,
@@ -134,6 +136,7 @@ def snapshot_portfolio(user_id):
             silver_price=silver.price if silver else None,
             tnx_10y=tnx10.price if tnx10 else None,
             tnx_2y=tnx2.price if tnx2 else None,
+            breakdown=breakdown,
         ))
 
     db.session.commit()

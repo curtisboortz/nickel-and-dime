@@ -24,6 +24,9 @@ class UserSettings(db.Model):
     widget_order = db.Column(db.JSON, default=list)
     default_currency = db.Column(db.String(3), default="USD")
 
+    # Category rollup overrides -- {child: parent_or_null}
+    bucket_rollup = db.Column(db.JSON, default=dict)
+
     # External links
     links = db.Column(db.JSON, default=dict)
 

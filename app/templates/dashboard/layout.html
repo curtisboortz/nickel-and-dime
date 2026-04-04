@@ -1036,6 +1036,21 @@
     </div>
     {% endif %}
 
+    <!-- Category Grouping -->
+    <div style="border:1px solid var(--border-subtle);border-radius:var(--radius);padding:18px;margin-bottom:16px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+        <svg viewBox="0 0 24 24" style="width:24px;height:24px;fill:none;stroke:var(--text-secondary);stroke-width:2;"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        <div>
+          <div style="font-weight:600;font-size:0.95rem;">Category Grouping</div>
+          <div class="hint" style="margin:0;">Choose how sub-categories roll up on the dashboard</div>
+        </div>
+      </div>
+      <div id="bucket-rollup-rows" style="display:flex;flex-direction:column;gap:8px;"></div>
+      <div style="margin-top:12px;display:flex;justify-content:flex-end;">
+        <button type="button" onclick="saveBucketRollup()" id="rollup-save-btn" style="padding:8px 18px;font-size:0.82rem;">Save Grouping</button>
+      </div>
+    </div>
+
     <!-- Account -->
     <div style="border:1px solid var(--border-subtle);border-radius:var(--radius);padding:18px;">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
@@ -1168,7 +1183,17 @@ document.addEventListener("keydown", function(e) {
 </script>
 <script src="{{ url_for('static', filename='js/theme.js') }}?v={{ v }}"></script>
 <script src="{{ url_for('static', filename='js/tabs.js') }}?v={{ v }}"></script>
-<script src="{{ url_for('static', filename='js/dashboard.js') }}?v={{ v }}"></script>
+<script src="{{ url_for('static', filename='js/shared.js') }}?v={{ v }}"></script>
+<script src="{{ url_for('static', filename='js/summary.js') }}?v={{ v }}"></script>
+<script src="{{ url_for('static', filename='js/history.js') }}?v={{ v }}"></script>
+<script src="{{ url_for('static', filename='js/pulse.js') }}?v={{ v }}"></script>
+<script src="{{ url_for('static', filename='js/budget.js') }}?v={{ v }}"></script>
+<script src="{{ url_for('static', filename='js/economics.js') }}?v={{ v }}"></script>
+<script src="{{ url_for('static', filename='js/portfolio.js') }}?v={{ v }}"></script>
+<script src="{{ url_for('static', filename='js/sentiment.js') }}?v={{ v }}"></script>
+<script src="{{ url_for('static', filename='js/balances.js') }}?v={{ v }}"></script>
+<script src="{{ url_for('static', filename='js/holdings.js') }}?v={{ v }}"></script>
+<script src="{{ url_for('static', filename='js/settings.js') }}?v={{ v }}"></script>
 {% if is_pro %}
 <script src="{{ url_for('static', filename='js/import.js') }}?v={{ v }}"></script>
 {% endif %}

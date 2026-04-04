@@ -7,7 +7,7 @@ Balances (manual), portfolio history, and budget remain free for all.
 from flask import Blueprint, jsonify, request as flask_request
 from flask_login import login_required, current_user
 
-from ..extensions import db, csrf
+from ..extensions import db
 from ..utils.auth import requires_pro, is_pro
 from ..models.portfolio import Holding, CryptoHolding, PhysicalMetal, Account, BlendedAccount
 from ..models.market import PriceCache
@@ -69,9 +69,17 @@ def get_holdings():
     crypto = CryptoHolding.query.filter_by(user_id=current_user.id).all()
     metals = PhysicalMetal.query.filter_by(user_id=current_user.id).all()
 
+    stock_symbols = list({h.ticker for h in holdings if h.ticker})
+    cg_keys = list({f"CG:{c.coingecko_id}" for c in crypto if c.coingecko_id})
+    all_symbols = stock_symbols + cg_keys
+    price_cache = {}
+    if all_symbols:
+        rows = PriceCache.query.filter(PriceCache.symbol.in_(all_symbols)).all()
+        price_cache = {r.symbol: r for r in rows}
+
     holdings_out = []
     for h in holdings:
-        entry = _get_price_entry(h.ticker)
+        entry = price_cache.get(h.ticker) or _fetch_and_cache(h.ticker)
         price = entry.price if entry else None
         prev_close = entry.prev_close if entry else None
         qty = h.shares or 0
@@ -93,7 +101,7 @@ def get_holdings():
     crypto_out = []
     for c in crypto:
         cg_key = f"CG:{c.coingecko_id}" if c.coingecko_id else None
-        entry = PriceCache.query.get(cg_key) if cg_key else None
+        entry = price_cache.get(cg_key) if cg_key else None
         price = entry.price if entry and entry.price else None
         qty = c.quantity or 0
         value = price * qty if price else 0
@@ -118,7 +126,7 @@ def get_holdings():
 @api_portfolio_bp.route("/holdings", methods=["POST"])
 @login_required
 @requires_pro
-@csrf.exempt
+
 def save_holdings():
     """Add or update holdings. Supports single or bulk save.
 
@@ -194,7 +202,7 @@ def _save_holdings_bulk(rows):
 @api_portfolio_bp.route("/holdings/<int:holding_id>", methods=["DELETE"])
 @login_required
 @requires_pro
-@csrf.exempt
+
 def delete_holding(holding_id):
     """Delete a holding."""
     h = Holding.query.filter_by(id=holding_id, user_id=current_user.id).first()
@@ -207,7 +215,7 @@ def delete_holding(holding_id):
 @api_portfolio_bp.route("/crypto/<int:crypto_id>", methods=["DELETE"])
 @login_required
 @requires_pro
-@csrf.exempt
+
 def delete_crypto(crypto_id):
     """Delete a crypto holding."""
     c = CryptoHolding.query.filter_by(id=crypto_id, user_id=current_user.id).first()
@@ -240,7 +248,7 @@ def get_balances():
 
 @api_portfolio_bp.route("/balances", methods=["POST"])
 @login_required
-@csrf.exempt
+
 def save_balances():
     """Create or update blended account balances."""
     data = flask_request.get_json(silent=True) or {}
@@ -276,7 +284,7 @@ def save_balances():
 
 @api_portfolio_bp.route("/balances/rename", methods=["POST"])
 @login_required
-@csrf.exempt
+
 def rename_balance():
     """Rename a blended account."""
     data = flask_request.get_json(silent=True) or {}
@@ -289,7 +297,7 @@ def rename_balance():
 
 @api_portfolio_bp.route("/balances/reorder", methods=["POST"])
 @login_required
-@csrf.exempt
+
 def reorder_balances():
     """Persist the user's preferred balance row order."""
     from ..models.settings import UserSettings
@@ -308,7 +316,7 @@ def reorder_balances():
 
 @api_portfolio_bp.route("/balances/<int:acct_id>", methods=["DELETE"])
 @login_required
-@csrf.exempt
+
 def delete_balance(acct_id):
     """Delete a blended account."""
     acct = BlendedAccount.query.filter_by(id=acct_id, user_id=current_user.id).first()
@@ -337,7 +345,7 @@ def portfolio_history():
 @api_portfolio_bp.route("/physical-metals", methods=["GET", "POST", "DELETE"])
 @login_required
 @requires_pro
-@csrf.exempt
+
 def physical_metals():
     """CRUD for physical metal holdings."""
     if flask_request.method == "GET":
@@ -379,7 +387,7 @@ def physical_metals():
 @api_portfolio_bp.route("/quick-update", methods=["POST"])
 @login_required
 @requires_pro
-@csrf.exempt
+
 def quick_update():
     """Natural language quick-update for contributions/trades."""
     data = flask_request.get_json(silent=True) or {}
@@ -444,13 +452,17 @@ def get_ta_tickers():
 def tax_loss_harvesting():
     """Return holdings with unrealized losses > $50 for TLH opportunities."""
     holdings = Holding.query.filter_by(user_id=current_user.id).all()
+    tickers = list({h.ticker for h in holdings if h.ticker})
+    price_map = {}
+    if tickers:
+        price_map = {r.symbol: r for r in PriceCache.query.filter(PriceCache.symbol.in_(tickers)).all()}
     rows = []
     for h in holdings:
         qty = h.shares or 0
         cost_per = h.cost_basis or 0
         if not qty or not cost_per:
             continue
-        price_row = PriceCache.query.get(h.ticker)
+        price_row = price_map.get(h.ticker)
         live_price = price_row.price if price_row and price_row.price else 0
         if not live_price:
             continue
@@ -472,10 +484,15 @@ def tax_loss_harvesting():
 def perf_attribution():
     """Return performance attribution data: bucket values and overall return."""
     from ..services.portfolio_service import compute_portfolio_value
+    from ..utils.buckets import rollup_breakdown
 
     pv = compute_portfolio_value(current_user.id)
     total = pv["total"]
-    buckets = pv.get("breakdown", {})
+    raw_buckets = pv.get("breakdown", {})
+
+    settings = UserSettings.query.filter_by(user_id=current_user.id).first()
+    overrides = (settings.bucket_rollup if settings and hasattr(settings, "bucket_rollup") else None)
+    rolled, _ = rollup_breakdown(raw_buckets, overrides=overrides)
 
     snaps = (PortfolioSnapshot.query
              .filter_by(user_id=current_user.id)
@@ -488,7 +505,7 @@ def perf_attribution():
             overall_return = ((total - first_total) / first_total) * 100
 
     return jsonify({
-        "buckets": {b: round(v, 2) for b, v in buckets.items()},
+        "buckets": {b: round(v, 2) for b, v in rolled.items()},
         "total": round(total, 2),
         "overall_return": round(overall_return, 2),
     })
@@ -496,7 +513,7 @@ def perf_attribution():
 
 @api_portfolio_bp.route("/ta-tickers", methods=["POST"])
 @login_required
-@csrf.exempt
+
 def save_ta_tickers():
     """Save the user's TA quick-access ticker list."""
     data = flask_request.get_json(silent=True) or {}
@@ -536,7 +553,7 @@ def list_buckets():
 
 @api_portfolio_bp.route("/normalize-buckets", methods=["POST"])
 @login_required
-@csrf.exempt
+
 def normalize_buckets():
     """One-shot: normalize all bucket names for the current user's holdings."""
     holdings = Holding.query.filter_by(user_id=current_user.id).all()

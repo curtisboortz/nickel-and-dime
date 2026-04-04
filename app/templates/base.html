@@ -8,7 +8,22 @@
 <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#09090b">
+<meta name="csrf-token" content="{{ csrf_token() }}">
 <meta name="description" content="{% block meta_description %}Your personal macro-financial command center. Track markets, monitor the economy, and manage your portfolio. All in one place.{% endblock %}">
+
+<!-- Open Graph -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Nickel&amp;Dime">
+<meta property="og:title" content="{% block og_title %}Nickel&amp;Dime — The Investor's Edge{% endblock %}">
+<meta property="og:description" content="{% block og_description %}Track markets, monitor the economy, and manage your multi-asset portfolio. All in one place.{% endblock %}">
+<meta property="og:image" content="{% block og_image %}https://nickelanddime.io/static/img/og-card.png{% endblock %}">
+<meta property="og:url" content="{{ request.url }}">
+
+<!-- Twitter Card -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="{% block tw_title %}Nickel&amp;Dime — The Investor's Edge{% endblock %}">
+<meta name="twitter:description" content="{% block tw_description %}Track markets, monitor the economy, and manage your multi-asset portfolio. All in one place.{% endblock %}">
+<meta name="twitter:image" content="{% block tw_image %}https://nickelanddime.io/static/img/og-card.png{% endblock %}">
 
 <!-- Fonts -->
 <link rel="preconnect" href="https://fonts.googleapis.com">

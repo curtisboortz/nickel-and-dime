@@ -46,7 +46,6 @@ def _ensure_customer(stripe_mod, user):
 
 @api_billing_bp.route("/create-checkout", methods=["POST"])
 @login_required
-@csrf.exempt
 def create_checkout():
     """Create a Stripe Checkout session for Pro subscription."""
     stripe = _get_stripe()
@@ -94,7 +93,6 @@ def create_checkout():
 
 @api_billing_bp.route("/billing-portal", methods=["POST"])
 @login_required
-@csrf.exempt
 def billing_portal():
     """Redirect to Stripe Customer Portal for subscription management."""
     stripe = _get_stripe()

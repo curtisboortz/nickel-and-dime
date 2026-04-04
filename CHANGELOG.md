@@ -4,6 +4,43 @@ All notable changes to Nickel&Dime are documented here.
 
 ---
 
+## [2.0.0] — 2026-04-04 — Code Quality, Security & Refactoring
+
+### Architecture
+- **Split `dashboard.js`** (5,100+ lines) into 11 feature modules: `shared.js`, `summary.js`, `history.js`, `pulse.js`, `budget.js`, `economics.js`, `portfolio.js`, `sentiment.js`, `balances.js`, `holdings.js`, `settings.js`
+- Updated `layout.html` to load modules in dependency order
+
+### Performance
+- **Fixed N+1 queries** in `get_holdings`, `tax_loss_harvesting`, `compute_portfolio_value` — batch `PriceCache` lookups instead of per-row queries
+- **Batched DB commits** in `market_data.py` (yfinance + CoinGecko), `fred_service.py`, and sentiment service — single commit per refresh cycle instead of per-item
+
+### Security
+- **Fernet encryption for Coinbase API keys at rest** — new `app/utils/encryption.py` utility; keys encrypted on save, decrypted on read
+- **CSRF protection tightened** — added global fetch interceptor in `shared.js` that auto-injects `X-CSRFToken` on all mutating requests; removed `@csrf.exempt` from all internal endpoints (kept only on Stripe webhook which uses signature verification)
+- Added `<meta name="csrf-token">` to base template
+- Added `cryptography>=42.0.0` to requirements
+
+### Category System
+- Centralized bucket definitions: Gold/Silver → Real Assets, Crypto → Alternatives
+- User-configurable category rollups via `UserSettings.bucket_rollup` JSON field
+- New API endpoints: `GET/POST /api/settings/bucket-rollup`
+- Settings modal "Category Grouping" section with per-subcategory dropdowns
+- Rollup overrides wired through `live_data`, `allocation_targets`, and `perf_attribution`
+- Alembic migration `d002_add_bucket_rollup`
+
+### Documentation
+- **README.md** fully rewritten — updated architecture, tech stack, deployment (Railway), security section, quick start
+- **`docs/API.md`** — comprehensive internal API reference (70+ endpoints across 9 blueprints)
+- **`.env.example`** — added `FERNET_KEY` with generation instructions
+
+### Legal & SEO
+- New pages: Terms of Service (`/terms`), Privacy Policy (`/privacy`), Financial Disclaimer (`/disclaimer`)
+- OG/Twitter Card meta tags in `base.html` with overridable blocks per page
+- Social sharing card image (`og-card.png`)
+- Landing page footer links updated to point to legal pages
+
+---
+
 ## [1.4.0] — 2026-03-26 — Customizable Pulse Bar
 
 ### Added

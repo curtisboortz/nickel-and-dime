@@ -246,3 +246,18 @@ def pricing():
 def billing_account():
     """Subscription management page."""
     return render_template("billing/account.html", user=current_user)
+
+
+@pages_bp.route("/terms")
+def terms():
+    return render_template("legal/terms.html")
+
+
+@pages_bp.route("/privacy")
+def privacy():
+    return render_template("legal/privacy.html")
+
+
+@pages_bp.route("/disclaimer")
+def disclaimer():
+    return render_template("legal/disclaimer.html")

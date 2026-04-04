@@ -99,13 +99,14 @@ def sync_user_coinbase(user_id: int) -> dict:
 
     Returns {"synced": N, "removed": M} or {"error": "..."}.
     """
+    from ..utils.encryption import decrypt
     settings = UserSettings.query.filter_by(user_id=user_id).first()
     if not settings or not settings.coinbase_key_name or not settings.coinbase_private_key:
         return {"error": "No Coinbase API keys configured"}
 
     balances = fetch_coinbase_balances(
-        settings.coinbase_key_name,
-        settings.coinbase_private_key,
+        decrypt(settings.coinbase_key_name),
+        decrypt(settings.coinbase_private_key),
     )
     if balances is None:
         return {"error": "Failed to fetch Coinbase balances. Check your API keys."}

@@ -1,8 +1,8 @@
 """Bucket name normalization and standard bucket list."""
 
 STANDARD_BUCKETS = [
-    "Art", "Cash", "Crypto", "Equities", "Fixed Income", "Gold",
-    "International", "Managed Blend", "Real Assets", "Real Estate",
+    "Alternatives", "Art", "Cash", "Crypto", "Equities", "Fixed Income",
+    "Gold", "International", "Managed Blend", "Real Assets", "Real Estate",
     "Retirement Blend", "Silver",
 ]
 
@@ -12,8 +12,9 @@ BUCKET_PARENTS = {
     "International": "Equities",
     "Real Estate": "Real Assets",
     "Art": "Real Assets",
-    "Gold": "Commodities",
-    "Silver": "Commodities",
+    "Gold": "Real Assets",
+    "Silver": "Real Assets",
+    "Crypto": "Alternatives",
 }
 
 _BUCKET_ALIASES = {
@@ -27,6 +28,8 @@ _BUCKET_ALIASES = {
     "retirement blend": "Retirement Blend",
     "realestate": "Real Estate",
     "real estate": "Real Estate",
+    "alternatives": "Alternatives",
+    "commodities": "Real Assets",
 }
 
 
@@ -43,17 +46,30 @@ def normalize_bucket(name):
     return name
 
 
-def rollup_breakdown(breakdown):
+def rollup_breakdown(breakdown, overrides=None):
     """Roll sub-categories into parent categories.
+
+    *overrides* is an optional dict of ``{child: parent_or_None}`` that takes
+    precedence over the default ``BUCKET_PARENTS``.  A value of ``None``
+    means "standalone" (remove the default parent mapping).
 
     Returns (rolled_up_dict, children_dict) where children_dict maps
     parent -> {child: value, ...} for categories that were merged.
     """
+    effective = dict(BUCKET_PARENTS)
+    if overrides:
+        for child, parent in overrides.items():
+            normed_child = normalize_bucket(child)
+            if parent is None:
+                effective.pop(normed_child, None)
+            else:
+                effective[normed_child] = parent
+
     rolled = {}
     children = {}
     for bucket, value in breakdown.items():
         normed = normalize_bucket(bucket)
-        parent = BUCKET_PARENTS.get(normed)
+        parent = effective.get(normed)
         if parent:
             rolled[parent] = rolled.get(parent, 0) + value
             children.setdefault(parent, {})[normed] = \

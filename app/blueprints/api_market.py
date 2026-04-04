@@ -5,7 +5,7 @@ import yfinance as yf
 from flask import Blueprint, jsonify, request as flask_request, current_app
 from flask_login import login_required, current_user
 
-from ..extensions import db, csrf
+from ..extensions import db
 from ..models.market import PriceCache
 
 api_market_bp = Blueprint("api_market", __name__)
@@ -60,9 +60,12 @@ def live_data():
     result["_ratio_ids"] = [f"custom-{rid}" for rid in ratio_ids]
 
     from ..utils.buckets import rollup_breakdown, normalize_bucket
+    from ..models.settings import UserSettings as _US
     pv = compute_portfolio_value(current_user.id)
     result["total"] = pv["total"]
-    rolled, bk_children = rollup_breakdown(pv.get("breakdown", {}))
+    _us = _US.query.filter_by(user_id=current_user.id).first()
+    _overrides = (_us.bucket_rollup if _us and hasattr(_us, "bucket_rollup") else None)
+    rolled, bk_children = rollup_breakdown(pv.get("breakdown", {}), overrides=_overrides)
     result["buckets"] = rolled
     result["buckets_detail"] = {normalize_bucket(k): v for k, v in pv.get("breakdown", {}).items()}
 
@@ -91,7 +94,7 @@ def live_data():
 
 @api_market_bp.route("/bg-refresh", methods=["POST"])
 @login_required
-@csrf.exempt
+
 def bg_refresh():
     """Kick off a background price refresh (non-blocking)."""
     from ..services.market_data import refresh_all_prices
@@ -305,7 +308,7 @@ def _historical_ratio(ratio_ticker, period, interval, label):
 
 @api_market_bp.route("/pulse-order", methods=["POST"])
 @login_required
-@csrf.exempt
+
 def save_pulse_order():
     """Persist the user's pulse card order."""
     from ..models.settings import UserSettings
@@ -348,7 +351,7 @@ def _normalize_ticker(raw):
 
 @api_market_bp.route("/pulse-cards", methods=["POST"])
 @login_required
-@csrf.exempt
+
 def add_pulse_card():
     """Add a custom ticker to the pulse bar."""
     from ..models.settings import CustomPulseCard
@@ -378,7 +381,7 @@ def add_pulse_card():
 
 @api_market_bp.route("/pulse-cards/<card_id>", methods=["DELETE"])
 @login_required
-@csrf.exempt
+
 def remove_pulse_card(card_id):
     """Remove a pulse card (custom or hide a default)."""
     from ..models.settings import CustomPulseCard, UserSettings
@@ -405,7 +408,7 @@ def remove_pulse_card(card_id):
 
 @api_market_bp.route("/pulse-cards/restore-all", methods=["POST"])
 @login_required
-@csrf.exempt
+
 def restore_all_pulse_cards():
     """Restore all hidden default pulse cards."""
     from ..models.settings import UserSettings
@@ -420,7 +423,7 @@ def restore_all_pulse_cards():
 
 @api_market_bp.route("/pulse-size", methods=["POST"])
 @login_required
-@csrf.exempt
+
 def save_pulse_size():
     """Save the user's preferred pulse card size."""
     from ..models.settings import UserSettings
@@ -441,7 +444,7 @@ def save_pulse_size():
 
 @api_market_bp.route("/refresh", methods=["POST"])
 @login_required
-@csrf.exempt
+
 def refresh_prices():
     """Trigger an on-demand price refresh and portfolio snapshot."""
     from ..services.market_data import refresh_all_prices

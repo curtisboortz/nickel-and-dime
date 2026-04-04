@@ -6,7 +6,7 @@ Manage Coinbase API keys, trigger manual sync, and other user settings.
 from flask import Blueprint, jsonify, request as flask_request
 from flask_login import login_required, current_user
 
-from ..extensions import db, csrf
+from ..extensions import db
 from ..utils.auth import requires_pro
 from ..models.settings import UserSettings
 
@@ -18,17 +18,21 @@ api_settings_bp = Blueprint("api_settings", __name__)
 @requires_pro
 def get_integrations():
     """Return current integration status (connected or not, no secrets)."""
+    from ..utils.encryption import decrypt
     settings = UserSettings.query.filter_by(user_id=current_user.id).first()
     coinbase_connected = bool(
         settings
         and settings.coinbase_key_name
         and settings.coinbase_private_key
     )
+    key_hint = None
+    if coinbase_connected:
+        plain = decrypt(settings.coinbase_key_name)
+        key_hint = (plain[:20] + "...") if plain else None
     return jsonify({
         "coinbase": {
             "connected": coinbase_connected,
-            "key_hint": (settings.coinbase_key_name[:20] + "...")
-                        if coinbase_connected else None,
+            "key_hint": key_hint,
         },
     })
 
@@ -36,7 +40,6 @@ def get_integrations():
 @api_settings_bp.route("/settings/coinbase-keys", methods=["POST"])
 @login_required
 @requires_pro
-@csrf.exempt
 def save_coinbase_keys():
     """Save Coinbase API key name and private key."""
     data = flask_request.get_json(silent=True) or {}
@@ -54,8 +57,9 @@ def save_coinbase_keys():
         settings = UserSettings(user_id=current_user.id)
         db.session.add(settings)
 
-    settings.coinbase_key_name = key_name
-    settings.coinbase_private_key = private_key
+    from ..utils.encryption import encrypt
+    settings.coinbase_key_name = encrypt(key_name)
+    settings.coinbase_private_key = encrypt(private_key)
     db.session.commit()
 
     return jsonify({"success": True, "message": "Coinbase keys saved"})
@@ -64,7 +68,6 @@ def save_coinbase_keys():
 @api_settings_bp.route("/settings/coinbase-keys", methods=["DELETE"])
 @login_required
 @requires_pro
-@csrf.exempt
 def delete_coinbase_keys():
     """Remove stored Coinbase API keys."""
     settings = UserSettings.query.filter_by(user_id=current_user.id).first()
@@ -75,10 +78,47 @@ def delete_coinbase_keys():
     return jsonify({"success": True, "message": "Coinbase keys removed"})
 
 
+@api_settings_bp.route("/settings/bucket-rollup")
+@login_required
+def get_bucket_rollup():
+    """Return the user's category rollup overrides merged with defaults."""
+    from ..utils.buckets import BUCKET_PARENTS, STANDARD_BUCKETS
+    settings = UserSettings.query.filter_by(user_id=current_user.id).first()
+    overrides = (settings.bucket_rollup or {}) if settings else {}
+    effective = dict(BUCKET_PARENTS)
+    for child, parent in overrides.items():
+        if parent is None:
+            effective.pop(child, None)
+        else:
+            effective[child] = parent
+    return jsonify({
+        "defaults": BUCKET_PARENTS,
+        "overrides": overrides,
+        "effective": effective,
+        "standard_buckets": STANDARD_BUCKETS,
+    })
+
+
+@api_settings_bp.route("/settings/bucket-rollup", methods=["POST"])
+@login_required
+def save_bucket_rollup():
+    """Save the user's category rollup overrides."""
+    data = flask_request.get_json(silent=True) or {}
+    overrides = data.get("overrides", {})
+    settings = UserSettings.query.filter_by(user_id=current_user.id).first()
+    if not settings:
+        settings = UserSettings(user_id=current_user.id)
+        db.session.add(settings)
+    settings.bucket_rollup = overrides
+    from sqlalchemy.orm.attributes import flag_modified
+    flag_modified(settings, "bucket_rollup")
+    db.session.commit()
+    return jsonify({"success": True})
+
+
 @api_settings_bp.route("/coinbase-sync", methods=["POST"])
 @login_required
 @requires_pro
-@csrf.exempt
 def trigger_coinbase_sync():
     """Manually trigger a Coinbase balance sync for the current user."""
     from ..services.coinbase_service import sync_user_coinbase

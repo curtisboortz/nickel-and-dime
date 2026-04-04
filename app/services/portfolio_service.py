@@ -17,14 +17,31 @@ def compute_portfolio_value(user_id):
     total = 0.0
     breakdown = {}
 
-    # Stock / ETF holdings
     from ..utils.buckets import normalize_bucket as _normalize_bucket
+
     holdings = Holding.query.filter_by(user_id=user_id).all()
+    crypto = CryptoHolding.query.filter_by(user_id=user_id).all()
+    metals = PhysicalMetal.query.filter_by(user_id=user_id).all()
+
+    needed_symbols = set()
+    for h in holdings:
+        if h.ticker and h.shares and not h.value_override:
+            needed_symbols.add(h.ticker)
+    for c in crypto:
+        cg_key = f"CG:{c.coingecko_id}" if c.coingecko_id else f"CG:{c.symbol.lower()}"
+        needed_symbols.add(cg_key)
+    needed_symbols.update(["GC=F", "SI=F"])
+
+    price_map = {}
+    if needed_symbols:
+        rows = PriceCache.query.filter(PriceCache.symbol.in_(list(needed_symbols))).all()
+        price_map = {r.symbol: r for r in rows}
+
     for h in holdings:
         if h.value_override:
             value = h.value_override
         elif h.shares:
-            price_row = PriceCache.query.get(h.ticker)
+            price_row = price_map.get(h.ticker)
             price = price_row.price if price_row else 0
             value = h.shares * price
         else:
@@ -34,7 +51,6 @@ def compute_portfolio_value(user_id):
         breakdown.setdefault(bucket, 0)
         breakdown[bucket] += value
 
-    # Blended accounts
     blended = BlendedAccount.query.filter_by(user_id=user_id).all()
     for b in blended:
         total += b.value
@@ -53,22 +69,18 @@ def compute_portfolio_value(user_id):
                 breakdown.setdefault(bucket, 0)
                 breakdown[bucket] += b.value * (pct_val / 100.0)
 
-    # Crypto
-    crypto = CryptoHolding.query.filter_by(user_id=user_id).all()
     for c in crypto:
         cg_key = f"CG:{c.coingecko_id}" if c.coingecko_id else f"CG:{c.symbol.lower()}"
-        price_row = PriceCache.query.get(cg_key)
+        price_row = price_map.get(cg_key)
         price = price_row.price if price_row else 0
         value = c.quantity * price
         total += value
         breakdown.setdefault("Crypto", 0)
         breakdown["Crypto"] += value
 
-    # Physical metals
-    metals = PhysicalMetal.query.filter_by(user_id=user_id).all()
     for m in metals:
         sym = "GC=F" if m.metal.lower() == "gold" else "SI=F"
-        price_row = PriceCache.query.get(sym)
+        price_row = price_map.get(sym)
         price_per_oz = price_row.price if price_row else 0
         value = m.oz * price_per_oz
         total += value
@@ -76,7 +88,6 @@ def compute_portfolio_value(user_id):
         breakdown.setdefault(bucket, 0)
         breakdown[bucket] += value
 
-    # Cash in accounts
     accounts = Account.query.filter_by(user_id=user_id).all()
     for a in accounts:
         if a.account_type in ("checking", "savings"):

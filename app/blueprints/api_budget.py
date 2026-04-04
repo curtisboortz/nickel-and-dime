@@ -13,7 +13,7 @@ from flask import Blueprint, jsonify, request as flask_request
 from flask_login import login_required, current_user
 from sqlalchemy import func, extract
 
-from ..extensions import db, csrf
+from ..extensions import db
 from ..utils.auth import requires_pro
 from ..models.budget import BudgetConfig, Transaction, RecurringTransaction, CategoryRule
 
@@ -100,7 +100,7 @@ def budget_data():
 
 @api_budget_bp.route("/budget-data", methods=["POST"])
 @login_required
-@csrf.exempt
+
 def save_budget():
     """Save budget configuration (income, categories, rollover)."""
     data = flask_request.get_json(silent=True) or {}
@@ -132,7 +132,7 @@ def get_budget_templates():
 
 @api_budget_bp.route("/budget-templates/<template_id>", methods=["POST"])
 @login_required
-@csrf.exempt
+
 def apply_budget_template(template_id):
     """Apply a budget template to the user's config."""
     template = BUDGET_TEMPLATES.get(template_id)
@@ -150,7 +150,7 @@ def apply_budget_template(template_id):
 
 @api_budget_bp.route("/transactions", methods=["POST"])
 @login_required
-@csrf.exempt
+
 def add_transaction():
     """Add a manual transaction."""
     data = flask_request.get_json(silent=True) or {}
@@ -170,7 +170,7 @@ def add_transaction():
 
 @api_budget_bp.route("/transactions/<int:txn_id>", methods=["PUT"])
 @login_required
-@csrf.exempt
+
 def update_transaction(txn_id):
     """Update an existing transaction's category or details."""
     txn = Transaction.query.filter_by(id=txn_id, user_id=current_user.id).first()
@@ -191,7 +191,7 @@ def update_transaction(txn_id):
 
 @api_budget_bp.route("/transactions/<int:txn_id>", methods=["DELETE"])
 @login_required
-@csrf.exempt
+
 def delete_transaction(txn_id):
     """Delete a transaction."""
     txn = Transaction.query.filter_by(id=txn_id, user_id=current_user.id).first()
@@ -203,7 +203,7 @@ def delete_transaction(txn_id):
 
 @api_budget_bp.route("/transactions/import-csv", methods=["POST"])
 @login_required
-@csrf.exempt
+
 def import_transactions_csv():
     """Import transactions from a CSV file.
 
@@ -294,7 +294,7 @@ def get_category_rules():
 
 @api_budget_bp.route("/category-rules", methods=["POST"])
 @login_required
-@csrf.exempt
+
 def save_category_rule():
     """Add or update a categorization rule."""
     data = flask_request.get_json(silent=True) or {}
@@ -313,7 +313,7 @@ def save_category_rule():
 
 @api_budget_bp.route("/category-rules/<int:rule_id>", methods=["DELETE"])
 @login_required
-@csrf.exempt
+
 def delete_category_rule(rule_id):
     """Delete a categorization rule."""
     rule = CategoryRule.query.filter_by(id=rule_id, user_id=current_user.id).first()
@@ -412,7 +412,7 @@ def get_investments():
 
 @api_budget_bp.route("/investments", methods=["POST"])
 @login_required
-@csrf.exempt
+
 def save_investments():
     """Save monthly investment contributions."""
     from ..models.settings import MonthlyInvestment
@@ -446,7 +446,7 @@ def save_investments():
 
 @api_budget_bp.route("/investments/new-month", methods=["POST"])
 @login_required
-@csrf.exempt
+
 def new_investment_month():
     """Create a new month's investment categories, copying targets from the previous month."""
     from ..models.settings import MonthlyInvestment
@@ -485,18 +485,28 @@ def get_allocation_targets():
     from ..utils.buckets import rollup_breakdown, normalize_bucket, BUCKET_PARENTS
     settings = UserSettings.query.filter_by(user_id=current_user.id).first()
     targets = (settings.targets or {}) if settings else {}
+    overrides = (settings.bucket_rollup if settings and hasattr(settings, "bucket_rollup") else None)
     pv = compute_portfolio_value(current_user.id)
     total = pv["total"]
     raw_breakdown = pv.get("breakdown", {})
-    breakdown, children = rollup_breakdown(raw_breakdown)
+    breakdown, children = rollup_breakdown(raw_breakdown, overrides=overrides)
     active = targets.get("tactical", targets.get("catchup", {}))
+
+    effective_parents = dict(BUCKET_PARENTS)
+    if overrides:
+        for child, parent in overrides.items():
+            nc = normalize_bucket(child)
+            if parent is None:
+                effective_parents.pop(nc, None)
+            else:
+                effective_parents[nc] = parent
 
     rolled_targets = {}
     child_targets = {}
     for k, v in active.items():
         nk = normalize_bucket(k)
         tgt = v.get("target", 0) if isinstance(v, dict) else 0
-        parent = BUCKET_PARENTS.get(nk)
+        parent = effective_parents.get(nk)
         if parent:
             rolled_targets[parent] = rolled_targets.get(parent, 0) + tgt
             child_targets.setdefault(parent, {})[nk] = tgt
@@ -536,7 +546,7 @@ def get_allocation_targets():
 
 @api_budget_bp.route("/allocation-targets", methods=["POST"])
 @login_required
-@csrf.exempt
+
 def save_allocation_targets():
     """Save or update allocation targets (merges with existing)."""
     from ..models.settings import UserSettings
@@ -558,7 +568,7 @@ def save_allocation_targets():
 
 @api_budget_bp.route("/allocation-targets/delete", methods=["POST"])
 @login_required
-@csrf.exempt
+
 def delete_allocation_target():
     """Remove a bucket from the user's allocation targets."""
     from ..models.settings import UserSettings

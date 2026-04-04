@@ -96,6 +96,6 @@ def refresh_fred_data(api_key=None):
                     series_group=group_name,
                     data=group_data,
                 ))
-            db.session.commit()
 
+    db.session.commit()
     print(f"[FRED] Refreshed {len(SERIES_GROUPS)} groups")

@@ -73,9 +73,10 @@ def _fetch_yfinance_batch(symbols):
                 prev = info.get("regularMarketPreviousClose") or info.get("previousClose")
                 if price and price > 0:
                     change_pct = ((price - prev) / prev * 100) if prev else 0
-                    _upsert_price(sym, price, change_pct, prev)
+                    _upsert_price(sym, price, change_pct, prev, _commit=False)
             except Exception:
                 continue
+        db.session.commit()
     except Exception as e:
         print(f"[MarketData] yfinance batch error: {e}")
 
@@ -107,7 +108,8 @@ def _fetch_coingecko_prices():
             price = vals.get("usd", 0)
             change = vals.get("usd_24h_change", 0)
             if price:
-                _upsert_price(f"CG:{coin_id}", price, change, source="coingecko")
+                _upsert_price(f"CG:{coin_id}", price, change, source="coingecko", _commit=False)
+        db.session.commit()
     except Exception as e:
         print(f"[MarketData] CoinGecko error: {e}")
 
@@ -119,7 +121,7 @@ def _apply_dxy_preference():
         _upsert_price("DX=F", spot.price, spot.change_pct, spot.prev_close)
 
 
-def _upsert_price(symbol, price, change_pct=None, prev_close=None, source="yfinance"):
+def _upsert_price(symbol, price, change_pct=None, prev_close=None, source="yfinance", _commit=True):
     """Insert or update a price in the cache table."""
     existing = PriceCache.query.get(symbol)
     if existing:
@@ -133,4 +135,5 @@ def _upsert_price(symbol, price, change_pct=None, prev_close=None, source="yfina
             symbol=symbol, price=price, change_pct=change_pct,
             prev_close=prev_close, source=source,
         ))
-    db.session.commit()
+    if _commit:
+        db.session.commit()

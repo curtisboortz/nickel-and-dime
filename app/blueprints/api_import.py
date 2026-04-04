@@ -7,7 +7,7 @@ E-Trade, Robinhood, WeBull, IBKR, Coinbase, thinkorswim, M1, and generic CSV.
 from flask import Blueprint, jsonify, request as flask_request
 from flask_login import login_required, current_user
 
-from ..extensions import db, csrf
+from ..extensions import db
 from ..utils.auth import requires_pro
 from ..models.portfolio import Holding, CryptoHolding
 from ..services.import_service import detect_and_parse, get_supported_brokerages, detect_bucket
@@ -26,7 +26,7 @@ def supported_brokerages():
 @api_import_bp.route("/import/preview", methods=["POST"])
 @login_required
 @requires_pro
-@csrf.exempt
+
 def preview_import():
     """Upload a CSV and return a preview of detected holdings without saving.
 
@@ -63,7 +63,7 @@ def preview_import():
 @api_import_bp.route("/import/commit", methods=["POST"])
 @login_required
 @requires_pro
-@csrf.exempt
+
 def commit_import():
     """Save selected holdings from a previewed import.
 

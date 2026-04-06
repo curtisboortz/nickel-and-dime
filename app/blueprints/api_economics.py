@@ -1,7 +1,11 @@
 """Economics API routes: FRED data, economic calendar, FedWatch, sentiment."""
 
+import logging
+
 from flask import Blueprint, jsonify, request as flask_request
 from flask_login import login_required
+
+log = logging.getLogger(__name__)
 
 from ..extensions import db
 from ..models.market import FredCache, EconCalendarCache, SentimentCache
@@ -498,175 +502,76 @@ def _fetch_buffett_data():
 _fedwatch_cache = {"data": None, "ts": 0}
 _FEDWATCH_TTL = 3600 * 2
 
-_FOMC_DATES_2026 = [
-    "2026-01-29", "2026-03-18", "2026-05-06", "2026-06-17",
-    "2026-07-29", "2026-09-16", "2026-10-28", "2026-12-16",
-]
-
-_FF_MONTH_CODES = {
-    1: "F", 2: "G", 3: "H", 4: "J", 5: "K", 6: "M",
-    7: "N", 8: "Q", 9: "U", 10: "V", 11: "X", 12: "Z",
-}
-
 
 def _compute_fedwatch():
-    """Build a probability tree across FOMC meetings using CME methodology."""
-    import yfinance as yf
-    from datetime import datetime, date
-    import calendar
-    import math
+    """Fetch FedWatch probabilities via cme-fedwatch library.
 
-    today = date.today()
-    today_str = today.strftime("%Y-%m-%d")
+    Uses CME settlement prices, FRED EFFR, and dynamic FOMC
+    dates from the Federal Reserve.
+    """
+    from cme_fedwatch import get_probabilities
+    from datetime import datetime
 
-    effr = None
     try:
-        all_cache = FredCache.query.all()
-        for c in all_cache:
-            if isinstance(c.data, dict):
-                dff_pts = c.data.get("DFF") or c.data.get("FEDFUNDS")
-                if dff_pts:
-                    for pt in reversed(dff_pts):
-                        if isinstance(pt, (list, tuple)) and len(pt) >= 2 and pt[1] is not None:
-                            effr = pt[1]
-                            break
-            if effr is not None:
-                break
+        raw = get_probabilities()
     except Exception as e:
-        print(f"[FedWatch] FRED EFFR error: {e}")
-
-    if effr is None:
+        log.error("cme-fedwatch fetch failed: %s", e)
         return None
 
-    current_upper = math.ceil(effr * 4) / 4
-    current_lower = current_upper - 0.25
-    current_mid = (current_upper + current_lower) / 2
+    if not raw or not raw.get("meetings"):
+        return None
 
-    upcoming = [m for m in _FOMC_DATES_2026 if m > today_str]
-    if not upcoming:
-        return {"meetings": [], "current_rate": effr,
-                "current_range_bps": f"{int(current_lower * 100)}-{int(current_upper * 100)}"}
+    effr = raw.get("effr")
+    current_target = raw.get("current_target", "")
+    parts = current_target.replace("%", "").split("-")
+    try:
+        lo_pct = float(parts[0])
+        hi_pct = float(parts[1])
+    except (IndexError, ValueError):
+        lo_pct, hi_pct = 0, 0
+    current_bps = f"{int(lo_pct * 100)}-{int(hi_pct * 100)}"
 
-    last_md = datetime.strptime(upcoming[-1], "%Y-%m-%d").date()
-    tickers, month_keys = [], []
-    m, y = today.month, today.year
-    end_m, end_y = last_md.month + 1, last_md.year
-    if end_m > 12:
-        end_m, end_y = 1, end_y + 1
-
-    while (y, m) <= (end_y, end_m):
-        code = _FF_MONTH_CODES[m]
-        tickers.append(f"ZQ{code}{str(y)[2:]}.CBT")
-        month_keys.append((y, m))
-        m += 1
-        if m > 12:
-            m, y = 1, y + 1
-
-    implied = {}
-    for i, ticker in enumerate(tickers):
-        try:
-            tk = yf.Ticker(ticker)
-            p = tk.fast_info.last_price if tk.fast_info else None
-            if p and 80 < p < 105:
-                implied[month_keys[i]] = round(100.0 - float(p), 4)
-        except Exception:
-            pass
-
-    if not implied:
-        return {"meetings": [], "current_rate": effr,
-                "current_range_bps": f"{int(current_lower * 100)}-{int(current_upper * 100)}",
-                "error": "Could not fetch futures prices"}
-
-    meeting_months = {}
-    for ms in upcoming:
-        md_ = datetime.strptime(ms, "%Y-%m-%d").date()
-        meeting_months[(md_.year, md_.month)] = md_
-
-    def _next_month(y, m):
-        return (y, m + 1) if m < 12 else (y + 1, 1)
-
-    prev_rate = effr
-    prev_meeting_month = (today.year, today.month)
-    isolated = []
-
-    for meeting_str in upcoming:
-        md = datetime.strptime(meeting_str, "%Y-%m-%d").date()
-        mkey = (md.year, md.month)
-        imp = implied.get(mkey)
-        if imp is None:
-            isolated.append({"date": meeting_str, "md": md, "p_cut": 0.0, "ok": False})
-            prev_meeting_month = mkey
-            continue
-
-        ref = None
-        ry, rm = _next_month(*prev_meeting_month)
-        while (ry, rm) < mkey:
-            if (ry, rm) not in meeting_months and (ry, rm) in implied:
-                ref = implied[(ry, rm)]
-            ry, rm = _next_month(ry, rm)
-        pre_rate = ref if ref is not None else prev_rate
-
-        days_in = calendar.monthrange(md.year, md.month)[1]
-        days_after = days_in - md.day
-
-        if days_after <= 3:
-            ny, nm = _next_month(md.year, md.month)
-            next_imp = implied.get((ny, nm))
-            post = next_imp if next_imp is not None else imp
-        else:
-            post = (imp * days_in - pre_rate * md.day) / days_after
-
-        change = pre_rate - post
-        if abs(change) > 0.50:
-            isolated.append({"date": meeting_str, "md": md, "p_cut": 0.0, "ok": False})
-            prev_meeting_month = mkey
-            continue
-
-        p_cut = max(0.0, min(1.0, change / 0.25))
-        isolated.append({"date": meeting_str, "md": md, "p_cut": p_cut, "post": post, "ok": True})
-        prev_rate = post
-        prev_meeting_month = mkey
-
-    dist = {round(current_mid, 4): 100.0}
     meetings_out = []
-
-    for iso in isolated:
-        md = iso["md"]
-        p_cut = iso["p_cut"] if iso["ok"] else 0.0
-        p_hold = 1.0 - p_cut
-
-        new_dist = {}
-        for rate, prob in dist.items():
-            new_dist[rate] = new_dist.get(rate, 0.0) + prob * p_hold
-            cut_rate = round(rate - 0.25, 4)
-            if cut_rate >= 0:
-                new_dist[cut_rate] = new_dist.get(cut_rate, 0.0) + prob * p_cut
-        dist = new_dist
+    for m in raw["meetings"]:
+        md = datetime.strptime(m["date"], "%Y-%m-%d")
+        probs = m.get("probabilities", {})
 
         ranges = []
         cut_t, hold_t, hike_t = 0.0, 0.0, 0.0
-        for rate in sorted(dist.keys()):
-            prob = dist[rate]
-            if prob < 0.05:
+        for rng_label, prob in sorted(
+            probs.items(),
+            key=lambda x: float(
+                x[0].split("-")[0].replace("%", "")
+            ),
+        ):
+            rng_parts = (
+                rng_label.replace("%", "").split("-")
+            )
+            try:
+                rng_lo = float(rng_parts[0])
+                rng_hi = float(rng_parts[1])
+            except (IndexError, ValueError):
                 continue
-            lo = int(round((rate - 0.125) * 100))
-            hi = int(round((rate + 0.125) * 100))
-            ranges.append({"range": f"{lo}-{hi}", "lo": lo, "prob": round(prob, 1)})
-            if rate < current_mid - 0.001:
+            lo_bps = int(rng_lo * 100)
+            hi_bps = int(rng_hi * 100)
+            bps_label = f"{lo_bps}-{hi_bps}"
+            ranges.append({
+                "range": bps_label,
+                "lo": lo_bps,
+                "prob": round(prob, 1),
+            })
+            if rng_lo < lo_pct - 0.001:
                 cut_t += prob
-            elif rate > current_mid + 0.001:
+            elif rng_lo > lo_pct + 0.001:
                 hike_t += prob
             else:
                 hold_t += prob
 
-        contract_code = f"ZQ{_FF_MONTH_CODES[md.month]}{str(md.year)[2:]}"
-        imp_price = implied.get((md.year, md.month))
-
         meetings_out.append({
-            "date": iso["date"],
+            "date": m["date"],
             "label": md.strftime("%d %b%y").lstrip("0"),
-            "contract": contract_code,
-            "price": round(imp_price, 4) if imp_price else None,
+            "contract": m.get("contract", ""),
+            "price": None,
             "cut": round(cut_t, 1),
             "hold": round(hold_t, 1),
             "hike": round(hike_t, 1),
@@ -675,7 +580,7 @@ def _compute_fedwatch():
 
     return {
         "current_rate": effr,
-        "current_range_bps": f"{int(current_lower * 100)}-{int(current_upper * 100)}",
+        "current_range_bps": current_bps,
         "meetings": meetings_out,
     }
 

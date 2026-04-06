@@ -199,7 +199,14 @@ def dashboard_page(tab="summary"):
     ]
     if tab not in valid_tabs:
         tab = "summary"
-    us = UserSettings.query.filter_by(user_id=current_user.id).first()
+    try:
+        us = UserSettings.query.filter_by(
+            user_id=current_user.id
+        ).first()
+    except Exception:
+        from ..extensions import db
+        db.session.rollback()
+        us = None
     wo = (us.widget_order if us and isinstance(us.widget_order, dict) else {}) or {}
     hidden_pulse = wo.get("hidden_pulse", [])
     pulse_size = wo.get("pulse_size", "compact")

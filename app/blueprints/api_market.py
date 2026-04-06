@@ -63,7 +63,13 @@ def live_data():
     from ..models.settings import UserSettings as _US
     pv = compute_portfolio_value(current_user.id)
     result["total"] = pv["total"]
-    _us = _US.query.filter_by(user_id=current_user.id).first()
+    try:
+        _us = _US.query.filter_by(
+            user_id=current_user.id
+        ).first()
+    except Exception:
+        db.session.rollback()
+        _us = None
     _overrides = (_us.bucket_rollup if _us and hasattr(_us, "bucket_rollup") else None)
     rolled, bk_children = rollup_breakdown(pv.get("breakdown", {}), overrides=_overrides)
     result["buckets"] = rolled

@@ -33,6 +33,8 @@ function _handleBucketCustom(selectEl) {
   }
 }
 
+var _accountsData = null;
+
 function loadHoldings() {
   if (_holdingsLoaded) return;
   _holdingsLoaded = true;
@@ -50,7 +52,9 @@ function loadHoldings() {
       var d = results[0];
       var bk = results[1];
       _bucketOptions = (bk.standard || []).concat(bk.custom || []);
-      _renderStockHoldings(stockWrap, d.holdings || []);
+      _accountsData = d.accounts || [];
+      _holdingsCache = d.holdings || [];
+      _renderAccountWidgets(stockWrap, _accountsData, d.grand_total || 0);
       _renderCryptoHoldings(cryptoWrap, d.crypto || []);
       _loadPhysicalMetals();
       if (_fxRate !== 1) convertDisplayCurrency(_fxRate, _fxSymbol);
@@ -79,15 +83,126 @@ function _sortHoldingsBy(key) {
     _holdingsSortDir = 1;
   }
   _sortPrefs.hk = _holdingsSortKey; _sortPrefs.hd = _holdingsSortDir; _saveSortPrefs();
-  if (_holdingsCache && _holdingsWrapRef) {
+  if (_accountsData && _holdingsWrapRef) {
+    _renderAccountWidgets(_holdingsWrapRef, _accountsData, 0);
+  } else if (_holdingsCache && _holdingsWrapRef) {
     _renderStockHoldings(_holdingsWrapRef, _holdingsCache);
   }
 }
 
-function _renderStockHoldings(wrap, holdings) {
+function _acctKey(g) {
+  return (g.institution_name || "") + "|" + (g.account_name || "");
+}
+
+function _getCollapseState() {
+  try { return JSON.parse(localStorage.getItem("nd-acct-collapse") || "{}"); } catch(e) { return {}; }
+}
+
+function _toggleAccountCollapse(key) {
+  var state = _getCollapseState();
+  state[key] = !state[key];
+  localStorage.setItem("nd-acct-collapse", JSON.stringify(state));
+  var body = document.getElementById("acct-body-" + key.replace(/[^a-zA-Z0-9]/g, "_"));
+  if (body) body.style.display = state[key] ? "none" : "";
+  var arrow = document.getElementById("acct-arrow-" + key.replace(/[^a-zA-Z0-9]/g, "_"));
+  if (arrow) arrow.textContent = state[key] ? "\u25B6" : "\u25BC";
+}
+
+function _buildAccountLogo(g) {
+  if (g.logo_base64) {
+    return '<img src="data:image/png;base64,' + g.logo_base64 + '" style="width:28px;height:28px;border-radius:6px;object-fit:contain;background:#fff;">';
+  }
+  var name = g.institution_name || g.account_name || "?";
+  var initials = name.split(/\s+/).map(function(w) { return w[0]; }).join("").substring(0, 2).toUpperCase();
+  var color = g.primary_color || "#6366f1";
+  return '<div style="width:28px;height:28px;border-radius:6px;background:' + color + ';display:flex;align-items:center;justify-content:center;font-weight:700;font-size:0.7rem;color:#fff;">' + initials + '</div>';
+}
+
+function _renderAccountWidgets(wrap, accounts, grandTotal) {
   if (!wrap) return;
-  _holdingsCache = holdings;
   _holdingsWrapRef = wrap;
+
+  var fmtMoney = function(v) { return v ? "$" + v.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}) : ""; };
+  var collapseState = _getCollapseState();
+
+  if (!accounts || accounts.length === 0) {
+    wrap.innerHTML = '<p class="hint">No holdings yet. Add your first holding below.</p>' + _buildAddRow("");
+    return;
+  }
+
+  var html = "";
+  var allGrandDayPL = 0, allGrandCost = 0, allGrandPL = 0, allGrandTotal = 0;
+
+  accounts.forEach(function(g, gi) {
+    var key = _acctKey(g);
+    var safeKey = key.replace(/[^a-zA-Z0-9]/g, "_");
+    var collapsed = collapseState[key] || false;
+
+    var title = g.institution_name ? (g.institution_name + " \u2013 " + g.account_name) : g.account_name;
+    var sourceBadge = g.source === "plaid" ? '<span style="font-size:0.65rem;background:rgba(99,102,241,0.15);color:#a5b4fc;padding:2px 6px;border-radius:4px;margin-left:8px;">Plaid</span>' : '';
+    var countBadge = '<span style="font-size:0.72rem;color:var(--text-muted);margin-left:8px;">' + g.holdings.length + ' holding' + (g.holdings.length !== 1 ? 's' : '') + '</span>';
+
+    html += '<div style="border:1px solid var(--border-subtle);border-radius:8px;margin-bottom:12px;overflow:hidden;">';
+    html += '<div onclick="_toggleAccountCollapse(\'' + key.replace(/'/g, "\\'") + '\')" style="display:flex;align-items:center;gap:10px;padding:12px 16px;background:var(--surface-raised);cursor:pointer;user-select:none;">';
+    html += '<span id="acct-arrow-' + safeKey + '" style="font-size:0.7rem;color:var(--text-muted);width:12px;">' + (collapsed ? "\u25B6" : "\u25BC") + '</span>';
+    html += _buildAccountLogo(g);
+    html += '<div style="flex:1;min-width:0;">';
+    html += '<span style="font-weight:600;font-size:0.92rem;">' + title + '</span>' + sourceBadge + countBadge;
+    html += '</div>';
+    html += '<span style="font-family:var(--mono);font-weight:600;font-size:0.95rem;color:#58a6ff;">' + fmtMoney(g.subtotal) + '</span>';
+    html += '</div>';
+
+    html += '<div id="acct-body-' + safeKey + '"' + (collapsed ? ' style="display:none;"' : '') + '>';
+    html += _buildAccountTable(g.holdings, g.account_name);
+    html += '</div>';
+    html += '</div>';
+
+    allGrandTotal += g.subtotal;
+  });
+
+  html += _buildAddRow("");
+
+  var gTotals = _computeGrandTotals(accounts);
+  var gdColor = gTotals.dayPL >= 0 ? "var(--success)" : "var(--danger)";
+  var gdSign = gTotals.dayPL >= 0 ? "+" : "";
+  var gpColor = gTotals.pl >= 0 ? "var(--success)" : "var(--danger)";
+  var gpSign = gTotals.pl >= 0 ? "+" : "";
+  var gpPct = gTotals.cost > 0 ? (gTotals.pl / gTotals.cost) * 100 : 0;
+  var gdPct = (allGrandTotal - gTotals.dayPL) > 0 ? (gTotals.dayPL / (allGrandTotal - gTotals.dayPL)) * 100 : 0;
+
+  html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-top:2px solid var(--border-subtle);margin-top:8px;font-weight:700;">';
+  html += '<span style="font-size:0.95rem;">Holdings Total</span>';
+  html += '<div style="display:flex;gap:16px;align-items:center;">';
+  html += '<span style="font-family:var(--mono);color:' + gdColor + ';font-size:0.82rem;">' + gdSign + '$' + Math.abs(gTotals.dayPL).toLocaleString(undefined,{maximumFractionDigits:0}) + ' (' + gdSign + gdPct.toFixed(2) + '%)</span>';
+  html += '<span style="font-family:var(--mono);color:' + gpColor + ';font-size:0.82rem;">' + gpSign + '$' + Math.abs(gTotals.pl).toLocaleString(undefined,{maximumFractionDigits:0}) + (gTotals.cost > 0 ? ' (' + gpSign + gpPct.toFixed(1) + '%)' : '') + '</span>';
+  html += '<span style="font-family:var(--mono);color:#58a6ff;font-size:1.05rem;">' + fmtMoney(allGrandTotal) + '</span>';
+  html += '</div></div>';
+
+  wrap.innerHTML = html;
+
+  wrap.querySelectorAll('select[data-field="bucket"]').forEach(function(sel) {
+    sel.addEventListener("change", function() { _handleBucketCustom(this); });
+  });
+}
+
+function _computeGrandTotals(accounts) {
+  var dayPL = 0, cost = 0, pl = 0;
+  accounts.forEach(function(g) {
+    g.holdings.forEach(function(h) {
+      if (h.price && h.prev_close && h.shares) {
+        dayPL += (h.price - h.prev_close) * h.shares;
+      }
+      var ct = (h.cost_basis && h.shares) ? h.cost_basis * h.shares : 0;
+      if (ct > 0 && (h.total || 0) > 0) {
+        cost += ct;
+        pl += (h.total - ct);
+      }
+    });
+  });
+  return { dayPL: dayPL, cost: cost, pl: pl };
+}
+
+function _buildAccountTable(holdings, acctName) {
   var fmtMoney = function(v) { return v ? "$" + v.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}) : ""; };
   var inputStyle = 'style="background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:4px;color:var(--text-primary);padding:5px 8px;font-size:0.82rem;width:100%;"';
 
@@ -95,24 +210,18 @@ function _renderStockHoldings(wrap, holdings) {
     var aCash = (a.bucket || "").toLowerCase() === "cash" ? 1 : 0;
     var bCash = (b.bucket || "").toLowerCase() === "cash" ? 1 : 0;
     if (aCash !== bCash) return bCash - aCash;
-
     var k = _holdingsSortKey;
     var va, vb;
     if (k === "account" || k === "ticker" || k === "bucket" || k === "notes") {
-      va = (a[k] || "").toLowerCase();
-      vb = (b[k] || "").toLowerCase();
+      va = (a[k] || "").toLowerCase(); vb = (b[k] || "").toLowerCase();
       return va < vb ? -_holdingsSortDir : va > vb ? _holdingsSortDir : 0;
     }
     if (k === "pl_dollar" || k === "pl_pct") {
       var aCost = (a.cost_basis && a.shares) ? a.cost_basis * a.shares : 0;
       var bCost = (b.cost_basis && b.shares) ? b.cost_basis * b.shares : 0;
-      if (k === "pl_dollar") {
-        va = aCost > 0 ? (a.total || 0) - aCost : -Infinity;
-        vb = bCost > 0 ? (b.total || 0) - bCost : -Infinity;
-      } else {
-        va = aCost > 0 ? ((a.total || 0) - aCost) / aCost : -Infinity;
-        vb = bCost > 0 ? ((b.total || 0) - bCost) / bCost : -Infinity;
-      }
+      va = aCost > 0 ? (a.total || 0) - aCost : -Infinity;
+      vb = bCost > 0 ? (b.total || 0) - bCost : -Infinity;
+      if (k === "pl_pct") { va = aCost > 0 ? va/aCost : -Infinity; vb = bCost > 0 ? vb/bCost : -Infinity; }
     } else if (k === "day_dollar" || k === "day_pct") {
       va = (a.price && a.prev_close && a.shares) ? (a.price - a.prev_close) * a.shares : -Infinity;
       vb = (b.price && b.prev_close && b.shares) ? (b.price - b.prev_close) * b.shares : -Infinity;
@@ -120,134 +229,100 @@ function _renderStockHoldings(wrap, holdings) {
         va = (a.price && a.prev_close) ? (a.price - a.prev_close) / a.prev_close : -Infinity;
         vb = (b.price && b.prev_close) ? (b.price - b.prev_close) / b.prev_close : -Infinity;
       }
-    } else {
-      va = a[k] || 0;
-      vb = b[k] || 0;
-    }
+    } else { va = a[k] || 0; vb = b[k] || 0; }
     return (va - vb) * _holdingsSortDir;
   });
 
-  var arrow = function(key) {
-    if (_holdingsSortKey !== key) return ' <span style="opacity:0.3;">&#8597;</span>';
-    return _holdingsSortDir === 1 ? ' &#9650;' : ' &#9660;';
-  };
-  var hthL = 'style="padding:8px 6px;cursor:pointer;user-select:none;white-space:nowrap;text-align:left;"';
-  var hthR = 'style="padding:8px 6px;cursor:pointer;user-select:none;white-space:nowrap;text-align:right;"';
-
   var html = '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:0.82rem;">';
   html += '<thead><tr style="border-bottom:1px solid var(--border-subtle);">';
-  html += '<th ' + hthL + ' onclick="_sortHoldingsBy(\'account\')">Account' + arrow("account") + '</th>';
-  html += '<th ' + hthL + ' onclick="_sortHoldingsBy(\'ticker\')">Ticker' + arrow("ticker") + '</th>';
-  html += '<th ' + hthL + ' onclick="_sortHoldingsBy(\'bucket\')">Class' + arrow("bucket") + '</th>';
-  html += '<th ' + hthR + ' onclick="_sortHoldingsBy(\'shares\')">Qty' + arrow("shares") + '</th>';
-  html += '<th ' + hthR + ' onclick="_sortHoldingsBy(\'cost_basis\')">Cost/Share' + arrow("cost_basis") + '</th>';
-  html += '<th ' + hthR + ' onclick="_sortHoldingsBy(\'price\')">Price' + arrow("price") + '</th>';
-  html += '<th ' + hthR + ' onclick="_sortHoldingsBy(\'total\')">Total' + arrow("total") + '</th>';
-  html += '<th ' + hthR + ' onclick="_sortHoldingsBy(\'day_dollar\')">Day $' + arrow("day_dollar") + '</th>';
-  html += '<th ' + hthR + ' onclick="_sortHoldingsBy(\'day_pct\')">Day %' + arrow("day_pct") + '</th>';
-  html += '<th ' + hthR + ' onclick="_sortHoldingsBy(\'pl_dollar\')">Total $' + arrow("pl_dollar") + '</th>';
-  html += '<th ' + hthR + ' onclick="_sortHoldingsBy(\'pl_pct\')">Total %' + arrow("pl_pct") + '</th>';
-  html += '<th style="padding:8px 6px;">Notes</th>';
-  html += '<th style="padding:8px 4px;width:32px;"></th>';
+  html += '<th style="padding:6px;text-align:left;cursor:pointer;" onclick="_sortHoldingsBy(\'ticker\')">Ticker</th>';
+  html += '<th style="padding:6px;text-align:left;cursor:pointer;" onclick="_sortHoldingsBy(\'bucket\')">Class</th>';
+  html += '<th style="padding:6px;text-align:right;cursor:pointer;" onclick="_sortHoldingsBy(\'shares\')">Qty</th>';
+  html += '<th style="padding:6px;text-align:right;cursor:pointer;" onclick="_sortHoldingsBy(\'cost_basis\')">Cost</th>';
+  html += '<th style="padding:6px;text-align:right;cursor:pointer;" onclick="_sortHoldingsBy(\'price\')">Price</th>';
+  html += '<th style="padding:6px;text-align:right;cursor:pointer;" onclick="_sortHoldingsBy(\'total\')">Total</th>';
+  html += '<th style="padding:6px;text-align:right;cursor:pointer;" onclick="_sortHoldingsBy(\'day_dollar\')">Day $</th>';
+  html += '<th style="padding:6px;text-align:right;cursor:pointer;" onclick="_sortHoldingsBy(\'day_pct\')">Day %</th>';
+  html += '<th style="padding:6px;text-align:right;cursor:pointer;" onclick="_sortHoldingsBy(\'pl_dollar\')">Total $</th>';
+  html += '<th style="padding:6px;text-align:right;cursor:pointer;" onclick="_sortHoldingsBy(\'pl_pct\')">Total %</th>';
+  html += '<th style="padding:6px;">Notes</th><th style="width:28px;"></th>';
   html += '</tr></thead><tbody>';
 
-  var grandTotal = 0;
-  var grandCost = 0;
-  var grandPL = 0;
-  var grandDayPL = 0;
   sorted.forEach(function(h) {
-    grandTotal += (h.total || 0);
     var priceStr = h.price ? fmtMoney(h.price) : "";
     var computedTotal = (h.price && h.shares) ? h.price * h.shares : 0;
-    var isOverridden = h.value_override != null && h.value_override > 0;
-    var totalInputVal = isOverridden ? h.value_override : (computedTotal ? computedTotal.toFixed(2) : "");
-    var totalColor = isOverridden ? "color:var(--warning);" : "";
+    var isOvr = h.value_override != null && h.value_override > 0;
+    var totalVal = isOvr ? h.value_override : (computedTotal ? computedTotal.toFixed(2) : "");
+    var totalColor = isOvr ? "color:var(--warning);" : "";
     var qtyStr = (h.shares !== null && h.shares !== undefined) ? h.shares : "";
-
     var muted = '<span style="color:var(--text-muted);">--</span>';
     var isCash = (h.bucket || "").toLowerCase() === "cash";
-    var dayDollarHtml = muted, dayPctHtml = isCash ? '' : muted;
+
+    var dayDH = muted, dayPH = isCash ? "" : muted;
     if (h.price && h.prev_close && h.shares) {
-      var dayDollar = (h.price - h.prev_close) * h.shares;
-      var dayPct = (h.prev_close > 0) ? ((h.price - h.prev_close) / h.prev_close) * 100 : 0;
-      grandDayPL += dayDollar;
-      var dayColor = dayDollar >= 0 ? "var(--success)" : "var(--danger)";
-      var daySign = dayDollar >= 0 ? "+" : "";
-      dayDollarHtml = isCash ? '' : '<span style="color:' + dayColor + ';font-family:var(--mono);white-space:nowrap;">' + daySign + '$' + Math.abs(dayDollar).toLocaleString(undefined, {minimumFractionDigits:0, maximumFractionDigits:0}) + '</span>';
-      dayPctHtml = isCash ? '' : '<span style="color:' + dayColor + ';font-family:var(--mono);white-space:nowrap;">' + daySign + dayPct.toFixed(2) + '%</span>';
+      var dd = (h.price - h.prev_close) * h.shares;
+      var dp = h.prev_close > 0 ? ((h.price - h.prev_close) / h.prev_close) * 100 : 0;
+      var dc = dd >= 0 ? "var(--success)" : "var(--danger)";
+      var ds = dd >= 0 ? "+" : "";
+      dayDH = isCash ? "" : '<span style="color:' + dc + ';font-family:var(--mono);white-space:nowrap;">' + ds + "$" + Math.abs(dd).toLocaleString(undefined,{maximumFractionDigits:0}) + '</span>';
+      dayPH = isCash ? "" : '<span style="color:' + dc + ';font-family:var(--mono);white-space:nowrap;">' + ds + dp.toFixed(2) + '%</span>';
     }
 
-    var costTotal = (h.cost_basis && h.shares) ? h.cost_basis * h.shares : 0;
-    var currentVal = h.total || 0;
-    var plDollarHtml = isCash ? '' : muted, plPctHtml = isCash ? '' : muted;
-    if (!isCash && costTotal > 0 && currentVal > 0) {
-      var plDollar = currentVal - costTotal;
-      var plPct = (plDollar / costTotal) * 100;
-      grandCost += costTotal;
-      grandPL += plDollar;
-      var plColor = plDollar >= 0 ? "var(--success)" : "var(--danger)";
-      var plSign = plDollar >= 0 ? "+" : "";
-      plDollarHtml = '<span style="color:' + plColor + ';font-family:var(--mono);white-space:nowrap;">' + plSign + '$' + Math.abs(plDollar).toLocaleString(undefined, {minimumFractionDigits:0, maximumFractionDigits:0}) + '</span>';
-      plPctHtml = '<span style="color:' + plColor + ';font-family:var(--mono);white-space:nowrap;">' + plSign + plPct.toFixed(1) + '%</span>';
+    var ct = (h.cost_basis && h.shares) ? h.cost_basis * h.shares : 0;
+    var cv = h.total || 0;
+    var plDH = isCash ? "" : muted, plPH = isCash ? "" : muted;
+    if (!isCash && ct > 0 && cv > 0) {
+      var pld = cv - ct; var plp = (pld / ct) * 100;
+      var plc = pld >= 0 ? "var(--success)" : "var(--danger)";
+      var pls = pld >= 0 ? "+" : "";
+      plDH = '<span style="color:' + plc + ';font-family:var(--mono);white-space:nowrap;">' + pls + '$' + Math.abs(pld).toLocaleString(undefined,{maximumFractionDigits:0}) + '</span>';
+      plPH = '<span style="color:' + plc + ';font-family:var(--mono);white-space:nowrap;">' + pls + plp.toFixed(1) + '%</span>';
     }
+
+    var noteVal = (h.notes || "").replace(/"/g, "&quot;");
     html += '<tr data-hid="' + h.id + '" data-computed="' + computedTotal.toFixed(2) + '">';
-    html += '<td style="padding:4px 4px;"><input type="text" data-field="account" value="' + (h.account || "") + '" ' + inputStyle + '></td>';
-    html += '<td style="padding:4px 4px;"><input type="text" data-field="ticker" value="' + (h.ticker || "") + '" ' + inputStyle + '></td>';
+    html += '<td style="padding:4px 6px;"><input type="text" data-field="ticker" value="' + (h.ticker || "") + '" ' + inputStyle + '><input type="hidden" data-field="account" value="' + (h.account || acctName || "") + '"></td>';
     html += '<td style="padding:4px 4px;">' + _buildBucketSelect(h.bucket || "", false) + '</td>';
     html += '<td style="padding:4px 4px;"><input type="text" data-field="shares" value="' + qtyStr + '" class="num" ' + inputStyle + '></td>';
     html += '<td style="padding:4px 4px;"><input type="text" inputmode="decimal" data-field="cost_basis" value="' + (h.cost_basis || "") + '" class="num" ' + inputStyle + '></td>';
-    html += '<td style="padding:8px 6px;text-align:right;color:var(--text-muted);font-family:var(--mono);white-space:nowrap;">' + priceStr + '</td>';
-    html += '<td style="padding:4px 4px;"><input type="text" data-field="total_edit" value="' + totalInputVal + '" class="num" style="background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:4px;' + totalColor + 'padding:5px 8px;font-size:0.82rem;width:100%;font-family:var(--mono);font-weight:600;"></td>';
-    html += '<td style="padding:8px 6px;text-align:right;">' + dayDollarHtml + '</td>';
-    html += '<td style="padding:8px 6px;text-align:right;">' + dayPctHtml + '</td>';
-    html += '<td style="padding:8px 6px;text-align:right;">' + plDollarHtml + '</td>';
-    html += '<td style="padding:8px 6px;text-align:right;">' + plPctHtml + '</td>';
-    var noteVal = (h.notes || "").replace(/"/g, "&quot;");
-    html += '<td style="padding:4px 4px;position:relative;"><input type="text" data-field="notes" value="' + noteVal + '" title="' + noteVal + '" ' + inputStyle.replace('width:100%', 'width:100%;text-overflow:ellipsis') + ' onfocus="this.style.position=\'absolute\';this.style.zIndex=\'10\';this.style.width=\'320px\';this.style.minWidth=\'320px\';" onblur="this.style.position=\'\';this.style.zIndex=\'\';this.style.width=\'100%\';this.style.minWidth=\'\';" ></td>';
-    html += '<td style="padding:4px 4px;text-align:center;"><button type="button" onclick="deleteHolding(' + h.id + ')" title="Delete" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:1rem;padding:2px 6px;border-radius:4px;" onmouseover="this.style.color=\'var(--danger)\'" onmouseout="this.style.color=\'var(--text-muted)\'">&times;</button></td>';
+    html += '<td style="padding:6px;text-align:right;color:var(--text-muted);font-family:var(--mono);white-space:nowrap;">' + priceStr + '</td>';
+    html += '<td style="padding:4px 4px;"><input type="text" data-field="total_edit" value="' + totalVal + '" class="num" style="background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:4px;' + totalColor + 'padding:5px 8px;font-size:0.82rem;width:100%;font-family:var(--mono);font-weight:600;"></td>';
+    html += '<td style="padding:6px;text-align:right;">' + dayDH + '</td>';
+    html += '<td style="padding:6px;text-align:right;">' + dayPH + '</td>';
+    html += '<td style="padding:6px;text-align:right;">' + plDH + '</td>';
+    html += '<td style="padding:6px;text-align:right;">' + plPH + '</td>';
+    html += '<td style="padding:4px 4px;"><input type="text" data-field="notes" value="' + noteVal + '" title="' + noteVal + '" style="background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:4px;color:var(--text-primary);padding:5px 8px;font-size:0.82rem;width:100%;text-overflow:ellipsis;"></td>';
+    html += '<td style="padding:4px;text-align:center;"><button type="button" onclick="deleteHolding(' + h.id + ')" title="Delete" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:1rem;" onmouseover="this.style.color=\'var(--danger)\'" onmouseout="this.style.color=\'var(--text-muted)\'">&times;</button></td>';
     html += '</tr>';
   });
 
-  html += '<tr>';
-  html += '<td style="padding:4px 4px;"><input type="text" data-field="account" placeholder="Account" ' + inputStyle + '></td>';
-  html += '<td style="padding:4px 4px;"><input type="text" data-field="ticker" placeholder="Ticker" style="text-transform:uppercase;background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:4px;color:var(--text-primary);padding:5px 8px;font-size:0.82rem;width:100%;"></td>';
-  html += '<td style="padding:4px 4px;">' + _buildBucketSelect("", true) + '</td>';
-  html += '<td style="padding:4px 4px;"><input type="text" data-field="shares" placeholder="Qty" class="num" ' + inputStyle + '></td>';
-  html += '<td style="padding:4px 4px;"><input type="text" inputmode="decimal" data-field="cost_basis" placeholder="Cost/Share" class="num" ' + inputStyle + '></td>';
-  html += '<td></td>';
-  html += '<td style="padding:4px 4px;"><input type="text" data-field="total_edit" placeholder="Total" class="num" ' + inputStyle + '></td>';
-  html += '<td></td><td></td><td></td><td></td>';
-  html += '<td style="padding:4px 4px;position:relative;"><input type="text" data-field="notes" placeholder="Notes" ' + inputStyle.replace('width:100%', 'width:100%;text-overflow:ellipsis') + ' onfocus="this.style.position=\'absolute\';this.style.zIndex=\'10\';this.style.width=\'320px\';this.style.minWidth=\'320px\';" onblur="this.style.position=\'\';this.style.zIndex=\'\';this.style.width=\'100%\';this.style.minWidth=\'\';" ></td>';
-  html += '<td></td>';
-  html += '</tr>';
-
-  var grandDayColor = grandDayPL >= 0 ? "var(--success)" : "var(--danger)";
-  var grandDaySign = grandDayPL >= 0 ? "+" : "";
-
-  var grandPLColor = grandPL >= 0 ? "var(--success)" : "var(--danger)";
-  var grandPLSign = grandPL >= 0 ? "+" : "";
-  var grandPLPct = grandCost > 0 ? (grandPL / grandCost) * 100 : 0;
-
-  html += '<tr style="font-weight:600;border-top:2px solid var(--border-subtle);">';
-  html += '<td colspan="5" style="padding:8px 6px;">Holdings Total</td>';
-  html += '<td></td>';
-  var grandPrevTotal = grandTotal - grandDayPL;
-  var grandDayPct = grandPrevTotal > 0 ? (grandDayPL / grandPrevTotal) * 100 : 0;
-
-  html += '<td style="padding:8px 6px;text-align:right;color:#58a6ff;font-family:var(--mono);">' + fmtMoney(grandTotal) + '</td>';
-  html += '<td style="padding:8px 6px;text-align:right;"><span style="color:' + grandDayColor + ';font-family:var(--mono);">' + grandDaySign + '$' + Math.abs(grandDayPL).toLocaleString(undefined, {minimumFractionDigits:0, maximumFractionDigits:0}) + '</span></td>';
-  html += '<td style="padding:8px 6px;text-align:right;"><span style="color:' + grandDayColor + ';font-family:var(--mono);">' + grandDaySign + grandDayPct.toFixed(2) + '%</span></td>';
-  html += '<td style="padding:8px 6px;text-align:right;"><span style="color:' + grandPLColor + ';font-family:var(--mono);">' + grandPLSign + '$' + Math.abs(grandPL).toLocaleString(undefined, {minimumFractionDigits:0, maximumFractionDigits:0}) + '</span></td>';
-  html += '<td style="padding:8px 6px;text-align:right;">' + (grandCost > 0 ? '<span style="color:' + grandPLColor + ';font-family:var(--mono);">' + grandPLSign + grandPLPct.toFixed(1) + '%</span>' : '') + '</td>';
-  html += '<td colspan="2"></td>';
-  html += '</tr>';
-
   html += '</tbody></table></div>';
-  wrap.innerHTML = html;
+  return html;
+}
 
-  wrap.querySelectorAll('select[data-field="bucket"]').forEach(function(sel) {
-    sel.addEventListener("change", function() { _handleBucketCustom(this); });
-  });
+function _buildAddRow(acctName) {
+  var inputStyle = 'style="background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:4px;color:var(--text-primary);padding:5px 8px;font-size:0.82rem;width:100%;"';
+  var html = '<div style="overflow-x:auto;margin-top:8px;"><table style="width:100%;border-collapse:collapse;font-size:0.82rem;"><tbody>';
+  html += '<tr>';
+  html += '<td style="padding:4px;"><input type="text" data-field="account" placeholder="Account" value="' + (acctName || "") + '" ' + inputStyle + '></td>';
+  html += '<td style="padding:4px;"><input type="text" data-field="ticker" placeholder="Ticker" style="text-transform:uppercase;background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:4px;color:var(--text-primary);padding:5px 8px;font-size:0.82rem;width:100%;"></td>';
+  html += '<td style="padding:4px;">' + _buildBucketSelect("", true) + '</td>';
+  html += '<td style="padding:4px;"><input type="text" data-field="shares" placeholder="Qty" class="num" ' + inputStyle + '></td>';
+  html += '<td style="padding:4px;"><input type="text" inputmode="decimal" data-field="cost_basis" placeholder="Cost" class="num" ' + inputStyle + '></td>';
+  html += '<td></td>';
+  html += '<td style="padding:4px;"><input type="text" data-field="total_edit" placeholder="Total" class="num" ' + inputStyle + '></td>';
+  html += '<td colspan="5"><input type="text" data-field="notes" placeholder="Notes" ' + inputStyle + '></td>';
+  html += '</tr>';
+  html += '</tbody></table></div>';
+  return html;
+}
+
+function _renderStockHoldings(wrap, holdings) {
+  _holdingsCache = holdings;
+  _holdingsWrapRef = wrap;
+  if (_accountsData) {
+    _renderAccountWidgets(wrap, _accountsData, 0);
+  }
 }
 
 function _fmtCryptoQty(qty) {

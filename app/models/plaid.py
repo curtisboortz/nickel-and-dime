@@ -16,6 +16,8 @@ class PlaidItem(db.Model):
     access_token = db.Column(db.Text, nullable=False)
     institution_id = db.Column(db.String(80), default="")
     institution_name = db.Column(db.String(200), default="")
+    logo_base64 = db.Column(db.Text, nullable=True)
+    primary_color = db.Column(db.String(20), default="")
     products = db.Column(db.JSON, default=list)
     status = db.Column(db.String(30), default="good")
     error_code = db.Column(db.String(80), nullable=True)

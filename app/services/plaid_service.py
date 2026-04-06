@@ -19,8 +19,13 @@ from plaid.model.item_public_token_exchange_request import (
     ItemPublicTokenExchangeRequest,
 )
 from plaid.model.item_remove_request import ItemRemoveRequest
+from plaid.model.institutions_get_by_id_request import (
+    InstitutionsGetByIdRequest,
+)
 from plaid.model.link_token_create_request import LinkTokenCreateRequest
-from plaid.model.link_token_create_request_user import LinkTokenCreateRequestUser
+from plaid.model.link_token_create_request_user import (
+    LinkTokenCreateRequestUser,
+)
 from plaid.model.products import Products
 from plaid.model.transactions_sync_request import TransactionsSyncRequest
 
@@ -119,18 +124,45 @@ def exchange_public_token(user_id: int, public_token: str, metadata: dict) -> Pl
 
     institution = metadata.get("institution", {})
 
+    inst_id = institution.get("institution_id", "")
     item = PlaidItem(
         user_id=user_id,
         item_id=item_id,
         access_token=encrypt(access_token),
-        institution_id=institution.get("institution_id", ""),
+        institution_id=inst_id,
         institution_name=institution.get("name", ""),
         products=["investments", "transactions"],
         status="good",
     )
+
+    if inst_id:
+        try:
+            branding = _fetch_institution_branding(client, inst_id)
+            item.logo_base64 = branding.get("logo")
+            item.primary_color = branding.get("primary_color", "")
+        except Exception as e:
+            log.warning("Could not fetch branding for %s: %s", inst_id, e)
+
     db.session.add(item)
     db.session.commit()
     return item
+
+
+def _fetch_institution_branding(
+    client: plaid_api.PlaidApi, institution_id: str
+) -> dict:
+    """Fetch logo and primary_color from Plaid for an institution."""
+    req = InstitutionsGetByIdRequest(
+        institution_id=institution_id,
+        country_codes=[CountryCode("US")],
+        options={"include_optional_metadata": True},
+    )
+    resp = client.institutions_get_by_id(req).to_dict()
+    inst = resp.get("institution", {})
+    return {
+        "logo": inst.get("logo"),
+        "primary_color": inst.get("primary_color", ""),
+    }
 
 
 def remove_item(item: PlaidItem):
@@ -180,14 +212,20 @@ def sync_investments(user_id: int, plaid_item: PlaidItem) -> dict:
             continue
 
         ticker = security.get("ticker_symbol") or ""
-        if not ticker or ticker == "CUR:USD":
+        if ticker == "CUR:USD":
             continue
 
         quantity = h.get("quantity", 0) or 0
         cost_basis = h.get("cost_basis") or None
+        inst_value = h.get("institution_value") or None
         account = accounts_map.get(h.get("account_id"), {})
         account_name = account.get("name", "")
         sec_type = (security.get("type") or "").lower()
+        sec_name = security.get("name") or ""
+
+        if not ticker:
+            slug = sec_name[:20].upper().replace(" ", "_") or "PRIV"
+            ticker = f"PRIV:{slug}"
 
         if sec_type == "cryptocurrency" or ticker.upper() in CRYPTO_TICKERS:
             sym = ticker.upper().replace("CUR:", "")
@@ -210,8 +248,9 @@ def sync_investments(user_id: int, plaid_item: PlaidItem) -> dict:
             continue
 
         ticker = ticker.upper()
+        is_private = ticker.startswith("PRIV:")
         seen_tickers.add((ticker, account_name))
-        bucket = detect_bucket(ticker, security.get("name", ""))
+        bucket = detect_bucket(ticker, sec_name) if not is_private else "Alternatives"
 
         existing = Holding.query.filter_by(
             user_id=user_id, ticker=ticker, account=account_name,
@@ -223,11 +262,16 @@ def sync_investments(user_id: int, plaid_item: PlaidItem) -> dict:
             if cost_basis is not None:
                 existing.cost_basis = cost_basis
             existing.bucket = bucket
+            if is_private and inst_value:
+                existing.value_override = inst_value
         else:
             db.session.add(Holding(
                 user_id=user_id, ticker=ticker, shares=quantity,
                 cost_basis=cost_basis, account=account_name,
-                bucket=bucket, source="plaid", plaid_item_id=plaid_item.id,
+                bucket=bucket, source="plaid",
+                plaid_item_id=plaid_item.id,
+                value_override=inst_value if is_private else None,
+                notes=sec_name if is_private else "",
             ))
         synced += 1
 

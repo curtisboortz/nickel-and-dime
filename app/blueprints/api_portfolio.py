@@ -69,22 +69,52 @@ def _fetch_and_cache(symbol):
 @login_required
 @requires_pro
 def get_holdings():
-    """Return all holdings with live prices for the current user. Pro only."""
-    holdings = Holding.query.filter_by(user_id=current_user.id).all()
-    crypto = CryptoHolding.query.filter_by(user_id=current_user.id).all()
-    metals = PhysicalMetal.query.filter_by(user_id=current_user.id).all()
+    """Return holdings grouped by account with institution metadata."""
+    from ..models.plaid import PlaidItem
 
-    stock_symbols = list({h.ticker for h in holdings if h.ticker})
-    cg_keys = list({f"CG:{c.coingecko_id}" for c in crypto if c.coingecko_id})
+    holdings = Holding.query.filter_by(
+        user_id=current_user.id
+    ).all()
+    crypto = CryptoHolding.query.filter_by(
+        user_id=current_user.id
+    ).all()
+    metals = PhysicalMetal.query.filter_by(
+        user_id=current_user.id
+    ).all()
+
+    stock_symbols = list(
+        {h.ticker for h in holdings if h.ticker}
+    )
+    cg_keys = list(
+        {f"CG:{c.coingecko_id}" for c in crypto if c.coingecko_id}
+    )
     all_symbols = stock_symbols + cg_keys
     price_cache = {}
     if all_symbols:
-        rows = PriceCache.query.filter(PriceCache.symbol.in_(all_symbols)).all()
+        rows = PriceCache.query.filter(
+            PriceCache.symbol.in_(all_symbols)
+        ).all()
         price_cache = {r.symbol: r for r in rows}
 
-    holdings_out = []
+    plaid_ids = {
+        h.plaid_item_id for h in holdings if h.plaid_item_id
+    }
+    plaid_map = {}
+    if plaid_ids:
+        items = PlaidItem.query.filter(
+            PlaidItem.id.in_(plaid_ids)
+        ).all()
+        plaid_map = {p.id: p for p in items}
+
+    groups = {}
+    holdings_flat = []
+    grand_total = 0.0
+
     for h in holdings:
-        entry = price_cache.get(h.ticker) or _fetch_and_cache(h.ticker)
+        entry = (
+            price_cache.get(h.ticker)
+            or _fetch_and_cache(h.ticker)
+        )
         price = entry.price if entry else None
         prev_close = entry.prev_close if entry else None
         qty = h.shares or 0
@@ -95,34 +125,94 @@ def get_holdings():
             total = price * qty
         else:
             total = 0
-        holdings_out.append({
-            "id": h.id, "ticker": h.ticker, "shares": h.shares,
-            "bucket": _normalize_bucket(h.bucket), "account": h.account,
-            "value_override": h.value_override, "notes": h.notes,
+        grand_total += total
+
+        h_dict = {
+            "id": h.id, "ticker": h.ticker,
+            "shares": h.shares,
+            "bucket": _normalize_bucket(h.bucket),
+            "account": h.account,
+            "value_override": h.value_override,
+            "notes": h.notes,
             "cost_basis": h.cost_basis,
-            "price": price, "prev_close": prev_close, "total": total,
-        })
+            "source": h.source or "manual",
+            "price": price, "prev_close": prev_close,
+            "total": total,
+        }
+        holdings_flat.append(h_dict)
+
+        gkey = (h.account or "", h.plaid_item_id)
+        if gkey not in groups:
+            pi = plaid_map.get(h.plaid_item_id)
+            groups[gkey] = {
+                "account_name": h.account or "Unassigned",
+                "institution_name": (
+                    pi.institution_name if pi else None
+                ),
+                "institution_id": (
+                    pi.institution_id if pi else None
+                ),
+                "logo_base64": (
+                    pi.logo_base64
+                    if pi and hasattr(pi, "logo_base64")
+                    else None
+                ),
+                "primary_color": (
+                    pi.primary_color
+                    if pi and hasattr(pi, "primary_color")
+                    else None
+                ),
+                "source": h.source or "manual",
+                "plaid_item_id": h.plaid_item_id,
+                "holdings": [],
+                "subtotal": 0.0,
+            }
+        groups[gkey]["holdings"].append(h_dict)
+        groups[gkey]["subtotal"] += total
+
+    accounts_out = sorted(
+        groups.values(),
+        key=lambda g: (
+            0 if g["source"] == "plaid" else 1,
+            (g["institution_name"] or "").lower(),
+            (g["account_name"] or "").lower(),
+        ),
+    )
 
     crypto_out = []
     for c in crypto:
-        cg_key = f"CG:{c.coingecko_id}" if c.coingecko_id else None
+        cg_key = (
+            f"CG:{c.coingecko_id}" if c.coingecko_id
+            else None
+        )
         entry = price_cache.get(cg_key) if cg_key else None
-        price = entry.price if entry and entry.price else None
+        price = (
+            entry.price if entry and entry.price else None
+        )
         qty = c.quantity or 0
         value = price * qty if price else 0
         crypto_out.append({
-            "id": c.id, "symbol": c.symbol, "quantity": c.quantity,
+            "id": c.id, "symbol": c.symbol,
+            "quantity": c.quantity,
             "coingecko_id": c.coingecko_id,
             "source": c.source or "manual",
             "price": price, "value": value,
         })
 
     return jsonify({
-        "holdings": holdings_out,
+        "accounts": accounts_out,
+        "holdings": holdings_flat,
         "crypto": crypto_out,
-        "metals": [{"id": m.id, "metal": m.metal, "oz": m.oz,
-                     "purchase_price": m.purchase_price, "description": m.description}
-                    for m in metals],
+        "metals": [
+            {
+                "id": m.id, "metal": m.metal,
+                "oz": m.oz,
+                "purchase_price": m.purchase_price,
+                "description": m.description,
+            }
+            for m in metals
+        ],
+        "grand_total": grand_total,
         "limit": None,
         "total_count": len(holdings) + len(crypto),
     })

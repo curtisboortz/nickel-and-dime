@@ -27,6 +27,10 @@ class UserSettings(db.Model):
     # Category rollup overrides -- {child: parent_or_null}
     bucket_rollup = db.Column(db.JSON, default=dict)
 
+    # Onboarding
+    onboarding_completed = db.Column(
+        db.Boolean, default=False)
+
     # External links
     links = db.Column(db.JSON, default=dict)
 

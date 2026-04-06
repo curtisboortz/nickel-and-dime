@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Blog — Nickel&amp;Dime{% endblock %}
+{% block meta_description %}Macro investing, portfolio strategy, and personal finance insights from Nickel&amp;Dime.{% endblock %}
+{% block og_title %}Blog — Nickel&amp;Dime{% endblock %}
+
+{% block head_extra %}
+<link rel="alternate" type="application/rss+xml" title="Nickel&amp;Dime Blog" href="/blog/feed.xml">
+{% endblock %}
+
+{% block body %}
+<div style="max-width:800px;margin:0 auto;padding:40px 20px;">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:32px;">
+    <div>
+      <a href="/" style="color:var(--accent-primary);text-decoration:none;font-weight:600;">← Back to Dashboard</a>
+      <h1 style="font-size:1.8rem;margin:12px 0 4px;">Blog</h1>
+      <p style="color:var(--text-muted);font-size:0.9rem;">Macro investing, portfolio strategy, and personal finance insights.</p>
+    </div>
+    <a href="/blog/feed.xml" style="color:var(--text-muted);text-decoration:none;font-size:0.78rem;border:1px solid var(--border-subtle);padding:6px 12px;border-radius:var(--radius);">RSS</a>
+  </div>
+
+  {% if not posts %}
+  <div style="text-align:center;padding:60px 20px;color:var(--text-muted);">
+    <div style="font-size:2.5rem;margin-bottom:12px;">&#128221;</div>
+    <p style="font-size:1rem;">No posts yet. Check back soon!</p>
+  </div>
+  {% endif %}
+
+  <div style="display:flex;flex-direction:column;gap:20px;">
+    {% for post in posts %}
+    <a href="/blog/{{ post.slug }}" style="text-decoration:none;display:block;padding:20px;border:1px solid var(--border-subtle);border-radius:var(--radius);transition:border-color 0.15s;" onmouseover="this.style.borderColor='var(--accent-primary)'" onmouseout="this.style.borderColor='var(--border-subtle)'">
+      <h2 style="font-size:1.1rem;margin:0 0 6px;color:var(--text-primary);">{{ post.title }}</h2>
+      {% if post.excerpt %}
+      <p style="color:var(--text-muted);font-size:0.85rem;margin:0 0 8px;line-height:1.5;">{{ post.excerpt }}</p>
+      {% endif %}
+      <span style="font-size:0.75rem;color:var(--text-muted);">{{ post.created_at.strftime('%B %d, %Y') if post.created_at }}</span>
+    </a>
+    {% endfor %}
+  </div>
+
+  {% if pagination.pages > 1 %}
+  <div style="display:flex;justify-content:center;gap:8px;margin-top:32px;">
+    {% if pagination.has_prev %}
+    <a href="/blog?page={{ pagination.prev_num }}" style="padding:8px 16px;border:1px solid var(--border-subtle);border-radius:var(--radius);text-decoration:none;color:var(--text-primary);">← Prev</a>
+    {% endif %}
+    <span style="padding:8px 16px;color:var(--text-muted);">Page {{ pagination.page }} of {{ pagination.pages }}</span>
+    {% if pagination.has_next %}
+    <a href="/blog?page={{ pagination.next_num }}" style="padding:8px 16px;border:1px solid var(--border-subtle);border-radius:var(--radius);text-decoration:none;color:var(--text-primary);">Next →</a>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

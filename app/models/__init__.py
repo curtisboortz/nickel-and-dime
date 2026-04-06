@@ -10,3 +10,5 @@ from .market import PriceCache, FredCache, EconCalendarCache, SentimentCache  # 
 from .settings import UserSettings, CustomPulseCard, PriceAlert, FinancialGoal, MonthlyInvestment  # noqa: F401
 from .snapshot import PortfolioSnapshot  # noqa: F401
 from .plaid import PlaidItem  # noqa: F401
+from .referral import ReferralCode, ReferralRedemption  # noqa: F401
+from .blog import BlogPost  # noqa: F401

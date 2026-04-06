@@ -11,6 +11,7 @@ function openSettingsModal() {
   _loadIntegrationStatus();
   _loadPlaidAccounts();
   _loadBucketRollup();
+  _loadReferralCode();
 }
 
 function closeSettingsModal() {
@@ -304,6 +305,59 @@ function saveBucketRollup() {
     if (btn) { btn.disabled = false; btn.textContent = "Save Grouping"; }
     alert("Failed to save category grouping.");
   });
+}
+
+/* ── Referral Program ── */
+function _loadReferralCode() {
+  fetch("/api/referral/stats")
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      var el = document.getElementById("referral-code-display");
+      if (el) el.value = d.code || "—";
+      var cnt = document.getElementById("referral-count");
+      if (cnt) cnt.textContent = d.total_referrals || 0;
+      var cred = document.getElementById("referral-credits");
+      if (cred) cred.textContent = d.credits_earned || 0;
+    })
+    .catch(function() {});
+}
+
+function copyReferralCode() {
+  var el = document.getElementById("referral-code-display");
+  if (!el || !el.value) return;
+  navigator.clipboard.writeText(el.value).then(function() {
+    var btn = document.getElementById("referral-copy-btn");
+    if (btn) {
+      btn.textContent = "Copied!";
+      setTimeout(function() { btn.textContent = "Copy"; }, 2000);
+    }
+  });
+}
+
+function redeemReferral() {
+  var input = document.getElementById("referral-redeem-input");
+  var msg = document.getElementById("referral-msg");
+  if (!input || !input.value.trim()) return;
+  fetch("/api/referral/redeem", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ code: input.value.trim() }),
+  })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (msg) {
+        msg.textContent = d.message || d.error || "";
+        msg.style.color = d.success
+          ? "var(--success)" : "var(--danger)";
+      }
+      if (d.success) { input.value = ""; _loadReferralCode(); }
+    })
+    .catch(function() {
+      if (msg) {
+        msg.textContent = "Network error";
+        msg.style.color = "var(--danger)";
+      }
+    });
 }
 
 (function _autoInitTab() {

@@ -207,6 +207,10 @@ def dashboard_page(tab="summary"):
     custom_cards = CustomPulseCard.query.filter_by(
         user_id=current_user.id
     ).order_by(CustomPulseCard.position).all()
+    show_onboarding = (
+        us is None
+        or not getattr(us, "onboarding_completed", False)
+    )
     return render_template(
         "dashboard/layout.html",
         active_tab=tab,
@@ -216,6 +220,7 @@ def dashboard_page(tab="summary"):
         pulse_size=pulse_size,
         pulse_order=pulse_order,
         custom_pulse_cards=custom_cards,
+        show_onboarding=show_onboarding,
     )
 
 

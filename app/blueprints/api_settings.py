@@ -126,3 +126,19 @@ def trigger_coinbase_sync():
     if "error" in result:
         return jsonify(result), 400
     return jsonify({"success": True, **result})
+
+
+@api_settings_bp.route(
+    "/settings/onboarding-complete", methods=["POST"]
+)
+@login_required
+def mark_onboarding_complete():
+    """Mark the current user's onboarding as done."""
+    settings = UserSettings.query.filter_by(
+        user_id=current_user.id).first()
+    if not settings:
+        settings = UserSettings(user_id=current_user.id)
+        db.session.add(settings)
+    settings.onboarding_completed = True
+    db.session.commit()
+    return jsonify({"success": True})

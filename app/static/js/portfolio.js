@@ -976,4 +976,305 @@ function loadTLH() {
 }
 loadTLH();
 
+/* ── AI Portfolio Insights ── */
+var _insightsLoaded = false;
+
+function loadInsights() {
+  if (_insightsLoaded) return;
+  _insightsLoaded = true;
+  fetch("/api/insights")
+    .then(function(r) { return r.json(); })
+    .then(function(d) { _renderInsights(d); })
+    .catch(function() {});
+}
+
+function _renderInsights(d) {
+  var rs = d.risk_score || {};
+  var el = document.getElementById("ins-risk-score");
+  if (el) {
+    el.textContent = rs.score;
+    var hue = Math.round(120 - rs.score * 1.2);
+    el.style.color = "hsl(" + hue + ",70%,55%)";
+  }
+  var rl = document.getElementById("ins-risk-label");
+  if (rl) rl.textContent = rs.label || "";
+
+  var vol = document.getElementById("ins-vol");
+  if (vol) vol.textContent = (rs.vol || 0) + "%";
+
+  var dr = d.diversification_ratio || {};
+  var dre = document.getElementById("ins-div-ratio");
+  if (dre) dre.textContent = (dr.ratio || 1) + "x";
+  var dl = document.getElementById("ins-div-label");
+  if (dl) dl.textContent = dr.label || "";
+
+  var bc = document.getElementById("ins-buckets");
+  if (bc) {
+    bc.textContent = (
+      d.concentration ? d.concentration.bucket_count : 0
+    );
+  }
+
+  var wc = document.getElementById("ins-warnings");
+  if (wc && d.concentration) {
+    var warns = d.concentration.warnings || [];
+    if (warns.length === 0) {
+      wc.innerHTML =
+        '<div style="padding:8px 12px;background:' +
+        'rgba(74,222,128,0.08);border-radius:var(--radius)' +
+        ';font-size:0.82rem;color:var(--success);">' +
+        "No concentration warnings — well diversified." +
+        "</div>";
+    } else {
+      var whtml = "";
+      warns.forEach(function(w) {
+        var col = w.severity === "high"
+          ? "var(--danger)" : "var(--warning)";
+        var bg = w.severity === "high"
+          ? "rgba(248,113,113,0.08)"
+          : "rgba(251,191,36,0.08)";
+        whtml +=
+          '<div style="padding:8px 12px;background:' +
+          bg + ";border-radius:var(--radius);" +
+          "font-size:0.82rem;color:" + col +
+          ";margin-bottom:6px;" +
+          '">' + _esc(w.msg) + "</div>";
+      });
+      wc.innerHTML = whtml;
+    }
+  }
+
+  _renderCorrMatrix(d.correlation_matrix);
+  _renderSummaries(d.summaries);
+}
+
+function _renderCorrMatrix(cm) {
+  var el = document.getElementById("ins-corr-matrix");
+  if (!el || !cm) return;
+  var buckets = cm.buckets || [];
+  var vals = cm.values || {};
+  if (buckets.length === 0) {
+    el.innerHTML =
+      '<span class="hint">Not enough data.</span>';
+    return;
+  }
+  var html = '<table style="font-size:0.72rem;' +
+    'border-collapse:collapse;width:100%;">';
+  html += "<thead><tr><th></th>";
+  buckets.forEach(function(b) {
+    var short = b.length > 6 ? b.substr(0, 5) + "…" : b;
+    html += '<th style="padding:4px;text-align:center;' +
+      'font-weight:500;writing-mode:vertical-lr;' +
+      'transform:rotate(180deg);height:60px;">' +
+      _esc(short) + "</th>";
+  });
+  html += "</tr></thead><tbody>";
+  buckets.forEach(function(a) {
+    html += "<tr>";
+    html += '<td style="padding:4px;font-weight:500;' +
+      'white-space:nowrap;">' + _esc(a) + "</td>";
+    buckets.forEach(function(b) {
+      var v = vals[a] ? vals[a][b] : 0;
+      var absV = Math.abs(v);
+      var r = v < 0 ? 100 : Math.round(60 + absV * 40);
+      var g = v > 0 ? 180 : Math.round(80 + (1 - absV) * 100);
+      var bx = v < 0 ? Math.round(200 + absV * 55) : 100;
+      var alpha = a === b ? 0.35 : 0.15 + absV * 0.45;
+      html +=
+        '<td style="padding:4px;text-align:center;' +
+        "background:rgba(" + r + "," + g + "," + bx +
+        "," + alpha.toFixed(2) + ');">' +
+        v.toFixed(2) + "</td>";
+    });
+    html += "</tr>";
+  });
+  html += "</tbody></table>";
+  el.innerHTML = html;
+}
+
+function _renderSummaries(items) {
+  var ul = document.getElementById("ins-summaries");
+  if (!ul || !items) return;
+  var html = "";
+  items.forEach(function(s) {
+    html +=
+      '<li style="padding:8px 12px;background:' +
+      "var(--surface-raised);border-radius:var(--radius)" +
+      ';font-size:0.82rem;line-height:1.5;">' +
+      _esc(s) + "</li>";
+  });
+  ul.innerHTML = html;
+}
+
+loadInsights();
+
+/* ── Allocation Templates ── */
+var _templatesChart = null;
+var _templatesLoaded = false;
+
+function loadTemplates() {
+  if (_templatesLoaded) return;
+  _templatesLoaded = true;
+  var sel = document.getElementById("templates-selector");
+  if (!sel) return;
+  fetch("/api/templates")
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      var tpls = d.templates || [];
+      sel.innerHTML = "";
+      tpls.forEach(function(t) {
+        var btn = document.createElement("button");
+        btn.type = "button";
+        btn.textContent = t.name;
+        btn.className = "tpl-btn";
+        btn.dataset.id = t.id;
+        btn.style.cssText =
+          "padding:6px 14px;font-size:0.8rem;border-radius:" +
+          "var(--radius);border:1px solid var(--border-subtle)" +
+          ";background:transparent;cursor:pointer;" +
+          "transition:all .15s;";
+        btn.onclick = function() { selectTemplate(t.id); };
+        sel.appendChild(btn);
+      });
+    });
+}
+
+function selectTemplate(id) {
+  document.querySelectorAll(".tpl-btn").forEach(function(b) {
+    var active = b.dataset.id === id;
+    b.style.background = active
+      ? "var(--accent-primary)" : "transparent";
+    b.style.color = active ? "#09090b" : "";
+    b.style.borderColor = active
+      ? "var(--accent-primary)" : "var(--border-subtle)";
+  });
+  var detail = document.getElementById("templates-detail");
+  if (detail) detail.style.display = "";
+  fetch("/api/templates/" + id + "/compare")
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      _renderTemplateComparison(d);
+    });
+}
+
+function _renderTemplateComparison(d) {
+  var desc = document.getElementById("templates-desc");
+  if (desc) {
+    desc.textContent = d.template.name + " (" +
+      d.template.author + "): " + d.template.description;
+  }
+  var score = document.getElementById("tpl-score");
+  if (score) {
+    score.textContent = d.similarity + "%";
+    var hue = Math.round(d.similarity * 1.2);
+    score.style.color = "hsl(" + hue + ",70%,55%)";
+  }
+
+  var tbody = document.getElementById("templates-tbody");
+  if (tbody) {
+    var html = "";
+    (d.rows || []).forEach(function(r) {
+      var cls = r.delta > 1 ? "color:var(--success)"
+        : r.delta < -1 ? "color:var(--danger)"
+        : "color:var(--text-muted)";
+      var sign = r.delta > 0 ? "+" : "";
+      html += "<tr>";
+      html += '<td style="padding:5px 6px;">' +
+        _esc(r.bucket) + "</td>";
+      html += '<td style="padding:5px 6px;text-align:right;' +
+        'font-family:var(--mono);">' +
+        r.user_pct.toFixed(1) + "%</td>";
+      html += '<td style="padding:5px 6px;text-align:right;' +
+        'font-family:var(--mono);">' +
+        r.template_pct.toFixed(1) + "%</td>";
+      html += '<td style="padding:5px 6px;text-align:right;' +
+        'font-family:var(--mono);' + cls + ';">' +
+        sign + r.delta.toFixed(1) + "%</td>";
+      html += "</tr>";
+    });
+    tbody.innerHTML = html;
+  }
+
+  _renderTemplateRadar(d);
+}
+
+function _renderTemplateRadar(d) {
+  var canvas = document.getElementById("templates-radar-chart");
+  if (!canvas) return;
+  var labels = [];
+  var userData = [];
+  var tplData = [];
+  (d.rows || []).forEach(function(r) {
+    labels.push(r.bucket);
+    userData.push(r.user_pct);
+    tplData.push(r.template_pct);
+  });
+
+  if (_templatesChart) _templatesChart.destroy();
+
+  var accentPri = getComputedStyle(
+    document.documentElement
+  ).getPropertyValue("--accent-primary").trim() || "#a78bfa";
+  var accentSec = getComputedStyle(
+    document.documentElement
+  ).getPropertyValue("--accent-secondary").trim() || "#38bdf8";
+
+  _templatesChart = new Chart(canvas, {
+    type: "radar",
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          label: "Your Portfolio",
+          data: userData,
+          borderColor: accentPri,
+          backgroundColor: accentPri + "33",
+          pointBackgroundColor: accentPri,
+          borderWidth: 2,
+        },
+        {
+          label: d.template.name,
+          data: tplData,
+          borderColor: accentSec,
+          backgroundColor: accentSec + "33",
+          pointBackgroundColor: accentSec,
+          borderWidth: 2,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        r: {
+          beginAtZero: true,
+          ticks: {
+            display: false,
+          },
+          grid: {
+            color: "rgba(255,255,255,0.08)",
+          },
+          angleLines: {
+            color: "rgba(255,255,255,0.08)",
+          },
+          pointLabels: {
+            color: "rgba(255,255,255,0.6)",
+            font: { size: 11 },
+          },
+        },
+      },
+      plugins: {
+        legend: {
+          labels: {
+            color: "rgba(255,255,255,0.7)",
+            font: { size: 11 },
+          },
+        },
+      },
+    },
+  });
+}
+
+loadTemplates();
+
 /* ── Multi-Currency ── */

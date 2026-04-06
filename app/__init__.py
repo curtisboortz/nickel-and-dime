@@ -82,9 +82,12 @@ def _register_blueprints(app):
     from .blueprints.api_import import api_import_bp
     from .blueprints.api_settings import api_settings_bp
     from .blueprints.api_plaid import api_plaid_bp
+    from .blueprints.api_referral import api_referral_bp
+    from .blueprints.blog import blog_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(pages_bp)
+    app.register_blueprint(blog_bp)
     app.register_blueprint(api_market_bp, url_prefix="/api")
     app.register_blueprint(api_portfolio_bp, url_prefix="/api")
     app.register_blueprint(api_budget_bp, url_prefix="/api")
@@ -93,6 +96,7 @@ def _register_blueprints(app):
     app.register_blueprint(api_import_bp, url_prefix="/api")
     app.register_blueprint(api_settings_bp, url_prefix="/api")
     app.register_blueprint(api_plaid_bp, url_prefix="/api")
+    app.register_blueprint(api_referral_bp, url_prefix="/api")
 
 
 def _register_error_handlers(app):

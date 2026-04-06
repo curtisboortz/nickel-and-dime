@@ -112,6 +112,113 @@
   {% endif %}
 {% endif %}
 
+<!-- ═══ ONBOARDING WIZARD ═══ -->
+{% if show_onboarding %}
+<div id="onboarding-overlay" style="position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:var(--surface);border:1px solid var(--border-subtle);border-radius:12px;max-width:520px;width:100%;padding:32px;position:relative;">
+    <div id="ob-step-1" class="ob-step">
+      <div style="text-align:center;margin-bottom:20px;">
+        <div style="font-size:2.5rem;">&#128075;</div>
+        <h2 style="font-size:1.3rem;margin:12px 0 4px;">Welcome to Nickel&amp;Dime</h2>
+        <p style="color:var(--text-muted);font-size:0.88rem;">Let&rsquo;s get your portfolio set up in 3 quick steps.</p>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:var(--radius);background:var(--surface-raised);">
+          <span style="font-size:1.4rem;">&#128200;</span>
+          <div><strong style="font-size:0.88rem;">Add your holdings</strong><br><span style="font-size:0.78rem;color:var(--text-muted);">Import a CSV, connect via Plaid, or add manually.</span></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:var(--radius);background:var(--surface-raised);">
+          <span style="font-size:1.4rem;">&#128176;</span>
+          <div><strong style="font-size:0.88rem;">Set up budgeting</strong><br><span style="font-size:0.78rem;color:var(--text-muted);">Track spending categories and set monthly targets.</span></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:var(--radius);background:var(--surface-raised);">
+          <span style="font-size:1.4rem;">&#128161;</span>
+          <div><strong style="font-size:0.88rem;">Explore insights</strong><br><span style="font-size:0.78rem;color:var(--text-muted);">AI risk analysis, macro data, and projections.</span></div>
+        </div>
+      </div>
+      <button onclick="obNext(2)" style="width:100%;margin-top:20px;padding:12px;font-weight:600;font-size:0.92rem;background:linear-gradient(135deg,var(--accent-primary),var(--accent-secondary));color:#09090b;border:none;border-radius:var(--radius);cursor:pointer;">Get Started</button>
+    </div>
+
+    <div id="ob-step-2" class="ob-step" style="display:none;">
+      <h2 style="font-size:1.1rem;margin-bottom:8px;">Step 1: Add Holdings</h2>
+      <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:16px;">Choose how you want to add your portfolio data:</p>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <button onclick="obGo('import')" style="padding:12px;border-radius:var(--radius);border:1px solid var(--border-subtle);background:var(--surface-raised);cursor:pointer;text-align:left;">
+          <strong>Import CSV</strong><br><span style="font-size:0.78rem;color:var(--text-muted);">Upload from Fidelity, Schwab, Vanguard, and 8 more.</span>
+        </button>
+        {% if is_pro %}
+        <button onclick="obGo('plaid')" style="padding:12px;border-radius:var(--radius);border:1px solid var(--border-subtle);background:var(--surface-raised);cursor:pointer;text-align:left;">
+          <strong>Connect Brokerage (Plaid)</strong><br><span style="font-size:0.78rem;color:var(--text-muted);">Auto-sync holdings from your bank or brokerage.</span>
+        </button>
+        {% endif %}
+        <button onclick="obGo('manual')" style="padding:12px;border-radius:var(--radius);border:1px solid var(--border-subtle);background:var(--surface-raised);cursor:pointer;text-align:left;">
+          <strong>Add Manually</strong><br><span style="font-size:0.78rem;color:var(--text-muted);">Type in balances and holdings one by one.</span>
+        </button>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-top:16px;">
+        <button onclick="obNext(1)" style="padding:8px 16px;font-size:0.82rem;background:transparent;border:1px solid var(--border-subtle);border-radius:var(--radius);cursor:pointer;">Back</button>
+        <button onclick="obNext(3)" style="padding:8px 16px;font-size:0.82rem;background:transparent;border:1px solid var(--border-subtle);border-radius:var(--radius);cursor:pointer;">Skip &rarr;</button>
+      </div>
+    </div>
+
+    <div id="ob-step-3" class="ob-step" style="display:none;">
+      <h2 style="font-size:1.1rem;margin-bottom:8px;">Step 2: Quick Budget Setup</h2>
+      <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:16px;">Budgeting is free for everyone. Set it up now or later.</p>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <button onclick="obGo('budget')" style="padding:12px;border-radius:var(--radius);border:1px solid var(--border-subtle);background:var(--surface-raised);cursor:pointer;text-align:left;">
+          <strong>Set Up Budget Now</strong><br><span style="font-size:0.78rem;color:var(--text-muted);">Configure categories and add your first transactions.</span>
+        </button>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-top:16px;">
+        <button onclick="obNext(2)" style="padding:8px 16px;font-size:0.82rem;background:transparent;border:1px solid var(--border-subtle);border-radius:var(--radius);cursor:pointer;">Back</button>
+        <button onclick="obNext(4)" style="padding:8px 16px;font-size:0.82rem;background:transparent;border:1px solid var(--border-subtle);border-radius:var(--radius);cursor:pointer;">Skip &rarr;</button>
+      </div>
+    </div>
+
+    <div id="ob-step-4" class="ob-step" style="display:none;">
+      <div style="text-align:center;">
+        <div style="font-size:2.5rem;margin-bottom:12px;">&#127881;</div>
+        <h2 style="font-size:1.2rem;margin-bottom:8px;">You&rsquo;re All Set!</h2>
+        <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:20px;">Explore the dashboard — check out the Portfolio tab for AI insights, allocation templates, and projections.</p>
+        <button onclick="obFinish()" style="width:100%;padding:12px;font-weight:600;font-size:0.92rem;background:linear-gradient(135deg,var(--accent-primary),var(--accent-secondary));color:#09090b;border:none;border-radius:var(--radius);cursor:pointer;">Start Exploring</button>
+      </div>
+    </div>
+
+    <div style="display:flex;justify-content:center;gap:6px;margin-top:16px;">
+      <span class="ob-dot" id="ob-dot-1" style="width:8px;height:8px;border-radius:50%;background:var(--accent-primary);"></span>
+      <span class="ob-dot" id="ob-dot-2" style="width:8px;height:8px;border-radius:50%;background:var(--border-subtle);"></span>
+      <span class="ob-dot" id="ob-dot-3" style="width:8px;height:8px;border-radius:50%;background:var(--border-subtle);"></span>
+      <span class="ob-dot" id="ob-dot-4" style="width:8px;height:8px;border-radius:50%;background:var(--border-subtle);"></span>
+    </div>
+  </div>
+</div>
+<script>
+var _obStep = 1;
+function obNext(step) {
+  document.querySelectorAll(".ob-step").forEach(function(el) { el.style.display = "none"; });
+  var s = document.getElementById("ob-step-" + step);
+  if (s) s.style.display = "";
+  _obStep = step;
+  for (var i = 1; i <= 4; i++) {
+    var dot = document.getElementById("ob-dot-" + i);
+    if (dot) dot.style.background = i <= step ? "var(--accent-primary)" : "var(--border-subtle)";
+  }
+}
+function obGo(target) {
+  obFinish();
+  if (target === "import") { document.querySelector('[data-tab="import"]').click(); }
+  else if (target === "budget") { document.querySelector('[data-tab="budget"]').click(); }
+  else if (target === "manual") { document.querySelector('[data-tab="balances"]').click(); }
+  else if (target === "plaid") { document.querySelector('[data-tab="holdings"]').click(); setTimeout(function() { if (typeof openPlaidLink === "function") openPlaidLink(); }, 500); }
+}
+function obFinish() {
+  var overlay = document.getElementById("onboarding-overlay");
+  if (overlay) overlay.remove();
+  fetch("/api/settings/onboarding-complete", { method: "POST" }).catch(function() {});
+}
+</script>
+{% endif %}
+
 <!-- ═══ SUMMARY TAB ═══ -->
 <div id="tab-summary" class="tab{% if active_tab == 'summary' %} active{% endif %}">
 
@@ -902,6 +1009,80 @@
     </div>
   </div>
 
+  <!-- AI Portfolio Insights -->
+  <div class="card" id="insights-card">
+    <div class="card-title">Portfolio Insights</div>
+    <p class="hint" style="margin-bottom:14px;">AI-powered risk analysis and recommendations for your portfolio.</p>
+
+    <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:18px;">
+      <div style="flex:1;min-width:140px;background:var(--surface-raised);border-radius:var(--radius);padding:16px;text-align:center;">
+        <div style="font-size:2rem;font-weight:700;font-family:var(--mono);" id="ins-risk-score">--</div>
+        <div style="font-size:0.75rem;color:var(--text-muted);">Risk Score</div>
+        <div style="font-size:0.8rem;margin-top:4px;" id="ins-risk-label"></div>
+      </div>
+      <div style="flex:1;min-width:140px;background:var(--surface-raised);border-radius:var(--radius);padding:16px;text-align:center;">
+        <div style="font-size:2rem;font-weight:700;font-family:var(--mono);" id="ins-vol">--</div>
+        <div style="font-size:0.75rem;color:var(--text-muted);">Est. Volatility</div>
+      </div>
+      <div style="flex:1;min-width:140px;background:var(--surface-raised);border-radius:var(--radius);padding:16px;text-align:center;">
+        <div style="font-size:2rem;font-weight:700;font-family:var(--mono);" id="ins-div-ratio">--</div>
+        <div style="font-size:0.75rem;color:var(--text-muted);">Diversification</div>
+        <div style="font-size:0.8rem;margin-top:4px;" id="ins-div-label"></div>
+      </div>
+      <div style="flex:1;min-width:140px;background:var(--surface-raised);border-radius:var(--radius);padding:16px;text-align:center;">
+        <div style="font-size:2rem;font-weight:700;font-family:var(--mono);" id="ins-buckets">--</div>
+        <div style="font-size:0.75rem;color:var(--text-muted);">Asset Classes</div>
+      </div>
+    </div>
+
+    <div id="ins-warnings" style="margin-bottom:16px;"></div>
+
+    <div style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:16px;">
+      <div style="flex:1;min-width:280px;">
+        <div style="font-weight:600;font-size:0.85rem;margin-bottom:8px;">Correlation Matrix</div>
+        <div style="overflow-x:auto;" id="ins-corr-matrix"></div>
+      </div>
+      <div style="flex:1;min-width:280px;">
+        <div style="font-weight:600;font-size:0.85rem;margin-bottom:8px;">AI Summary</div>
+        <ul id="ins-summaries" style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:8px;"></ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Allocation Templates -->
+  <div class="card" id="templates-card">
+    <div class="card-title">Allocation Templates</div>
+    <p class="hint" style="margin-bottom:14px;">Compare your portfolio against proven allocation strategies.</p>
+    <div id="templates-selector" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;"></div>
+    <div id="templates-detail" style="display:none;">
+      <div id="templates-desc" class="hint" style="margin-bottom:12px;font-style:italic;"></div>
+      <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start;">
+        <div style="position:relative;height:260px;flex:1;min-width:260px;">
+          <canvas id="templates-radar-chart"></canvas>
+        </div>
+        <div style="flex:1;min-width:260px;">
+          <div id="templates-similarity" style="text-align:center;margin-bottom:12px;">
+            <span style="font-size:2rem;font-weight:700;font-family:var(--mono);" id="tpl-score">--</span>
+            <span style="font-size:0.8rem;color:var(--text-muted);display:block;">Similarity Score</span>
+          </div>
+          <div style="overflow-x:auto;">
+            <table style="width:100%;font-size:0.82rem;">
+              <thead>
+                <tr>
+                  <th style="text-align:left;padding:6px;">Bucket</th>
+                  <th style="text-align:right;padding:6px;">You</th>
+                  <th style="text-align:right;padding:6px;">Template</th>
+                  <th style="text-align:right;padding:6px;">Delta</th>
+                </tr>
+              </thead>
+              <tbody id="templates-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Tax-Loss Harvesting -->
   <div class="card" id="tlh-card" style="display:none;">
     <div class="card-title">Tax-Loss Harvesting Opportunities</div>
@@ -914,11 +1095,14 @@
     </div>
   </div>
 
-  <!-- Tax Report Export -->
+  <!-- Reports Export -->
   <div class="card" style="text-align:center;padding:24px;">
-    <div class="card-title" style="margin-bottom:8px;">Tax Report</div>
-    <p class="hint" style="margin-bottom:16px;">Download a CSV with cost basis, unrealized gains/losses, and TLH candidates for all holdings.</p>
-    <a href="/api/tax-report" class="success" style="display:inline-block;padding:10px 24px;text-decoration:none;border-radius:var(--radius);font-weight:600;font-size:0.88rem;">Download Tax Report (CSV)</a>
+    <div class="card-title" style="margin-bottom:8px;">Reports</div>
+    <p class="hint" style="margin-bottom:16px;">Download your portfolio report as a branded PDF or tax-ready CSV.</p>
+    <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+      <a href="/api/report/pdf" style="display:inline-block;padding:10px 24px;text-decoration:none;border-radius:var(--radius);font-weight:600;font-size:0.88rem;background:linear-gradient(135deg,var(--accent-primary),var(--accent-secondary));color:#09090b;">Portfolio Report (PDF)</a>
+      <a href="/api/tax-report" style="display:inline-block;padding:10px 24px;text-decoration:none;border-radius:var(--radius);font-weight:600;font-size:0.88rem;border:1px solid var(--border-subtle);">Tax Report (CSV)</a>
+    </div>
   </div>
 </div>
 
@@ -1097,6 +1281,35 @@
       <div id="bucket-rollup-rows" style="display:flex;flex-direction:column;gap:8px;"></div>
       <div style="margin-top:12px;display:flex;justify-content:flex-end;">
         <button type="button" onclick="saveBucketRollup()" id="rollup-save-btn" style="padding:8px 18px;font-size:0.82rem;">Save Grouping</button>
+      </div>
+    </div>
+
+    <!-- Referral Program -->
+    <div style="border:1px solid var(--border-subtle);border-radius:var(--radius);padding:18px;margin-bottom:16px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+        <svg viewBox="0 0 24 24" style="width:24px;height:24px;fill:none;stroke:var(--accent-primary);stroke-width:2;"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+        <div>
+          <div style="font-weight:600;font-size:0.95rem;">Refer a Friend</div>
+          <div class="hint" style="margin:0;">Give a month free, get a month free</div>
+        </div>
+      </div>
+      <div id="referral-section">
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;">
+          <input type="text" id="referral-code-display" readonly style="flex:1;font-family:var(--mono);font-size:0.9rem;text-align:center;letter-spacing:2px;padding:10px;background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:var(--radius);" value="Loading...">
+          <button type="button" onclick="copyReferralCode()" style="padding:10px 16px;font-size:0.82rem;white-space:nowrap;" id="referral-copy-btn">Copy</button>
+        </div>
+        <div style="display:flex;gap:16px;justify-content:center;font-size:0.8rem;color:var(--text-muted);margin-bottom:10px;">
+          <span>Referrals: <strong id="referral-count">0</strong></span>
+          <span>Credits: <strong id="referral-credits">0</strong> mo</span>
+        </div>
+        <div style="border-top:1px solid var(--border-subtle);padding-top:10px;margin-top:4px;">
+          <div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:6px;">Have a referral code? Redeem it:</div>
+          <div style="display:flex;gap:8px;">
+            <input type="text" id="referral-redeem-input" placeholder="Enter code" style="flex:1;padding:8px;font-size:0.82rem;background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:var(--radius);">
+            <button type="button" onclick="redeemReferral()" style="padding:8px 14px;font-size:0.82rem;">Redeem</button>
+          </div>
+          <div id="referral-msg" class="hint" style="margin-top:6px;text-align:center;"></div>
+        </div>
       </div>
     </div>
 

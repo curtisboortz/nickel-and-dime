@@ -59,6 +59,13 @@ class ProdConfig(Config):
             )
 
 
+class StagingConfig(ProdConfig):
+    """Staging — production-like but with debug helpers."""
+    DEBUG = False
+    SQLALCHEMY_ECHO = False
+    STAGING = True
+
+
 class TestConfig(Config):
     """Automated tests."""
     TESTING = True
@@ -69,6 +76,7 @@ class TestConfig(Config):
 
 config_by_name = {
     "dev": DevConfig,
+    "staging": StagingConfig,
     "prod": ProdConfig,
     "test": TestConfig,
 }

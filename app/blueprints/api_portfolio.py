@@ -6,7 +6,10 @@ Balances (manual), portfolio history, and budget remain free for all.
 
 from datetime import datetime, timezone
 
-from flask import Blueprint, jsonify, request as flask_request
+from flask import (
+    Blueprint, jsonify, request as flask_request,
+    Response,
+)
 from flask_login import login_required, current_user
 
 from ..extensions import db
@@ -837,3 +840,123 @@ def mc_params():
         "total": round(total, 2),
         "weights": weights,
     })
+
+
+# ── Allocation Templates ──────────────────────────────────────
+
+
+@api_portfolio_bp.route("/templates", methods=["GET"])
+@login_required
+def list_templates():
+    """List all available allocation templates."""
+    from ..services.templates_service import (
+        list_templates as _list,
+    )
+    return jsonify({"templates": _list()})
+
+
+@api_portfolio_bp.route(
+    "/templates/<template_id>", methods=["GET"]
+)
+@login_required
+def get_template(template_id):
+    """Return a single template with full allocations."""
+    from ..services.templates_service import (
+        get_template as _get,
+    )
+    tpl = _get(template_id)
+    if not tpl:
+        return jsonify({"error": "Template not found"}), 404
+    return jsonify(tpl)
+
+
+@api_portfolio_bp.route(
+    "/templates/<template_id>/compare", methods=["GET"]
+)
+@login_required
+def compare_template(template_id):
+    """Compare user portfolio against a template."""
+    from ..services.templates_service import compare_portfolio
+    from ..services.portfolio_service import (
+        compute_portfolio_value,
+    )
+    from ..utils.buckets import rollup_breakdown
+
+    pv = compute_portfolio_value(current_user.id)
+    settings = (
+        db.session.query(UserSettings)
+        .filter_by(user_id=current_user.id)
+        .first()
+    )
+    overrides = (
+        settings.bucket_rollup
+        if settings and hasattr(settings, "bucket_rollup")
+        else None
+    )
+    breakdown, _ = rollup_breakdown(
+        pv.get("breakdown", {}), overrides=overrides
+    )
+    result = compare_portfolio(
+        template_id, breakdown, pv["total"]
+    )
+    if not result:
+        return jsonify({"error": "Template not found"}), 404
+    return jsonify(result)
+
+
+# ── AI Portfolio Insights ──────────────────────────────────────
+
+
+@api_portfolio_bp.route("/insights", methods=["GET"])
+@login_required
+def portfolio_insights():
+    """Return AI-generated portfolio insights."""
+    from ..services.insights_service import generate_insights
+
+    settings = (
+        db.session.query(UserSettings)
+        .filter_by(user_id=current_user.id)
+        .first()
+    )
+    overrides = (
+        settings.bucket_rollup
+        if settings and hasattr(settings, "bucket_rollup")
+        else None
+    )
+    return jsonify(generate_insights(
+        current_user.id, overrides=overrides
+    ))
+
+
+# ── PDF Report ─────────────────────────────────────────────────
+
+
+@api_portfolio_bp.route("/report/pdf", methods=["GET"])
+@login_required
+@requires_pro
+def download_pdf_report():
+    """Generate and return a branded PDF portfolio report."""
+    from ..services.pdf_service import generate_pdf
+
+    settings = (
+        db.session.query(UserSettings)
+        .filter_by(user_id=current_user.id)
+        .first()
+    )
+    overrides = (
+        settings.bucket_rollup
+        if settings and hasattr(settings, "bucket_rollup")
+        else None
+    )
+    pdf_bytes = generate_pdf(
+        current_user.id, overrides=overrides
+    )
+    ts = datetime.now(timezone.utc).strftime("%Y%m%d")
+    fname = f"NickelAndDime_Report_{ts}.pdf"
+    return Response(
+        pdf_bytes,
+        mimetype="application/pdf",
+        headers={
+            "Content-Disposition": f"attachment; filename={fname}"
+        },
+    )

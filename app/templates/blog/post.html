@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}{{ post.title }} — Nickel&amp;Dime{% endblock %}
+{% block meta_description %}{{ post.meta_description or post.excerpt or post.title }}{% endblock %}
+{% block og_title %}{{ post.title }}{% endblock %}
+{% block og_description %}{{ post.meta_description or post.excerpt }}{% endblock %}
+{% if post.og_image %}{% block og_image %}{{ post.og_image }}{% endblock %}{% endif %}
+
+{% block head_extra %}
+<link rel="canonical" href="https://nickelanddime.io/blog/{{ post.slug }}">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "{{ post.title }}",
+  "description": "{{ post.meta_description or post.excerpt }}",
+  "datePublished": "{{ post.created_at.isoformat() if post.created_at }}",
+  "dateModified": "{{ post.updated_at.isoformat() if post.updated_at }}",
+  "publisher": {
+    "@type": "Organization",
+    "name": "Nickel&Dime",
+    "url": "https://nickelanddime.io"
+  }
+}
+</script>
+<style>
+.blog-body { line-height:1.8; font-size:1rem; color:var(--text-secondary); }
+.blog-body h2 { font-size:1.3rem; margin:28px 0 12px; color:var(--text-primary); }
+.blog-body h3 { font-size:1.1rem; margin:24px 0 10px; color:var(--text-primary); }
+.blog-body p { margin:0 0 16px; }
+.blog-body ul, .blog-body ol { margin:0 0 16px; padding-left:24px; }
+.blog-body blockquote { border-left:3px solid var(--accent-primary); padding:8px 16px; margin:16px 0; background:var(--surface-raised); border-radius:0 var(--radius) var(--radius) 0; }
+.blog-body code { background:var(--surface-raised); padding:2px 6px; border-radius:4px; font-family:var(--mono); font-size:0.88em; }
+.blog-body pre { background:var(--surface-raised); padding:16px; border-radius:var(--radius); overflow-x:auto; margin:0 0 16px; }
+.blog-body pre code { background:none; padding:0; }
+.blog-body img { max-width:100%; height:auto; border-radius:var(--radius); margin:16px 0; }
+.blog-body a { color:var(--accent-primary); }
+</style>
+{% endblock %}
+
+{% block body %}
+<div style="max-width:720px;margin:0 auto;padding:40px 20px;">
+  <a href="/blog" style="color:var(--accent-primary);text-decoration:none;font-size:0.85rem;">← All Posts</a>
+  <h1 style="font-size:1.8rem;margin:16px 0 8px;">{{ post.title }}</h1>
+  <div style="color:var(--text-muted);font-size:0.82rem;margin-bottom:28px;">
+    {{ post.created_at.strftime('%B %d, %Y') if post.created_at }}
+    {% if post.updated_at and post.updated_at != post.created_at %}
+     · Updated {{ post.updated_at.strftime('%B %d, %Y') }}
+    {% endif %}
+  </div>
+  <div class="blog-body">
+    {{ post.body | safe }}
+  </div>
+  <div style="border-top:1px solid var(--border-subtle);margin-top:40px;padding-top:20px;text-align:center;">
+    <a href="/blog" style="color:var(--accent-primary);text-decoration:none;">← Back to Blog</a>
+  </div>
+</div>
+{% endblock %}

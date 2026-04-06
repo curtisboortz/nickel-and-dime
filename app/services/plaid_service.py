@@ -36,7 +36,7 @@ _client: plaid_api.PlaidApi | None = None
 
 PLAID_ENV_MAP = {
     "sandbox": plaid.Environment.Sandbox,
-    "development": plaid.Environment.Development,
+    "development": plaid.Environment.Sandbox,
     "production": plaid.Environment.Production,
 }
 

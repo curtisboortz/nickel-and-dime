@@ -4,6 +4,68 @@ All notable changes to Nickel&Dime are documented here.
 
 ---
 
+## [2.4.1] — 2026-04-06 — Holdings Loading Fix & Read-Only Plaid
+
+### Fixed
+- **Holdings not loading after v2.4.0 redesign** — `GET /api/holdings` returned 500 when `PlaidItem` query referenced unmigrated `logo_base64`/`primary_color` columns; wrapped PlaidItem query in try/except so holdings still load (without branding) even if d006 migration is pending
+- **Silent API errors wiping holdings data** — JS fetch did not check `r.ok`, so a 500 JSON error response was silently parsed as empty data; now throws on non-200 and triggers the red "Failed to load holdings" error state
+- **Destructive bulk save** — `_save_holdings_bulk` would delete ALL existing holdings when zero matching rows were submitted (e.g. saving during a loading error); added backend safety check that preserves existing holdings when no IDs match, and frontend guard that blocks save while holdings are still loading
+
+### Added
+- **Read-only Plaid holdings** — linked brokerage holdings are now displayed as non-editable text with a lock icon instead of input fields; delete button hidden for synced rows
+- **Backend Plaid protection** — `POST /api/holdings` (single and bulk) and `DELETE /api/holdings/<id>` now refuse to modify or delete Plaid-sourced holdings with a 400 error explaining they are managed by sync
+
+### Changed
+- `_save_holdings_bulk` now filters Plaid holdings out of the editable set entirely — only manual and imported holdings participate in the save/delete cycle
+
+---
+
+## [2.4.0] — 2026-04-06 — Holdings Page Redesign
+
+### Added
+- **Grouped account widgets** — holdings page reorganized from a flat table into collapsible per-account sections with institution branding (logos, primary colors), subtotals, and holding counts
+- **Institution branding on PlaidItem** — new `logo_base64` (Text) and `primary_color` (String) columns; branding fetched from Plaid `/institutions/get_by_id` during token exchange
+- **Tickerless holdings sync** — Plaid securities without a `ticker_symbol` (e.g. Fundrise private REITs) now sync with a synthetic `PRIV:` prefix ticker, `value_override` from `institution_value`, and bucket auto-set to "Alternatives"
+- **Collapse state persistence** — per-account expand/collapse saved to localStorage
+- **Plaid badge** — account headers show a "Plaid" badge for linked accounts
+- **Grand total footer** — day P&L and total P&L with percentage across all account groups
+
+### Changed
+- `GET /api/holdings` response restructured: now returns `accounts[]` (grouped by account + institution) alongside the flat `holdings[]` for backward compatibility
+- `_renderStockHoldings` replaced by `_renderAccountWidgets` + `_buildAccountTable` in `holdings.js`
+
+### Database
+- Migration `d006`: Adds `logo_base64` and `primary_color` columns to `plaid_items`
+
+---
+
+## [2.3.0] — 2026-04-06 — AI Insights, Allocation Templates, PDF Reports & Onboarding
+
+### Added
+- **AI Portfolio Insights** — `GET /api/insights` generates natural-language portfolio analysis using OpenAI (allocation health, concentration risk, diversification suggestions, rebalancing prompts); new insights card on portfolio tab
+- **Allocation Templates** — 6 built-in templates (Bogleheads 3-Fund, All-Weather, 60/40, Growth, Income, Target-Date); `GET /api/templates`, `GET /api/templates/<id>/compare` endpoints; template picker UI with current-vs-target comparison bars
+- **PDF Portfolio Reports** — `GET /api/report/pdf` generates branded multi-page PDF with allocation pie chart, holdings table, performance summary, and AI insights; download button on portfolio tab
+- **Onboarding Wizard** — 3-step post-signup flow (connect brokerage, add manual holdings, set allocation targets); progress tracked via `onboarding_completed` flag on UserSettings
+- **Referral System** — unique referral codes per user; `POST /api/referral/redeem` with 7-day Pro credit reward; referral link and stats in settings
+- **Blog** — Markdown-powered blog engine at `/blog` with post listing and detail pages; `BlogPost` model with slug routing
+- **CI pipeline** — GitHub Actions workflow for ruff linting
+
+### Changed
+- **FedWatch rewritten** — replaced manual CME futures parsing with `cme-fedwatch` library for more accurate and maintainable rate probability calculations
+- **plaid-python v39 compatibility** — updated Plaid service imports for breaking changes in plaid-python v39
+
+### Fixed
+- Ruff lint errors blocking CI (E501, F401, F821, W292)
+- Dashboard crash on missing DB columns — added resilient column checks
+- Naive vs aware datetime comparison in TLH wash-sale window
+- Railway staging deploy — pass `RAILWAY_TOKEN` as env var in GitHub Actions
+- Onboarding wizard overlay and card backgrounds made opaque for readability
+
+### Database
+- Migration `d005`: Adds `onboarding_completed` to `user_settings`; creates `referral_codes`, `referral_redemptions`, and `blog_posts` tables
+
+---
+
 ## [2.2.0] — 2026-04-05 — Plaid Integration
 
 ### Added

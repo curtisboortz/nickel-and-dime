@@ -46,7 +46,10 @@ function loadHoldings() {
   fetch("/api/normalize-buckets", { method: "POST" }).catch(function() {});
 
   Promise.all([
-    fetch("/api/holdings").then(function(r) { return r.json(); }),
+    fetch("/api/holdings").then(function(r) {
+      if (!r.ok) throw new Error("Holdings API returned " + r.status);
+      return r.json();
+    }),
     fetch("/api/buckets").then(function(r) { return r.json(); }).catch(function() { return { standard: [], custom: [] }; })
   ]).then(function(results) {
       var d = results[0];
@@ -280,20 +283,41 @@ function _buildAccountTable(holdings, acctName) {
     }
 
     var noteVal = (h.notes || "").replace(/"/g, "&quot;");
-    html += '<tr data-hid="' + h.id + '" data-computed="' + computedTotal.toFixed(2) + '">';
-    html += '<td style="padding:4px 6px;"><input type="text" data-field="ticker" value="' + (h.ticker || "") + '" ' + inputStyle + '><input type="hidden" data-field="account" value="' + (h.account || acctName || "") + '"></td>';
-    html += '<td style="padding:4px 4px;">' + _buildBucketSelect(h.bucket || "", false) + '</td>';
-    html += '<td style="padding:4px 4px;"><input type="text" data-field="shares" value="' + qtyStr + '" class="num" ' + inputStyle + '></td>';
-    html += '<td style="padding:4px 4px;"><input type="text" inputmode="decimal" data-field="cost_basis" value="' + (h.cost_basis || "") + '" class="num" ' + inputStyle + '></td>';
-    html += '<td style="padding:6px;text-align:right;color:var(--text-muted);font-family:var(--mono);white-space:nowrap;">' + priceStr + '</td>';
-    html += '<td style="padding:4px 4px;"><input type="text" data-field="total_edit" value="' + totalVal + '" class="num" style="background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:4px;' + totalColor + 'padding:5px 8px;font-size:0.82rem;width:100%;font-family:var(--mono);font-weight:600;"></td>';
-    html += '<td style="padding:6px;text-align:right;">' + dayDH + '</td>';
-    html += '<td style="padding:6px;text-align:right;">' + dayPH + '</td>';
-    html += '<td style="padding:6px;text-align:right;">' + plDH + '</td>';
-    html += '<td style="padding:6px;text-align:right;">' + plPH + '</td>';
-    html += '<td style="padding:4px 4px;"><input type="text" data-field="notes" value="' + noteVal + '" title="' + noteVal + '" style="background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:4px;color:var(--text-primary);padding:5px 8px;font-size:0.82rem;width:100%;text-overflow:ellipsis;"></td>';
-    html += '<td style="padding:4px;text-align:center;"><button type="button" onclick="deleteHolding(' + h.id + ')" title="Delete" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:1rem;" onmouseover="this.style.color=\'var(--danger)\'" onmouseout="this.style.color=\'var(--text-muted)\'">&times;</button></td>';
-    html += '</tr>';
+    var isLinked = h.source === "plaid";
+    var totalDisplay = totalVal ? fmtMoney(parseFloat(totalVal)) : "";
+    var rCell = 'style="padding:6px;text-align:right;font-family:var(--mono);white-space:nowrap;"';
+
+    if (isLinked) {
+      html += '<tr data-hid="' + h.id + '" data-source="plaid">';
+      html += '<td style="padding:6px;font-weight:600;">' + (h.ticker || "") + '</td>';
+      html += '<td style="padding:6px;color:var(--text-muted);font-size:0.82rem;">' + (h.bucket || "") + '</td>';
+      html += '<td ' + rCell + '>' + qtyStr + '</td>';
+      html += '<td ' + rCell + '>' + (h.cost_basis ? fmtMoney(h.cost_basis) : "") + '</td>';
+      html += '<td ' + rCell + ' style="padding:6px;text-align:right;color:var(--text-muted);font-family:var(--mono);white-space:nowrap;">' + priceStr + '</td>';
+      html += '<td style="padding:6px;text-align:right;font-family:var(--mono);font-weight:600;white-space:nowrap;">' + totalDisplay + '</td>';
+      html += '<td style="padding:6px;text-align:right;">' + dayDH + '</td>';
+      html += '<td style="padding:6px;text-align:right;">' + dayPH + '</td>';
+      html += '<td style="padding:6px;text-align:right;">' + plDH + '</td>';
+      html += '<td style="padding:6px;text-align:right;">' + plPH + '</td>';
+      html += '<td style="padding:6px;color:var(--text-muted);font-size:0.82rem;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + noteVal + '">' + (h.notes || "") + '</td>';
+      html += '<td style="padding:4px;text-align:center;" title="Synced via Plaid"><span style="font-size:0.7rem;color:var(--text-muted);">&#128274;</span></td>';
+      html += '</tr>';
+    } else {
+      html += '<tr data-hid="' + h.id + '" data-computed="' + computedTotal.toFixed(2) + '">';
+      html += '<td style="padding:4px 6px;"><input type="text" data-field="ticker" value="' + (h.ticker || "") + '" ' + inputStyle + '><input type="hidden" data-field="account" value="' + (h.account || acctName || "") + '"></td>';
+      html += '<td style="padding:4px 4px;">' + _buildBucketSelect(h.bucket || "", false) + '</td>';
+      html += '<td style="padding:4px 4px;"><input type="text" data-field="shares" value="' + qtyStr + '" class="num" ' + inputStyle + '></td>';
+      html += '<td style="padding:4px 4px;"><input type="text" inputmode="decimal" data-field="cost_basis" value="' + (h.cost_basis || "") + '" class="num" ' + inputStyle + '></td>';
+      html += '<td style="padding:6px;text-align:right;color:var(--text-muted);font-family:var(--mono);white-space:nowrap;">' + priceStr + '</td>';
+      html += '<td style="padding:4px 4px;"><input type="text" data-field="total_edit" value="' + totalVal + '" class="num" style="background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:4px;' + totalColor + 'padding:5px 8px;font-size:0.82rem;width:100%;font-family:var(--mono);font-weight:600;"></td>';
+      html += '<td style="padding:6px;text-align:right;">' + dayDH + '</td>';
+      html += '<td style="padding:6px;text-align:right;">' + dayPH + '</td>';
+      html += '<td style="padding:6px;text-align:right;">' + plDH + '</td>';
+      html += '<td style="padding:6px;text-align:right;">' + plPH + '</td>';
+      html += '<td style="padding:4px 4px;"><input type="text" data-field="notes" value="' + noteVal + '" title="' + noteVal + '" style="background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:4px;color:var(--text-primary);padding:5px 8px;font-size:0.82rem;width:100%;text-overflow:ellipsis;"></td>';
+      html += '<td style="padding:4px;text-align:center;"><button type="button" onclick="deleteHolding(' + h.id + ')" title="Delete" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:1rem;" onmouseover="this.style.color=\'var(--danger)\'" onmouseout="this.style.color=\'var(--text-muted)\'">&times;</button></td>';
+      html += '</tr>';
+    }
   });
 
   html += '</tbody></table></div>';
@@ -643,6 +667,7 @@ function deleteMetal(id) {
 function saveAllHoldings() {
   var wrap = document.getElementById("holdings-table-wrap");
   if (!wrap) return;
+  if (!_holdingsLoaded) { alert("Holdings haven't finished loading yet."); return; }
   var allRows = wrap.querySelectorAll("tbody tr");
   var holdings = [];
   allRows.forEach(function(tr) {

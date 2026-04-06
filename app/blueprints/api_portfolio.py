@@ -101,10 +101,14 @@ def get_holdings():
     }
     plaid_map = {}
     if plaid_ids:
-        items = PlaidItem.query.filter(
-            PlaidItem.id.in_(plaid_ids)
-        ).all()
-        plaid_map = {p.id: p for p in items}
+        try:
+            items = PlaidItem.query.filter(
+                PlaidItem.id.in_(plaid_ids)
+            ).all()
+            plaid_map = {p.id: p for p in items}
+        except Exception:
+            db.session.rollback()
+            plaid_map = {}
 
     groups = {}
     holdings_flat = []
@@ -239,6 +243,8 @@ def save_holdings():
         h = Holding.query.filter_by(id=holding_id, user_id=current_user.id).first()
         if not h:
             return jsonify({"error": "Not found"}), 404
+        if h.source == "plaid":
+            return jsonify({"error": "Plaid holdings are read-only"}), 400
     else:
         h = Holding(user_id=current_user.id)
         db.session.add(h)
@@ -269,8 +275,13 @@ def _apply_holding_fields(h, data):
 
 
 def _save_holdings_bulk(rows):
-    """Replace all holdings with the provided list (mirrors the original form save)."""
-    existing = {h.id: h for h in Holding.query.filter_by(user_id=current_user.id).all()}
+    """Replace all manual holdings with the provided list.
+
+    Plaid-sourced holdings are never modified or deleted here — they
+    are managed exclusively by the Plaid sync process.
+    """
+    all_existing = Holding.query.filter_by(user_id=current_user.id).all()
+    editable = {h.id: h for h in all_existing if h.source != "plaid"}
     seen_ids = set()
 
     for row in rows:
@@ -278,15 +289,19 @@ def _save_holdings_bulk(rows):
         if not ticker:
             continue
         hid = row.get("id")
-        if hid and hid in existing:
-            h = existing[hid]
+        if hid and hid in editable:
+            h = editable[hid]
             seen_ids.add(hid)
         else:
             h = Holding(user_id=current_user.id)
             db.session.add(h)
         _apply_holding_fields(h, row)
 
-    for hid, h in existing.items():
+    if not seen_ids and editable:
+        db.session.commit()
+        return jsonify({"success": True, "warning": "No matching rows submitted; existing holdings preserved"})
+
+    for hid, h in editable.items():
         if hid not in seen_ids:
             db.session.delete(h)
 
@@ -299,11 +314,14 @@ def _save_holdings_bulk(rows):
 @requires_pro
 
 def delete_holding(holding_id):
-    """Delete a holding."""
+    """Delete a holding. Plaid-sourced holdings cannot be deleted here."""
     h = Holding.query.filter_by(id=holding_id, user_id=current_user.id).first()
-    if h:
-        db.session.delete(h)
-        db.session.commit()
+    if not h:
+        return jsonify({"success": True})
+    if h.source == "plaid":
+        return jsonify({"error": "Plaid holdings are managed by sync. Disconnect the account in Settings to remove."}), 400
+    db.session.delete(h)
+    db.session.commit()
     return jsonify({"success": True})
 
 

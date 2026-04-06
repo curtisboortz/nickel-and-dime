@@ -151,7 +151,7 @@ def exchange_public_token(user_id: int, public_token: str, metadata: dict) -> Pl
 def _fetch_institution_branding(
     client: plaid_api.PlaidApi, institution_id: str
 ) -> dict:
-    """Fetch logo and primary_color from Plaid for an institution."""
+    """Fetch name, logo, and primary_color from Plaid for an institution."""
     req = InstitutionsGetByIdRequest(
         institution_id=institution_id,
         country_codes=[CountryCode("US")],
@@ -160,6 +160,7 @@ def _fetch_institution_branding(
     resp = client.institutions_get_by_id(req).to_dict()
     inst = resp.get("institution", {})
     return {
+        "name": inst.get("name", ""),
         "logo": inst.get("logo"),
         "primary_color": inst.get("primary_color", ""),
     }
@@ -184,12 +185,34 @@ def remove_item(item: PlaidItem):
     db.session.commit()
 
 
+def _backfill_branding_if_needed(client, plaid_item: PlaidItem):
+    """Fetch institution branding for PlaidItems that are missing name or logo."""
+    if not plaid_item.institution_id:
+        return
+    needs_name = not plaid_item.institution_name
+    needs_logo = not getattr(plaid_item, "logo_base64", None)
+    if not needs_name and not needs_logo:
+        return
+    try:
+        branding = _fetch_institution_branding(client, plaid_item.institution_id)
+        if needs_name and branding.get("name"):
+            plaid_item.institution_name = branding["name"]
+        if needs_logo and branding.get("logo"):
+            plaid_item.logo_base64 = branding["logo"]
+        if branding.get("primary_color"):
+            plaid_item.primary_color = branding["primary_color"]
+    except Exception as e:
+        log.warning("Branding backfill failed for %s: %s", plaid_item.institution_id, e)
+
+
 def sync_investments(user_id: int, plaid_item: PlaidItem) -> dict:
     """Pull investment holdings from Plaid and upsert into Holding / CryptoHolding."""
     from .import_service import detect_bucket
 
     client = get_plaid_client()
     access_token = decrypt(plaid_item.access_token)
+
+    _backfill_branding_if_needed(client, plaid_item)
 
     try:
         req = InvestmentsHoldingsGetRequest(access_token=access_token)
@@ -216,7 +239,8 @@ def sync_investments(user_id: int, plaid_item: PlaidItem) -> dict:
             continue
 
         quantity = h.get("quantity", 0) or 0
-        cost_basis = h.get("cost_basis") or None
+        total_cost = h.get("cost_basis") or None
+        cost_basis = (total_cost / quantity) if total_cost and quantity else None
         inst_value = h.get("institution_value") or None
         account = accounts_map.get(h.get("account_id"), {})
         account_name = account.get("name", "")
@@ -231,17 +255,18 @@ def sync_investments(user_id: int, plaid_item: PlaidItem) -> dict:
             sym = ticker.upper().replace("CUR:", "")
             seen_crypto.add(sym)
             source_tag = f"plaid:{plaid_item.id}"
+            crypto_cost = total_cost if total_cost else None
             existing = CryptoHolding.query.filter_by(
                 user_id=user_id, symbol=sym, source=source_tag
             ).first()
             if existing:
                 existing.quantity = quantity
-                if cost_basis is not None:
-                    existing.cost_basis = cost_basis
+                if crypto_cost is not None:
+                    existing.cost_basis = crypto_cost
             else:
                 db.session.add(CryptoHolding(
                     user_id=user_id, symbol=sym, quantity=quantity,
-                    coingecko_id=sym.lower(), cost_basis=cost_basis,
+                    coingecko_id=sym.lower(), cost_basis=crypto_cost,
                     source=source_tag,
                 ))
             synced += 1

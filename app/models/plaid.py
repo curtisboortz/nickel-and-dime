@@ -9,7 +9,9 @@ class PlaidItem(db.Model):
     __tablename__ = "plaid_items"
 
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
+    user_id = db.Column(
+        db.Integer, db.ForeignKey("users.id"),
+        nullable=False, index=True)
     item_id = db.Column(db.String(120), nullable=False, unique=True)
     access_token = db.Column(db.Text, nullable=False)
     institution_id = db.Column(db.String(80), default="")

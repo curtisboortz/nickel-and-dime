@@ -4,7 +4,6 @@ Link token creation, public token exchange, account listing,
 manual sync, disconnect, and webhook receiver.
 """
 
-import json
 import logging
 
 from flask import Blueprint, jsonify, request as flask_request
@@ -68,7 +67,8 @@ def exchange_token():
 @requires_pro
 def list_accounts():
     """List the current user's connected Plaid institutions."""
-    items = PlaidItem.query.filter_by(user_id=current_user.id).order_by(PlaidItem.created_at).all()
+    items = (PlaidItem.query.filter_by(user_id=current_user.id)
+             .order_by(PlaidItem.created_at).all())
     out = []
     for item in items:
         out.append({
@@ -78,7 +78,8 @@ def list_accounts():
             "status": item.status,
             "error_code": item.error_code,
             "products": item.products or [],
-            "last_synced_at": item.last_synced_at.isoformat() if item.last_synced_at else None,
+            "last_synced_at": (item.last_synced_at.isoformat()
+                              if item.last_synced_at else None),
             "created_at": item.created_at.isoformat() if item.created_at else None,
         })
     return jsonify({"accounts": out})
@@ -135,7 +136,8 @@ def plaid_webhook():
     webhook_code = data.get("webhook_code", "")
     item_id_str = data.get("item_id", "")
 
-    log.info("Plaid webhook: type=%s code=%s item=%s", webhook_type, webhook_code, item_id_str)
+    log.info("Plaid webhook: type=%s code=%s item=%s",
+             webhook_type, webhook_code, item_id_str)
 
     if not item_id_str:
         return jsonify({"received": True})
@@ -163,7 +165,9 @@ def plaid_webhook():
             log.error("Webhook-triggered sync failed: %s", e)
 
     elif webhook_type == "TRANSACTIONS":
-        if webhook_code in ("SYNC_UPDATES_AVAILABLE", "DEFAULT_UPDATE", "HISTORICAL_UPDATE"):
+        txn_codes = ("SYNC_UPDATES_AVAILABLE",
+                     "DEFAULT_UPDATE", "HISTORICAL_UPDATE")
+        if webhook_code in txn_codes:
             from ..services.plaid_service import sync_transactions
             try:
                 sync_transactions(item.user_id, item)

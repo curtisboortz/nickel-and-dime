@@ -4,6 +4,8 @@ Holdings (real-time tracking), metals, and import are Pro features.
 Balances (manual), portfolio history, and budget remain free for all.
 """
 
+from datetime import datetime, timezone
+
 from flask import Blueprint, jsonify, request as flask_request
 from flask_login import login_required, current_user
 
@@ -218,7 +220,7 @@ def delete_holding(holding_id):
 def create_crypto():
     """Add a new manual crypto holding."""
     from ..services.coinbase_service import COINGECKO_MAP
-    data = request.get_json(silent=True) or {}
+    data = flask_request.get_json(silent=True) or {}
     symbol = (data.get("symbol") or "").strip().upper()
     if not symbol:
         return jsonify({"error": "Symbol is required"}), 400
@@ -254,7 +256,7 @@ def update_crypto(crypto_id):
     c = CryptoHolding.query.filter_by(id=crypto_id, user_id=current_user.id).first()
     if not c:
         return jsonify({"error": "Not found"}), 404
-    data = request.get_json(silent=True) or {}
+    data = flask_request.get_json(silent=True) or {}
     if "quantity" in data:
         try:
             c.quantity = float(data["quantity"])

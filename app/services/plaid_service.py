@@ -15,7 +15,9 @@ import plaid
 from plaid.api import plaid_api
 from plaid.model.country_code import CountryCode
 from plaid.model.investments_holdings_get_request import InvestmentsHoldingsGetRequest
-from plaid.model.item_public_token_exchange_request import ItemPublicTokenExchangeRequest
+from plaid.model.item_public_token_exchange_request import (
+    ItemPublicTokenExchangeRequest,
+)
 from plaid.model.item_remove_request import ItemRemoveRequest
 from plaid.model.link_token_create_request import LinkTokenCreateRequest
 from plaid.model.link_token_create_request_user import LinkTokenCreateRequestUser
@@ -132,7 +134,7 @@ def exchange_public_token(user_id: int, public_token: str, metadata: dict) -> Pl
 
 
 def remove_item(item: PlaidItem):
-    """Remove a Plaid item: call Plaid API, delete associated holdings, then the item."""
+    """Remove a Plaid item: revoke token, delete holdings."""
     try:
         client = get_plaid_client()
         req = ItemRemoveRequest(access_token=decrypt(item.access_token))
@@ -141,8 +143,11 @@ def remove_item(item: PlaidItem):
         log.warning("Plaid item/remove failed (may already be removed): %s", e)
 
     Holding.query.filter_by(plaid_item_id=item.id).delete()
-    CryptoHolding.query.filter_by(user_id=item.user_id, source=f"plaid:{item.id}").delete()
-    Transaction.query.filter_by(user_id=item.user_id, source=f"plaid:{item.id}").delete()
+    src = f"plaid:{item.id}"
+    CryptoHolding.query.filter_by(
+        user_id=item.user_id, source=src).delete()
+    Transaction.query.filter_by(
+        user_id=item.user_id, source=src).delete()
     db.session.delete(item)
     db.session.commit()
 
@@ -234,7 +239,8 @@ def sync_investments(user_id: int, plaid_item: PlaidItem) -> dict:
             removed += 1
 
     source_tag = f"plaid:{plaid_item.id}"
-    stale_crypto = CryptoHolding.query.filter_by(user_id=user_id, source=source_tag).all()
+    stale_crypto = CryptoHolding.query.filter_by(
+        user_id=user_id, source=source_tag).all()
     for c in stale_crypto:
         if c.symbol not in seen_crypto:
             db.session.delete(c)
@@ -309,7 +315,7 @@ def _upsert_transaction(user_id: int, source_tag: str, txn: dict):
     txn_id = txn.get("transaction_id", "")
     dedup_hash = hashlib.sha256(txn_id.encode()).hexdigest()
 
-    amount = -(txn.get("amount") or 0)  # Plaid: positive = debit; we use negative = expense
+    amount = -(txn.get("amount") or 0)
     raw_cat = (txn.get("personal_finance_category") or {}).get("primary", "OTHER")
     category = PLAID_CATEGORY_MAP.get(raw_cat, "Other")
     txn_date = txn.get("date")

@@ -639,7 +639,10 @@ def tax_loss_harvesting():
     wash_window = now - timedelta(days=30)
     recent_tickers = set()
     for h in holdings:
-        if h.added_at and h.added_at >= wash_window:
+        added = h.added_at
+        if added and added.tzinfo is None:
+            added = added.replace(tzinfo=timezone.utc)
+        if added and added >= wash_window:
             recent_tickers.add(h.ticker)
 
     rows = []

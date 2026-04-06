@@ -50,6 +50,12 @@ def init_scheduler(app):
     )
 
     _scheduler.add_job(
+        _run_in_context(app, _sync_plaid),
+        "interval", minutes=15, id="sync_plaid",
+        max_instances=1, replace_existing=True,
+    )
+
+    _scheduler.add_job(
         _run_in_context(app, _snapshot_portfolios),
         "cron", hour=16, minute=30, timezone="America/New_York",
         id="snapshot_portfolios", max_instances=1, replace_existing=True,
@@ -126,6 +132,15 @@ def _sync_coinbase():
         log.info("Coinbase sync completed")
     except Exception as e:
         log.error("Coinbase sync error: %s", e)
+
+
+def _sync_plaid():
+    from ..services.plaid_service import sync_all_plaid_items
+    try:
+        sync_all_plaid_items()
+        log.info("Plaid sync completed")
+    except Exception as e:
+        log.error("Plaid sync error: %s", e)
 
 
 def _snapshot_portfolios():

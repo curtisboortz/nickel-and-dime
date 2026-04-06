@@ -35,26 +35,26 @@ function rebuildProjectionData() {
   return { labels: labels, values: values, years: years, monthly: monthly, ratePct: ratePct };
 }
 
-function updateProjectionSummary(data) {
+function updateProjectionSummary() {
   var startEl = document.getElementById("proj-starting");
   var current = startEl ? (parseFloat(startEl.value) || 0) : PROJ_CURRENT;
-  var endVal = data.values[data.values.length - 1];
-  var totalContrib = data.monthly * (data.years * 12);
+  var year = parseInt(document.getElementById("proj-timeline").value, 10);
+  var monthly = parseFloat(document.getElementById("proj-monthly").value) || 0;
+  var ratePct = parseFloat(document.getElementById("proj-rate").value) || 7;
+  var endVal = Math.round(projFV(current, monthly, ratePct, year * 12));
+  var totalContrib = monthly * (year * 12);
   var growth = endVal - current - totalContrib;
-  document.getElementById("proj-start-val").textContent = "$" + current.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
-  document.getElementById("proj-end-val").textContent = "$" + endVal.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
-  document.getElementById("proj-total-contrib").textContent = "$" + totalContrib.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
-  document.getElementById("proj-growth").textContent = "$" + growth.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  var fmt = function(v) { return "$" + v.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 }); };
+  document.getElementById("proj-start-val").textContent = fmt(current);
+  document.getElementById("proj-end-val").textContent = fmt(endVal);
+  document.getElementById("proj-total-contrib").textContent = fmt(totalContrib);
+  document.getElementById("proj-growth").textContent = fmt(growth);
 }
 
 function updateProjectionChart() {
   var data = rebuildProjectionData();
   if (!data) return;
   document.getElementById("proj-rate-val").textContent = data.ratePct + "%";
-  document.getElementById("proj-years-val").textContent = data.years;
-  var timelineEl = document.getElementById("proj-timeline");
-  timelineEl.max = data.years;
-  if (parseInt(timelineEl.value, 10) > data.years) timelineEl.value = data.years;
   updateProjectionTimelineLabel();
 
   if (projectionChart) {
@@ -98,7 +98,7 @@ function updateProjectionChart() {
       }
     });
   }
-  updateProjectionSummary(data);
+  updateProjectionSummary();
   setTimeout(updateProjectionTimelineLabel, 50);
 }
 
@@ -107,8 +107,8 @@ function updateProjectionTimelineLabel() {
   document.getElementById("proj-timeline-val").textContent = "Year " + year;
   var data = projectionData;
   if (!data.values || data.values.length === 0) return;
-  var years = parseInt(document.getElementById("proj-years").value, 10) || 30;
-  var idx = Math.round((year / years) * (data.values.length - 1));
+  var maxYears = 50;
+  var idx = Math.round((year / maxYears) * (data.values.length - 1));
   idx = Math.min(idx, data.values.length - 1);
   var val = data.values[idx];
   var crosshair = document.getElementById("projection-crosshair");
@@ -123,6 +123,7 @@ function updateProjectionTimelineLabel() {
       label.style.display = "block";
     }
   }
+  updateProjectionSummary();
 }
 
 var _projListenersBound = false;
@@ -132,7 +133,7 @@ function buildProjectionChart() {
   NDDiag.track("projection", "ok");
   if (_projListenersBound) return;
   _projListenersBound = true;
-  ["proj-starting", "proj-rate", "proj-monthly", "proj-years"].forEach(function(id) {
+  ["proj-starting", "proj-rate", "proj-monthly"].forEach(function(id) {
     var el = document.getElementById(id);
     if (el) el.addEventListener("input", updateProjectionChart);
   });

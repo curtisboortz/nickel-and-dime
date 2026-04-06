@@ -81,6 +81,7 @@ def _register_blueprints(app):
     from .blueprints.api_billing import api_billing_bp
     from .blueprints.api_import import api_import_bp
     from .blueprints.api_settings import api_settings_bp
+    from .blueprints.api_plaid import api_plaid_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(pages_bp)
@@ -91,6 +92,7 @@ def _register_blueprints(app):
     app.register_blueprint(api_billing_bp, url_prefix="/api")
     app.register_blueprint(api_import_bp, url_prefix="/api")
     app.register_blueprint(api_settings_bp, url_prefix="/api")
+    app.register_blueprint(api_plaid_bp, url_prefix="/api")
 
 
 def _register_error_handlers(app):

@@ -9,3 +9,4 @@ from .budget import BudgetConfig, Transaction, RecurringTransaction, CategoryRul
 from .market import PriceCache, FredCache, EconCalendarCache, SentimentCache  # noqa: F401
 from .settings import UserSettings, CustomPulseCard, PriceAlert, FinancialGoal, MonthlyInvestment  # noqa: F401
 from .snapshot import PortfolioSnapshot  # noqa: F401
+from .plaid import PlaidItem  # noqa: F401

@@ -3,6 +3,10 @@
 {% block title %}Dashboard | Nickel&amp;Dime{% endblock %}
 
 {% block head_extra %}
+<!-- Plaid Link SDK -->
+{% if is_pro %}
+<script src="https://cdn.plaid.com/link/v2/stable/link-initialize.js"></script>
+{% endif %}
 <!-- Chart.js + Luxon + Financial charts + Zoom -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/luxon@3.4.4/build/global/luxon.min.js"></script>
@@ -812,7 +816,8 @@
   <!-- Projected Growth -->
   <div class="card">
     <div class="card-title">Projected Growth</div>
-    <p class="hint" style="margin-bottom:12px;">Pick rate, contribution, and horizon. Drag the timeline slider to see projected value at any year.</p>
+    <p class="hint" style="margin-bottom:12px;">Pick rate and contribution, then drag the timeline to see projected value at any year.</p>
+    <input type="hidden" id="proj-years" value="50">
     <div class="chart-controls" style="margin-bottom:16px;">
       <div class="ctrl-group">
         <span class="label">Starting Value</span>
@@ -829,13 +834,6 @@
         <span class="label">Monthly Contribution</span>
         <input type="number" id="proj-monthly" class="num" value="500" step="100" min="0" style="width:120px;">
       </div>
-      <div class="ctrl-group">
-        <span class="label">Time Horizon (years)</span>
-        <div style="display:flex;align-items:center;gap:8px;">
-          <input type="range" id="proj-years" min="1" max="40" value="30" step="1" style="width:100px;">
-          <span id="proj-years-val" style="font-family:var(--mono);font-size:0.9rem;">30</span>
-        </div>
-      </div>
     </div>
     <div id="projection-chart-wrap" style="position:relative;height:300px;">
       <canvas id="projection-chart"></canvas>
@@ -844,8 +842,8 @@
     </div>
     <div class="ctrl-group" style="margin-top:12px;">
       <span class="label">Timeline</span>
-      <input type="range" id="proj-timeline" min="0" max="30" value="30" step="1" style="flex:1;max-width:300px;">
-      <span id="proj-timeline-val" style="font-family:var(--mono);font-size:0.9rem;">Year 30</span>
+      <input type="range" id="proj-timeline" min="0" max="50" value="50" step="1" style="flex:1;max-width:400px;">
+      <span id="proj-timeline-val" style="font-family:var(--mono);font-size:0.9rem;">Year 50</span>
     </div>
     <div id="projection-summary" style="display:flex;gap:24px;flex-wrap:wrap;margin-top:16px;padding-top:12px;border-top:1px solid var(--border-subtle);font-size:0.85rem;">
       <span><strong>Starting:</strong> <span id="proj-start-val">$0</span></span>
@@ -1006,6 +1004,25 @@
     </div>
 
     {% if is_pro %}
+    <!-- Plaid Brokerage Connections -->
+    <div style="border:1px solid var(--border-subtle);border-radius:var(--radius);padding:18px;margin-bottom:16px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+        <svg viewBox="0 0 24 24" style="width:24px;height:24px;fill:none;stroke:var(--accent-primary);stroke-width:2;"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 10h20"/><path d="M6 16h4"/></svg>
+        <div>
+          <div style="font-weight:600;font-size:0.95rem;">Brokerage Connections</div>
+          <div class="hint" style="margin:0;">Link your accounts to auto-sync holdings &amp; transactions</div>
+        </div>
+      </div>
+      <div id="plaid-accounts-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px;"></div>
+      <div id="plaid-status-msg" class="hint" style="text-align:center;margin-bottom:8px;"></div>
+      <div style="display:flex;justify-content:center;">
+        <button type="button" onclick="openPlaidLink()" id="plaid-connect-btn" style="padding:8px 22px;font-size:0.85rem;">+ Connect Account</button>
+      </div>
+      <p style="font-size:0.72rem;color:var(--text-muted);margin-top:10px;line-height:1.4;text-align:center;">
+        Powered by Plaid. We only read your data &mdash; we never initiate trades or transfers.
+      </p>
+    </div>
+
     <!-- Coinbase Integration -->
     <div style="border:1px solid var(--border-subtle);border-radius:var(--radius);padding:18px;margin-bottom:16px;">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">

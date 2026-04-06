@@ -4,6 +4,23 @@ All notable changes to Nickel&Dime are documented here.
 
 ---
 
+## [2.2.0] — 2026-04-05 — Plaid Integration
+
+### Added
+- **Plaid Link integration** — connect brokerage and bank accounts to auto-sync investment holdings and bank transactions via Plaid
+- **PlaidItem model** — stores encrypted access tokens, institution metadata, sync cursors, and connection status per user
+- **Investment holdings sync** — Plaid securities mapped to `Holding` (stocks/ETFs) and `CryptoHolding` (crypto) with `source="plaid"`; stale holdings auto-removed on each sync
+- **Transaction sync** — Plaid transactions mapped to `Transaction` with cursor-based incremental sync and dedup via `import_hash`; Plaid categories mapped to existing budget categories
+- **Settings UI** — "Brokerage Connections" section in settings modal with Connect Account (Plaid Link), per-institution Sync/Remove buttons, status badges, and last-sync timestamps
+- **Webhook receiver** — `POST /api/plaid/webhook` handles `ITEM`, `HOLDINGS`, and `TRANSACTIONS` webhook events for real-time status and data updates
+- **Scheduler job** — Plaid sync runs every 15 minutes via APScheduler alongside existing Coinbase and price refresh jobs
+- **`source` column on Holding** — new column (default `"manual"`) distinguishes manual, CSV-imported, and Plaid-synced holdings; `plaid_item_id` FK links back to the connection for clean disconnect
+
+### Database
+- Migration `d004`: Creates `plaid_items` table; adds `source` and `plaid_item_id` columns to `holdings`
+
+---
+
 ## [2.1.0] — 2026-04-04 — Feature Polish & Analytics
 
 ### Added

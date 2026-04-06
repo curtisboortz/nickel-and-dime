@@ -1,0 +1,97 @@
+NICKEL&DIME — PRIVACY POLICY
+https://nickelanddime.io/privacy
+Last updated: March 16, 2026
+
+============================================================
+
+1. INFORMATION WE COLLECT
+
+Account Information
+When you register, we collect your email address and a hashed password. We never store plaintext passwords.
+
+Financial Data
+You may choose to enter portfolio holdings, account balances, transactions, and budget information. This data is stored in our database to provide the Service.
+
+Third-Party API Keys & Access Tokens
+If you connect integrations (e.g., Coinbase, Plaid), your API credentials and access tokens are encrypted at rest using Fernet symmetric encryption (AES-128-CBC via the Python cryptography library) before storage. The encryption key is stored as an environment variable, never in source code.
+
+Usage Data
+We collect basic request logs (IP address, user agent, timestamps) for security and performance monitoring.
+
+============================================================
+
+2. HOW WE USE YOUR INFORMATION
+
+- To provide and maintain the Service
+- To process subscriptions via Stripe
+- To send password reset and account verification emails
+- To improve Service reliability and performance
+- To sync financial data from linked institutions via Plaid
+
+============================================================
+
+3. DATA SHARING
+
+We do NOT sell, rent, or share your personal or financial data with third parties, except:
+
+- Stripe — processes subscription payments (receives only billing-related data)
+- Plaid — facilitates bank and brokerage account linking (receives institution credentials directly; we store only encrypted access tokens)
+- Email provider (Resend) — sends transactional emails (receives only your email address)
+- Legal obligations — if required by law or valid legal process
+
+============================================================
+
+4. DATA SECURITY
+
+- Passwords are hashed with bcrypt (never stored in plaintext)
+- Sensitive API keys and Plaid access tokens are encrypted at rest using Fernet symmetric encryption
+- All data in transit is encrypted via TLS 1.2+
+- Session cookies are flagged Secure, HttpOnly, and SameSite=Lax in production
+- CSRF protection is enforced on all mutating endpoints (global fetch interceptor injects X-CSRFToken header; only the Stripe webhook endpoint is exempt, which uses its own signature verification)
+- Rate limiting on authentication endpoints (registration: 10/hr, login: 20/hr, password reset: 5/hr)
+- All database queries are scoped by authenticated user ID to prevent unauthorized cross-user data access (IDOR protection)
+
+============================================================
+
+5. DATA RETENTION AND DISPOSAL
+
+Your data is retained as long as your account is active. If you delete your account, all associated data will be permanently removed within 30 days.
+
+When you disconnect a linked institution (e.g., Plaid), all holdings and transactions synced from that institution are immediately and permanently deleted from our database. The Plaid access token is revoked via Plaid's API and then deleted.
+
+Users may delete individual holdings, transactions, balances, or connected accounts at any time through the application interface.
+
+============================================================
+
+6. YOUR RIGHTS
+
+You can:
+- Export your portfolio data at any time (CSV tax report, holdings export)
+- Delete individual holdings, transactions, or accounts
+- Disconnect linked institutions (immediately removes all synced data)
+- Request full account deletion by contacting support@nickelanddime.io
+
+============================================================
+
+7. COOKIES
+
+We use a session cookie for authentication. We do not use advertising or third-party tracking cookies.
+
+============================================================
+
+8. CHANGES TO THIS POLICY
+
+We may update this Privacy Policy periodically. We will notify users of material changes via email or an in-app notice.
+
+============================================================
+
+9. CONTACT
+
+For privacy-related questions, email support@nickelanddime.io
+
+============================================================
+
+Also published online at:
+- Privacy Policy: https://nickelanddime.io/privacy
+- Terms of Service: https://nickelanddime.io/terms
+- Financial Disclaimer: https://nickelanddime.io/disclaimer

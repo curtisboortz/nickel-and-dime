@@ -40,6 +40,8 @@ class Holding(db.Model):
     account = db.Column(db.String(120), default="")
     bucket = db.Column(db.String(50), default="Equities")
     value_override = db.Column(db.Float, nullable=True)
+    source = db.Column(db.String(50), default="manual")
+    plaid_item_id = db.Column(db.Integer, db.ForeignKey("plaid_items.id"), nullable=True)
     notes = db.Column(db.String(255), default="")
     added_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 

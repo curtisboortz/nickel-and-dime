@@ -9,6 +9,7 @@ function openSettingsModal() {
   if (!m) return;
   m.style.display = "flex";
   _loadIntegrationStatus();
+  _loadPlaidAccounts();
   _loadBucketRollup();
 }
 
@@ -105,6 +106,131 @@ function disconnectCoinbase() {
     _loadIntegrationStatus();
     var status = document.getElementById("cb-sync-status");
     if (status) status.textContent = "";
+  });
+}
+
+/* ═══════════════════════════════════════════════
+   Plaid Brokerage Connections
+   ═══════════════════════════════════════════════ */
+
+function _loadPlaidAccounts() {
+  var list = document.getElementById("plaid-accounts-list");
+  if (!list) return;
+  fetch("/api/plaid/accounts").then(function(r) { return r.json(); }).then(function(d) {
+    var accounts = d.accounts || [];
+    if (accounts.length === 0) {
+      list.innerHTML = '<p style="font-size:0.82rem;color:var(--text-muted);text-align:center;margin:4px 0;">No linked accounts yet.</p>';
+      return;
+    }
+    var html = "";
+    accounts.forEach(function(a) {
+      var statusColor = a.status === "good" ? "#3fb950" : a.status === "login_required" ? "#d29922" : "var(--danger)";
+      var statusLabel = a.status === "good" ? "Connected" : a.status === "login_required" ? "Re-auth needed" : "Error";
+      var syncTime = a.last_synced_at ? new Date(a.last_synced_at).toLocaleString() : "Never";
+      html += '<div style="padding:10px 12px;background:var(--bg-input);border-radius:var(--radius);display:flex;align-items:center;gap:10px;">';
+      html += '<div style="flex:1;min-width:0;">';
+      html += '<div style="font-size:0.88rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + _esc(a.institution_name || "Unknown") + '</div>';
+      html += '<div style="font-size:0.72rem;color:var(--text-muted);">Last sync: ' + _esc(syncTime) + '</div>';
+      html += '</div>';
+      html += '<span style="padding:2px 8px;border-radius:10px;font-size:0.68rem;font-weight:600;background:rgba(' + (a.status === "good" ? "46,160,67,0.15" : a.status === "login_required" ? "210,153,34,0.15" : "248,81,73,0.15") + ');color:' + statusColor + ';">' + statusLabel + '</span>';
+      html += '<button type="button" class="secondary" style="padding:4px 10px;font-size:0.72rem;white-space:nowrap;" onclick="syncPlaidItem(' + a.id + ', this)">Sync</button>';
+      html += '<button type="button" style="padding:4px 10px;font-size:0.72rem;background:var(--danger);color:#fff;white-space:nowrap;" onclick="disconnectPlaidItem(' + a.id + ', \'' + _esc(a.institution_name || "") + '\')">Remove</button>';
+      html += '</div>';
+    });
+    list.innerHTML = html;
+  }).catch(function() {
+    if (list) list.innerHTML = '<p style="font-size:0.82rem;color:var(--danger);text-align:center;">Failed to load accounts.</p>';
+  });
+}
+
+function openPlaidLink() {
+  var btn = document.getElementById("plaid-connect-btn");
+  var msg = document.getElementById("plaid-status-msg");
+  if (btn) { btn.disabled = true; btn.textContent = "Connecting..."; }
+  if (msg) { msg.textContent = ""; }
+
+  fetch("/api/plaid/link-token", { method: "POST" }).then(function(r) { return r.json(); }).then(function(d) {
+    if (d.error) {
+      if (msg) { msg.textContent = d.error; msg.style.color = "var(--danger)"; }
+      if (btn) { btn.disabled = false; btn.textContent = "+ Connect Account"; }
+      return;
+    }
+    if (typeof Plaid === "undefined") {
+      if (msg) { msg.textContent = "Plaid SDK not loaded. Please refresh and try again."; msg.style.color = "var(--danger)"; }
+      if (btn) { btn.disabled = false; btn.textContent = "+ Connect Account"; }
+      return;
+    }
+    var handler = Plaid.create({
+      token: d.link_token,
+      onSuccess: function(publicToken, metadata) {
+        if (msg) { msg.textContent = "Linking account..."; msg.style.color = "var(--text-secondary)"; }
+        fetch("/api/plaid/exchange-token", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ public_token: publicToken, metadata: metadata })
+        }).then(function(r) { return r.json(); }).then(function(result) {
+          if (result.error) {
+            if (msg) { msg.textContent = result.error; msg.style.color = "var(--danger)"; }
+          } else {
+            var inv = result.sync && result.sync.investments ? result.sync.investments : {};
+            if (msg) { msg.textContent = "Linked " + _esc(result.institution || "account") + " — synced " + (inv.synced || 0) + " holdings"; msg.style.color = "var(--success)"; }
+            _holdingsLoaded = false;
+            if (typeof loadHoldings === "function") loadHoldings();
+          }
+          _loadPlaidAccounts();
+          if (btn) { btn.disabled = false; btn.textContent = "+ Connect Account"; }
+        }).catch(function() {
+          if (msg) { msg.textContent = "Failed to link account."; msg.style.color = "var(--danger)"; }
+          if (btn) { btn.disabled = false; btn.textContent = "+ Connect Account"; }
+        });
+      },
+      onExit: function(err) {
+        if (err && msg) { msg.textContent = "Connection cancelled."; msg.style.color = "var(--text-muted)"; }
+        if (btn) { btn.disabled = false; btn.textContent = "+ Connect Account"; }
+      },
+    });
+    handler.open();
+  }).catch(function() {
+    if (msg) { msg.textContent = "Failed to start connection. Please try again."; msg.style.color = "var(--danger)"; }
+    if (btn) { btn.disabled = false; btn.textContent = "+ Connect Account"; }
+  });
+}
+
+function syncPlaidItem(itemId, btnEl) {
+  if (btnEl) { btnEl.disabled = true; btnEl.textContent = "Syncing..."; }
+  var msg = document.getElementById("plaid-status-msg");
+  fetch("/api/plaid/sync/" + itemId, { method: "POST" }).then(function(r) { return r.json(); }).then(function(d) {
+    if (d.error) {
+      if (msg) { msg.textContent = d.error; msg.style.color = "var(--danger)"; }
+    } else {
+      var inv = d.sync && d.sync.investments ? d.sync.investments : {};
+      var txn = d.sync && d.sync.transactions ? d.sync.transactions : {};
+      if (msg) { msg.textContent = "Synced " + (inv.synced || 0) + " holdings, " + (txn.added || 0) + " transactions"; msg.style.color = "var(--success)"; }
+      _holdingsLoaded = false;
+      if (typeof loadHoldings === "function") loadHoldings();
+    }
+    _loadPlaidAccounts();
+    if (btnEl) { btnEl.disabled = false; btnEl.textContent = "Sync"; }
+  }).catch(function() {
+    if (msg) { msg.textContent = "Sync failed."; msg.style.color = "var(--danger)"; }
+    if (btnEl) { btnEl.disabled = false; btnEl.textContent = "Sync"; }
+  });
+}
+
+function disconnectPlaidItem(itemId, name) {
+  if (!confirm("Disconnect " + (name || "this account") + "? All synced holdings and transactions from this institution will be removed.")) return;
+  var msg = document.getElementById("plaid-status-msg");
+  fetch("/api/plaid/accounts/" + itemId, { method: "DELETE" }).then(function(r) { return r.json(); }).then(function(d) {
+    if (d.error) {
+      if (msg) { msg.textContent = d.error; msg.style.color = "var(--danger)"; }
+    } else {
+      if (msg) { msg.textContent = "Account disconnected."; msg.style.color = "var(--text-muted)"; }
+      _holdingsLoaded = false;
+      if (typeof loadHoldings === "function") loadHoldings();
+    }
+    _loadPlaidAccounts();
+  }).catch(function() {
+    if (msg) { msg.textContent = "Disconnect failed."; msg.style.color = "var(--danger)"; }
   });
 }
 

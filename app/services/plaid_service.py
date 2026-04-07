@@ -424,9 +424,23 @@ def _handle_plaid_error(plaid_item: PlaidItem, exc: plaid.ApiException):
 
 
 def sync_plaid_item(user_id: int, plaid_item: PlaidItem) -> dict:
-    """Full sync: investments + transactions for one PlaidItem."""
-    inv_result = sync_investments(user_id, plaid_item)
-    txn_result = sync_transactions(user_id, plaid_item)
+    """Full sync: investments + transactions for one PlaidItem.
+
+    Each phase runs independently so a transaction-sync failure
+    doesn't prevent investment data from being saved (and vice versa).
+    """
+    inv_result: dict = {}
+    txn_result: dict = {}
+    try:
+        inv_result = sync_investments(user_id, plaid_item)
+    except Exception as e:
+        log.error("Investment sync failed for item %s: %s", plaid_item.item_id, e)
+        inv_result = {"error": str(e)}
+    try:
+        txn_result = sync_transactions(user_id, plaid_item)
+    except Exception as e:
+        log.error("Transaction sync failed for item %s: %s", plaid_item.item_id, e)
+        txn_result = {"error": str(e)}
     return {"investments": inv_result, "transactions": txn_result}
 
 

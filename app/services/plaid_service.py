@@ -248,7 +248,7 @@ def sync_investments(user_id: int, plaid_item: PlaidItem) -> dict:
         sec_name = security.get("name") or ""
 
         if not ticker:
-            slug = sec_name[:20].upper().replace(" ", "_") or "PRIV"
+            slug = sec_name[:14].upper().replace(" ", "_").rstrip("_") or "PRIV"
             ticker = f"PRIV:{slug}"
 
         if sec_type == "cryptocurrency" or ticker.upper() in CRYPTO_TICKERS:
@@ -456,3 +456,7 @@ def sync_all_plaid_items():
         except Exception as e:
             log.error("Plaid sync error for user %d item %s: %s",
                       item.user_id, item.item_id, e)
+            try:
+                db.session.rollback()
+            except Exception:
+                pass

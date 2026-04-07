@@ -18,8 +18,13 @@ log = logging.getLogger("nd.email")
 
 def _send_via_resend(api_key, from_addr, to, subject, html_body, text_body=None):
     """Send an email via Resend's HTTP API. Returns None on success or error string."""
+    import re as _re
+    match = _re.search(r'<([^>]+)>', from_addr)
+    clean_email = match.group(1) if match else from_addr
+    clean_from = f"NickelAndDime <{clean_email}>"
+
     payload = {
-        "from": from_addr,
+        "from": clean_from,
         "to": [to] if isinstance(to, str) else to,
         "subject": subject,
     }
@@ -39,10 +44,12 @@ def _send_via_resend(api_key, from_addr, to, subject, html_body, text_body=None)
     )
     try:
         with urllib.request.urlopen(req, timeout=15) as resp:
-            result = json.loads(resp.read().decode())
             return None
     except urllib.error.HTTPError as e:
-        body = e.read().decode() if e.fp else ""
+        try:
+            body = e.read().decode()
+        except Exception:
+            body = ""
         return f"Resend HTTP {e.code}: {body}"
     except Exception as e:
         return f"Resend error: {e}"

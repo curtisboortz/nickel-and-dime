@@ -313,77 +313,144 @@ function saveAllocationTargets() {
 
 /* ── Allocation Donut ── */
 var _donutChart = null;
+var _donutColorMap = {
+  "Equities": "#3b82f6",
+  "International": "#06b6d4",
+  "Fixed Income": "#14b8a6",
+  "Cash": "#64748b",
+  "Alternatives": "#8b5cf6",
+  "Crypto": "#a855f7",
+  "Real Assets": "#f59e0b",
+  "Gold": "#eab308",
+  "Silver": "#94a3b8",
+  "Real Estate": "#0ea5e9",
+  "Art": "#ec4899",
+  "Managed Blend": "#22c55e",
+  "Retirement Blend": "#4ade80"
+};
+var _donutFallback = ["#ef4444","#f97316","#84cc16","#06b6d4","#e879f9","#fb923c","#a3e635"];
+
+function _donutColor(label) {
+  return _donutColorMap[label] || _donutFallback[Math.abs(_hashStr(label)) % _donutFallback.length];
+}
+function _hashStr(s) { var h = 0; for (var i = 0; i < s.length; i++) h = ((h << 5) - h) + s.charCodeAt(i); return h; }
+
+function _buildDonutLegend(parentData, detailData, total) {
+  var legend = document.getElementById("donut-legend");
+  if (!legend) return;
+
+  var childrenOf = {};
+  var detailKeys = Object.keys(detailData).filter(function(k) { return detailData[k] > 0; });
+  var parentKeys = Object.keys(parentData).filter(function(k) { return parentData[k] > 0; });
+  parentKeys.forEach(function(pk) { childrenOf[pk] = []; });
+  detailKeys.forEach(function(dk) {
+    var matched = false;
+    parentKeys.forEach(function(pk) {
+      if (dk !== pk && !matched) {
+        if (childrenOf[pk] !== undefined) {
+          var isChild = dk.toLowerCase().indexOf(pk.toLowerCase().split(" ")[0]) >= 0;
+          if (!isChild && parentData[pk] && Math.abs(parentData[pk] - detailData[dk]) < 1) isChild = true;
+          if (isChild) { childrenOf[pk].push(dk); matched = true; }
+        }
+      }
+    });
+    if (!matched && parentKeys.indexOf(dk) === -1) {
+      parentKeys.forEach(function(pk) {
+        if (!matched && childrenOf[pk] !== undefined) { childrenOf[pk].push(dk); matched = true; }
+      });
+    }
+  });
+
+  var sorted = parentKeys.slice().sort(function(a, b) { return (parentData[b] || 0) - (parentData[a] || 0); });
+
+  var html = "";
+  sorted.forEach(function(pk) {
+    var val = parentData[pk] || 0;
+    var pct = total > 0 ? ((val / total) * 100).toFixed(1) : "0.0";
+    var color = _donutColor(pk);
+    html += '<div style="margin-bottom:8px;">';
+    html += '<div style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:default;" onmouseover="this.style.opacity=\'0.8\'" onmouseout="this.style.opacity=\'1\'">';
+    html += '<span style="width:10px;height:10px;border-radius:50%;background:' + color + ';flex-shrink:0;"></span>';
+    html += '<span style="flex:1;font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + pk + '</span>';
+    html += '<span style="font-family:var(--mono);color:var(--text-muted);font-size:0.75rem;white-space:nowrap;">' + pct + '%</span>';
+    html += '<span style="font-family:var(--mono);color:var(--text-primary);font-size:0.78rem;white-space:nowrap;">$' + val.toLocaleString(undefined, {maximumFractionDigits: 0}) + '</span>';
+    html += '</div>';
+    var children = childrenOf[pk] || [];
+    children.forEach(function(ck) {
+      var cv = detailData[ck] || 0;
+      var cpct = total > 0 ? ((cv / total) * 100).toFixed(1) : "0.0";
+      html += '<div style="display:flex;align-items:center;gap:8px;padding:2px 0 2px 18px;">';
+      html += '<span style="width:6px;height:6px;border-radius:50%;background:' + color + ';opacity:0.5;flex-shrink:0;"></span>';
+      html += '<span style="flex:1;color:var(--text-muted);font-size:0.75rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + ck + '</span>';
+      html += '<span style="font-family:var(--mono);color:var(--text-muted);font-size:0.7rem;white-space:nowrap;">' + cpct + '%</span>';
+      html += '<span style="font-family:var(--mono);color:var(--text-muted);font-size:0.72rem;white-space:nowrap;">$' + cv.toLocaleString(undefined, {maximumFractionDigits: 0}) + '</span>';
+      html += '</div>';
+    });
+    html += '</div>';
+  });
+  legend.innerHTML = html;
+}
+
 function buildDonut() {
   NDDiag.track("donut", "loading");
   var parentData = window.BUCKETS_DATA;
   var detailData = window.BUCKETS_DETAIL || parentData;
   if (!parentData || typeof parentData !== "object") { NDDiag.track("donut", "warn", "no BUCKETS_DATA"); return; }
-  var colorMap = {
-    "Equities":"#34d399", "Cash":"#94a3b8", "Fixed Income":"#60a5fa",
-    "Alternatives":"#818cf8", "Crypto":"#a78bfa", "Real Assets":"#06b6d4",
-    "Gold":"#eab308", "Silver":"#a8a29e", "International":"#2dd4bf",
-    "Art":"#e879f9", "Managed Blend":"#4ade80", "Retirement Blend":"#86efac",
-    "Real Estate":"#22d3ee"
-  };
-  var fallback = ["#f87171","#fbbf24","#2dd4bf","#a3e635","#f472b6"];
 
-  var innerLabels = Object.keys(parentData).filter(function(k) { return parentData[k] > 0; });
-  var innerValues = innerLabels.map(function(k) { return parentData[k]; });
-  var fi = 0;
-  var innerColors = innerLabels.map(function(l) { return colorMap[l] || fallback[fi++ % fallback.length]; });
+  var labels = Object.keys(parentData).filter(function(k) { return parentData[k] > 0; });
+  var values = labels.map(function(k) { return parentData[k]; });
+  var colors = labels.map(function(l) { return _donutColor(l); });
+  var total = values.reduce(function(a, b) { return a + b; }, 0);
 
-  var outerLabels = Object.keys(detailData).filter(function(k) { return detailData[k] > 0; });
-  var outerValues = outerLabels.map(function(k) { return detailData[k]; });
-  fi = 0;
-  var outerColors = outerLabels.map(function(l) { return colorMap[l] || fallback[fi++ % fallback.length]; });
-
-  if (innerLabels.length === 0) { NDDiag.track("donut", "warn", "empty buckets"); return; }
+  if (labels.length === 0) { NDDiag.track("donut", "warn", "empty buckets"); return; }
   var ctx = document.getElementById("allocation-donut");
-  if (!ctx) { console.warn("buildDonut: canvas #allocation-donut not found"); return; }
-  if (typeof Chart === "undefined") { console.warn("buildDonut: Chart.js not loaded"); return; }
+  if (!ctx || typeof Chart === "undefined") return;
   if (_donutChart) { try { _donutChart.destroy(); } catch(e) {} }
 
-  var datasets = [{
-    label: "Category",
-    data: innerValues, backgroundColor: innerColors, borderWidth: 0,
-    hoverBorderWidth: 2, hoverBorderColor: "#fff"
-  }];
-  var legendLabels = innerLabels;
-  if (outerLabels.length > innerLabels.length) {
-    datasets.push({
-      label: "Detail",
-      data: outerValues, backgroundColor: outerColors, borderWidth: 1,
-      borderColor: "rgba(0,0,0,0.3)", hoverBorderWidth: 2, hoverBorderColor: "#fff"
-    });
-    legendLabels = outerLabels;
-  }
+  var centerVal = document.getElementById("donut-center-value");
+  if (centerVal) centerVal.textContent = "$" + total.toLocaleString(undefined, {maximumFractionDigits: 0});
 
   _donutChart = new Chart(ctx, {
     type: "doughnut",
-    data: { labels: legendLabels, datasets: datasets },
+    data: {
+      labels: labels,
+      datasets: [{
+        data: values,
+        backgroundColor: colors,
+        borderWidth: 2,
+        borderColor: "rgba(9,9,11,0.8)",
+        hoverBorderWidth: 3,
+        hoverBorderColor: "#fff",
+        hoverOffset: 6
+      }]
+    },
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      cutout: datasets.length > 1 ? "50%" : "65%",
+      cutout: "68%",
+      layout: { padding: 4 },
       plugins: {
-        legend: { position: "right", labels: { color: "#94a3b8", font: { size: 11, family: "Inter" }, padding: 12, usePointStyle: true, pointStyle: "circle",
-          generateLabels: function(chart) {
-            var ds = chart.data.datasets[chart.data.datasets.length - 1];
-            return chart.data.labels.map(function(label, i) {
-              return { text: label, fillStyle: ds.backgroundColor[i], strokeStyle: "transparent", hidden: false, index: i };
-            });
-          }
-        } },
+        legend: { display: false },
         tooltip: {
           backgroundColor: "rgba(9,9,11,0.95)",
-          titleColor: "#f1f5f9", bodyColor: "#94a3b8",
-          borderColor: "rgba(255,255,255,0.1)", borderWidth: 1,
-          padding: 12, cornerRadius: 8,
-          callbacks: { label: function(c) { return c.label + ": $" + c.raw.toLocaleString(undefined,{maximumFractionDigits:0}); } }
+          titleColor: "#f1f5f9", bodyColor: "#cbd5e1",
+          borderColor: "rgba(255,255,255,0.08)", borderWidth: 1,
+          padding: 14, cornerRadius: 10,
+          titleFont: { size: 13, weight: "600" },
+          bodyFont: { size: 12 },
+          callbacks: {
+            title: function(items) { return items[0].label; },
+            label: function(c) {
+              var pct = total > 0 ? ((c.raw / total) * 100).toFixed(1) : "0";
+              return "$" + c.raw.toLocaleString(undefined, {maximumFractionDigits: 0}) + "  ·  " + pct + "%";
+            }
+          }
         }
       }
     }
   });
-  NDDiag.track("donut", "ok", innerLabels.length + " parent + " + outerLabels.length + " detail slices");
+
+  _buildDonutLegend(parentData, detailData, total);
+  NDDiag.track("donut", "ok", labels.length + " parent + " + Object.keys(detailData).length + " detail slices");
 }
 

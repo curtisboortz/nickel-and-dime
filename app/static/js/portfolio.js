@@ -1108,6 +1108,112 @@ function _renderSummaries(items) {
 
 loadInsights();
 
+/* ── Expandable Metric Details ── */
+var _metricOpen = null;
+var _metricExplainers = {
+  risk: {
+    title: "Risk Score (0 – 100)",
+    body: "Measures overall portfolio risk based on the combined volatility of your asset classes and how they correlate with each other. " +
+      "It's scaled so that a 100% equity portfolio scores ~50.\n\n" +
+      "<strong>0 – 20 &nbsp;Conservative</strong> — Very low risk. Dominated by cash and bonds. Low growth potential but minimal drawdowns.\n" +
+      "<strong>21 – 40 &nbsp;Moderate</strong> — Balanced risk/return. Typical of diversified portfolios with a tilt toward stability.\n" +
+      "<strong>41 – 60 &nbsp;Balanced</strong> — Medium risk. Roughly mirrors the volatility of a stock-heavy portfolio.\n" +
+      "<strong>61 – 80 &nbsp;Growth</strong> — Higher risk. Concentrated in equities, crypto, or alternatives. Expect larger swings.\n" +
+      "<strong>81 – 100 &nbsp;Aggressive</strong> — Maximum risk. Heavily weighted toward the most volatile asset classes."
+  },
+  vol: {
+    title: "Estimated Volatility",
+    body: "Annualized portfolio volatility — the expected range of returns in a typical year. " +
+      "Calculated from each asset class's historical volatility and their cross-correlations.\n\n" +
+      "<strong>0% – 5%</strong> — Very low. Cash-like. Your portfolio barely moves.\n" +
+      "<strong>5% – 10%</strong> — Low. Bond-heavy or well-hedged. Expect small fluctuations.\n" +
+      "<strong>10% – 16%</strong> — Moderate. Typical of a diversified stock/bond mix. ~16% is roughly the long-term volatility of the S&P 500.\n" +
+      "<strong>16% – 25%</strong> — High. Equity-dominated or concentrated. Significant swings are normal.\n" +
+      "<strong>25%+</strong> — Very high. Crypto-heavy or leveraged. Double-digit monthly moves are common."
+  },
+  div: {
+    title: "Diversification Ratio",
+    body: "Measures how much your asset mix reduces risk compared to holding each asset class individually. " +
+      "Calculated as the weighted average volatility divided by the actual portfolio volatility. " +
+      "A higher ratio means your assets don't all move together, which lowers overall risk.\n\n" +
+      "<strong>Below 1.05x &nbsp;Low</strong> — Your holdings are highly correlated. Diversification provides almost no benefit.\n" +
+      "<strong>1.05x – 1.20x &nbsp;Moderate</strong> — Some diversification benefit, but there's room to add uncorrelated assets.\n" +
+      "<strong>1.20x – 1.50x &nbsp;Good</strong> — Meaningful risk reduction from diversification. A solid, well-balanced portfolio.\n" +
+      "<strong>1.50x+ &nbsp;Excellent</strong> — Strong diversification. Your asset classes offset each other well, significantly reducing overall risk."
+  },
+  classes: {
+    title: "Asset Classes",
+    body: "The number of distinct asset categories in your portfolio (e.g. Equities, Fixed Income, Crypto, Real Assets, Cash). " +
+      "More asset classes generally means better diversification, but quality matters more than quantity.\n\n" +
+      "<strong>1 – 2</strong> — Very concentrated. A single downturn in one sector can hit your entire portfolio.\n" +
+      "<strong>3 – 4</strong> — Moderate breadth. You have some diversification but may still be exposed to correlated risks.\n" +
+      "<strong>5 – 6</strong> — Good breadth. Typical of a well-constructed portfolio with exposure across major asset types.\n" +
+      "<strong>7+</strong> — Excellent breadth. Wide exposure across asset types. Ensure you're not over-diversifying into tiny, negligible positions."
+  }
+};
+
+function toggleMetricDetail(key) {
+  var panel = document.getElementById("ins-metric-detail");
+  var content = document.getElementById("ins-metric-detail-content");
+  if (!panel || !content) return;
+
+  if (_metricOpen === key || key === null) {
+    panel.style.display = "none";
+    _metricOpen = null;
+    return;
+  }
+
+  var info = _metricExplainers[key];
+  if (!info) return;
+  content.innerHTML =
+    '<div style="font-weight:600;margin-bottom:8px;font-size:0.88rem;">' + info.title + '</div>' +
+    '<div style="color:var(--text-secondary);">' + info.body.replace(/\n/g, "<br>") + '</div>';
+  panel.style.display = "";
+  _metricOpen = key;
+}
+
+/* ── AI Portfolio Advisor ── */
+function requestAIAdvice() {
+  var btn = document.getElementById("ai-advice-btn");
+  var result = document.getElementById("ai-advice-result");
+  if (!btn || !result) return;
+
+  btn.disabled = true;
+  btn.textContent = "Generating…";
+  result.style.display = "";
+  result.textContent = "Analyzing your portfolio…";
+
+  fetch("/api/insights/ai-advice", { method: "POST" })
+    .then(function(r) {
+      if (r.status === 403) throw new Error("pro");
+      if (r.status === 503) throw new Error("nokey");
+      if (!r.ok) throw new Error("fail");
+      return r.json();
+    })
+    .then(function(d) {
+      result.innerHTML = _formatAdvice(d.advice || "No advice generated.");
+      btn.textContent = "Refresh Advice";
+      btn.disabled = false;
+    })
+    .catch(function(e) {
+      if (e.message === "pro") {
+        result.innerHTML = '<span style="color:var(--warning);">This feature requires a Pro subscription.</span>';
+      } else if (e.message === "nokey") {
+        result.innerHTML = '<span style="color:var(--warning);">AI advice is not yet configured. An API key is needed on the server.</span>';
+      } else {
+        result.innerHTML = '<span style="color:var(--danger);">Failed to generate advice. Please try again.</span>';
+      }
+      btn.textContent = "Generate AI Advice";
+      btn.disabled = false;
+    });
+}
+
+function _formatAdvice(text) {
+  return text
+    .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+    .replace(/\n/g, "<br>");
+}
+
 /* ── Allocation Templates ── */
 var _templatesChart = null;
 var _templatesLoaded = false;

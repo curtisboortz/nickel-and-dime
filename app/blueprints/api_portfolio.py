@@ -7,7 +7,7 @@ Balances (manual), portfolio history, and budget remain free for all.
 from datetime import datetime, timezone
 
 from flask import (
-    Blueprint, jsonify, request as flask_request,
+    Blueprint, current_app, jsonify, request as flask_request,
     Response,
 )
 from flask_login import login_required, current_user
@@ -1043,6 +1043,45 @@ def portfolio_insights():
     return jsonify(generate_insights(
         current_user.id, overrides=overrides
     ))
+
+
+# ── AI Portfolio Advisor ────────────────────────────────────────
+
+
+@api_portfolio_bp.route("/insights/ai-advice", methods=["POST"])
+@login_required
+@requires_pro
+def ai_portfolio_advice():
+    """Return AI-generated portfolio advice (Pro only)."""
+    from ..services.ai_advice_service import get_ai_advice
+
+    api_key = current_app.config.get("OPENAI_API_KEY", "")
+    if not api_key:
+        return jsonify({"error": "AI not configured"}), 503
+
+    settings = (
+        db.session.query(UserSettings)
+        .filter_by(user_id=current_user.id)
+        .first()
+    )
+    overrides = (
+        settings.bucket_rollup
+        if settings and hasattr(settings, "bucket_rollup")
+        else None
+    )
+
+    try:
+        result = get_ai_advice(
+            current_user.id, overrides=overrides
+        )
+    except Exception:
+        return jsonify(
+            {"error": "AI service unavailable"}
+        ), 503
+
+    if "error" in result:
+        return jsonify(result), 503
+    return jsonify(result)
 
 
 # ── PDF Report ─────────────────────────────────────────────────

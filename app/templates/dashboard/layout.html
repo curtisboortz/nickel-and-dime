@@ -377,8 +377,15 @@ function obFinish() {
       <!-- Allocation Donut -->
       <div class="card widget-card" draggable="true" data-widget="allocation-donut">
         <div class="card-title"><span class="drag-handle" title="Drag to reorder">&#x2630;</span> Portfolio Allocation</div>
-        <div style="position:relative;height:260px;">
-          <canvas id="allocation-donut"></canvas>
+        <div style="display:flex;align-items:flex-start;gap:16px;min-height:280px;">
+          <div style="position:relative;flex:0 0 220px;height:220px;margin:auto 0;">
+            <canvas id="allocation-donut"></canvas>
+            <div id="donut-center" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none;">
+              <div style="font-size:0.7rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">Total</div>
+              <div id="donut-center-value" style="font-size:1.15rem;font-weight:700;font-family:var(--mono);color:var(--text-primary);"></div>
+            </div>
+          </div>
+          <div id="donut-legend" style="flex:1;overflow-y:auto;max-height:280px;font-size:0.8rem;padding:4px 0;"></div>
         </div>
       </div>
       <!-- Allocation Table -->
@@ -1018,23 +1025,34 @@ function obFinish() {
     <p class="hint" style="margin-bottom:14px;">AI-powered risk analysis and recommendations for your portfolio.</p>
 
     <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:18px;">
-      <div style="flex:1;min-width:140px;background:var(--surface-raised);border-radius:var(--radius);padding:16px;text-align:center;">
+      <div class="ins-metric-card" onclick="toggleMetricDetail('risk')" style="flex:1;min-width:140px;background:var(--surface-raised);border-radius:var(--radius);padding:16px;text-align:center;cursor:pointer;transition:background .15s;position:relative;">
         <div style="font-size:2rem;font-weight:700;font-family:var(--mono);" id="ins-risk-score">--</div>
         <div style="font-size:0.75rem;color:var(--text-muted);">Risk Score</div>
         <div style="font-size:0.8rem;margin-top:4px;" id="ins-risk-label"></div>
+        <div style="font-size:0.6rem;color:var(--text-muted);margin-top:6px;">click to learn more</div>
       </div>
-      <div style="flex:1;min-width:140px;background:var(--surface-raised);border-radius:var(--radius);padding:16px;text-align:center;">
+      <div class="ins-metric-card" onclick="toggleMetricDetail('vol')" style="flex:1;min-width:140px;background:var(--surface-raised);border-radius:var(--radius);padding:16px;text-align:center;cursor:pointer;transition:background .15s;position:relative;">
         <div style="font-size:2rem;font-weight:700;font-family:var(--mono);" id="ins-vol">--</div>
         <div style="font-size:0.75rem;color:var(--text-muted);">Est. Volatility</div>
+        <div style="font-size:0.6rem;color:var(--text-muted);margin-top:6px;">click to learn more</div>
       </div>
-      <div style="flex:1;min-width:140px;background:var(--surface-raised);border-radius:var(--radius);padding:16px;text-align:center;">
+      <div class="ins-metric-card" onclick="toggleMetricDetail('div')" style="flex:1;min-width:140px;background:var(--surface-raised);border-radius:var(--radius);padding:16px;text-align:center;cursor:pointer;transition:background .15s;position:relative;">
         <div style="font-size:2rem;font-weight:700;font-family:var(--mono);" id="ins-div-ratio">--</div>
         <div style="font-size:0.75rem;color:var(--text-muted);">Diversification</div>
         <div style="font-size:0.8rem;margin-top:4px;" id="ins-div-label"></div>
+        <div style="font-size:0.6rem;color:var(--text-muted);margin-top:6px;">click to learn more</div>
       </div>
-      <div style="flex:1;min-width:140px;background:var(--surface-raised);border-radius:var(--radius);padding:16px;text-align:center;">
+      <div class="ins-metric-card" onclick="toggleMetricDetail('classes')" style="flex:1;min-width:140px;background:var(--surface-raised);border-radius:var(--radius);padding:16px;text-align:center;cursor:pointer;transition:background .15s;position:relative;">
         <div style="font-size:2rem;font-weight:700;font-family:var(--mono);" id="ins-buckets">--</div>
         <div style="font-size:0.75rem;color:var(--text-muted);">Asset Classes</div>
+        <div style="font-size:0.6rem;color:var(--text-muted);margin-top:6px;">click to learn more</div>
+      </div>
+    </div>
+
+    <div id="ins-metric-detail" style="display:none;margin-bottom:18px;padding:16px 20px;background:var(--surface-raised);border-radius:var(--radius);border:1px solid var(--border-subtle);font-size:0.82rem;line-height:1.6;animation:fadeIn .2s ease;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+        <div id="ins-metric-detail-content"></div>
+        <button onclick="toggleMetricDetail(null)" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:1.1rem;padding:0 0 0 12px;line-height:1;">&times;</button>
       </div>
     </div>
 
@@ -1049,6 +1067,18 @@ function obFinish() {
         <div style="font-weight:600;font-size:0.85rem;margin-bottom:8px;">AI Summary</div>
         <ul id="ins-summaries" style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:8px;"></ul>
       </div>
+    </div>
+
+    <div style="border-top:1px solid var(--border-subtle);padding-top:18px;margin-top:4px;">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+        <div style="font-weight:600;font-size:0.85rem;">AI Portfolio Advisor</div>
+        <span class="pro-badge" style="font-size:0.65rem;padding:2px 8px;border-radius:9999px;background:var(--accent-primary);color:#09090b;font-weight:600;">PRO</span>
+      </div>
+      <p class="hint" style="margin-bottom:12px;">Get personalized portfolio advice powered by AI — tailored to your holdings, allocation, and risk profile.</p>
+      <button id="ai-advice-btn" onclick="requestAIAdvice()" style="padding:8px 20px;font-size:0.82rem;border-radius:var(--radius);border:1px solid var(--accent-primary);background:var(--accent-primary);color:#09090b;cursor:pointer;font-weight:600;transition:opacity .15s;">
+        Generate AI Advice
+      </button>
+      <div id="ai-advice-result" style="display:none;margin-top:14px;padding:16px 20px;background:var(--surface-raised);border-radius:var(--radius);border:1px solid var(--border-subtle);font-size:0.82rem;line-height:1.7;white-space:pre-wrap;"></div>
     </div>
   </div>
 

@@ -11,7 +11,9 @@ TEMPLATES = [
         "author": "Ray Dalio / Bridgewater",
         "description": (
             "Designed to perform well across all economic environments "
-            "(growth, recession, inflation, deflation)."
+            "(growth, recession, inflation, deflation). "
+            "Classic allocation from Dalio's 2014 Tony Robbins interview — "
+            "his current views may differ."
         ),
         "allocations": {
             "Equities": 30,

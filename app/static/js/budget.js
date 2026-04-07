@@ -296,6 +296,125 @@ document.addEventListener("keydown", function(e) {
 var TRANSACTIONS = [];
 var BUDGET_LIMITS = {};
 var BUDGET_CATS = [];
+var _budgetDataLoaded = false;
+function _initBudgetListeners() {
+  if (_budgetDataLoaded) return;
+  _budgetDataLoaded = true;
+  fetch("/api/budget-data")
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      TRANSACTIONS = d.transactions || [];
+      BUDGET_LIMITS = d.budget_limits || {};
+      BUDGET_CATS = d.budget_cats || [];
+      var incomeInput = document.getElementById("budget-income-input");
+      if (incomeInput && d.budget && d.budget.monthly_income) {
+        incomeInput.value = d.budget.monthly_income;
+      }
+      var wrap = document.getElementById("budget-categories-wrap");
+      if (wrap && d.budget && d.budget.categories) {
+        _renderBudgetCategories(d.budget.categories);
+      }
+      renderTxns();
+      renderSpendingBreakdown();
+      buildSpendingChart();
+    })
+    .catch(function() { _budgetDataLoaded = false; });
+}
+function _renderBudgetCategories(categories) {
+  var wrap = document.getElementById("budget-categories-wrap");
+  if (!wrap) return;
+  if (!categories || categories.length === 0) {
+    wrap.innerHTML = '<p class="hint" style="padding:12px 0;">No budget categories configured yet. Save to create defaults.</p>';
+    return;
+  }
+  var html = '<div style="display:flex;flex-direction:column;gap:8px;margin-top:12px;">';
+  categories.forEach(function(c, i) {
+    html += '<div style="display:flex;align-items:center;gap:8px;">';
+    html += '<input type="text" class="budget-cat-name" data-idx="' + i + '" value="' + (c.name || "") + '" style="flex:1;font-size:0.85rem;" placeholder="Category name">';
+    html += '<span class="hint" style="font-size:0.78rem;white-space:nowrap;">$</span>';
+    html += '<input type="number" class="budget-cat-limit num" data-idx="' + i + '" value="' + (c.limit || 0) + '" style="width:100px;font-size:0.85rem;" min="0" placeholder="Limit">';
+    html += '<button type="button" class="secondary" style="padding:2px 8px;font-size:0.7rem;color:var(--danger);" onclick="this.parentElement.remove()">x</button>';
+    html += '</div>';
+  });
+  html += '</div>';
+  html += '<button type="button" class="secondary" style="margin-top:8px;padding:4px 12px;font-size:0.75rem;" onclick="_addBudgetCategory()">+ Add Category</button>';
+  wrap.innerHTML = html;
+}
+function _addBudgetCategory() {
+  var wrap = document.getElementById("budget-categories-wrap");
+  if (!wrap) return;
+  var container = wrap.querySelector("div");
+  if (!container) return;
+  var idx = container.children.length;
+  var row = document.createElement("div");
+  row.style.cssText = "display:flex;align-items:center;gap:8px;";
+  row.innerHTML = '<input type="text" class="budget-cat-name" data-idx="' + idx + '" value="" style="flex:1;font-size:0.85rem;" placeholder="Category name">'
+    + '<span class="hint" style="font-size:0.78rem;white-space:nowrap;">$</span>'
+    + '<input type="number" class="budget-cat-limit num" data-idx="' + idx + '" value="0" style="width:100px;font-size:0.85rem;" min="0" placeholder="Limit">'
+    + '<button type="button" class="secondary" style="padding:2px 8px;font-size:0.7rem;color:var(--danger);" onclick="this.parentElement.remove()">x</button>';
+  container.appendChild(row);
+  row.querySelector("input").focus();
+}
+function saveBudget() {
+  var btn = document.querySelector('[onclick="saveBudget()"]');
+  var incomeInput = document.getElementById("budget-income-input");
+  var income = parseFloat(incomeInput ? incomeInput.value : 0) || 0;
+  var names = document.querySelectorAll(".budget-cat-name");
+  var limits = document.querySelectorAll(".budget-cat-limit");
+  var categories = [];
+  names.forEach(function(n, i) {
+    var name = n.value.trim();
+    if (!name) return;
+    var limit = parseFloat(limits[i] ? limits[i].value : 0) || 0;
+    categories.push({ name: name, limit: limit });
+  });
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "Saving...";
+  }
+  fetch("/api/budget-data", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ monthly_income: income, categories: categories })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    if (d.success) {
+      if (btn) {
+        btn.textContent = "Saved";
+        btn.style.background = "var(--success)";
+        setTimeout(function() {
+          btn.textContent = "Save Budget";
+          btn.style.background = "";
+          btn.disabled = false;
+        }, 2000);
+      }
+      _budgetDataLoaded = false;
+      _initBudgetListeners();
+    } else {
+      if (btn) {
+        btn.textContent = "Error — try again";
+        btn.style.background = "var(--danger)";
+        setTimeout(function() {
+          btn.textContent = "Save Budget";
+          btn.style.background = "";
+          btn.disabled = false;
+        }, 2500);
+      }
+    }
+  })
+  .catch(function() {
+    if (btn) {
+      btn.textContent = "Error — try again";
+      btn.style.background = "var(--danger)";
+      setTimeout(function() {
+        btn.textContent = "Save Budget";
+        btn.style.background = "";
+        btn.disabled = false;
+      }, 2500);
+    }
+  });
+}
 /* ── Debt Tracker ── */
 function addDebtRow() {
   var tbody = document.getElementById("debt-tbody");

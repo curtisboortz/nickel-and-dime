@@ -373,6 +373,11 @@ input.num {
   width:110px; text-align:right;
   font-family:var(--mono); font-variant-numeric:tabular-nums;
 }
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance:none; margin:0;
+}
+input[type="number"] { -moz-appearance:textfield; }
 /* ── Buttons ── */
 button {
   padding:10px 20px;

@@ -90,8 +90,8 @@ def _fetch_yfinance_batch(symbols):
                     continue
                 if prev is not None and (math.isnan(prev) or prev <= 0):
                     prev = None
-                    change_pct = ((price - prev) / prev * 100) if prev and prev > 0 else 0
-                    _upsert_price(sym, price, change_pct, prev, _commit=False)
+                change_pct = ((price - prev) / prev * 100) if prev and prev > 0 else 0
+                _upsert_price(sym, price, change_pct, prev, _commit=False)
             except Exception:
                 continue
         db.session.commit()

@@ -80,9 +80,16 @@ def _fetch_yfinance_batch(symbols):
                     sdf = df[sym]
                 if sdf.empty or len(sdf) < 1:
                     continue
-                price = float(sdf["Close"].dropna().iloc[-1])
-                prev = float(sdf["Close"].dropna().iloc[-2]) if len(sdf.dropna()) >= 2 else None
-                if price and price > 0:
+                import math
+                closes = sdf["Close"].dropna()
+                if closes.empty:
+                    continue
+                price = float(closes.iloc[-1])
+                prev = float(closes.iloc[-2]) if len(closes) >= 2 else None
+                if math.isnan(price) or not price or price <= 0:
+                    continue
+                if prev is not None and (math.isnan(prev) or prev <= 0):
+                    prev = None
                     change_pct = ((price - prev) / prev * 100) if prev and prev > 0 else 0
                     _upsert_price(sym, price, change_pct, prev, _commit=False)
             except Exception:

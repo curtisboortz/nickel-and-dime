@@ -507,14 +507,25 @@ def delete_balance(acct_id):
 @login_required
 def portfolio_history():
     """Return portfolio OHLC snapshots for the history chart."""
+    import math
+    def _safe(v):
+        if v is None:
+            return None
+        try:
+            if math.isnan(v) or math.isinf(v):
+                return None
+        except (TypeError, ValueError):
+            pass
+        return v
+
     snapshots = (PortfolioSnapshot.query
                  .filter_by(user_id=current_user.id)
                  .order_by(PortfolioSnapshot.date)
                  .all())
     return jsonify({
-        "history": [{"date": s.date.isoformat(), "total": s.total,
-                      "open": s.open_val, "high": s.high, "low": s.low, "close": s.close,
-                      "gold": s.gold_price, "silver": s.silver_price}
+        "history": [{"date": s.date.isoformat(), "total": _safe(s.total),
+                      "open": _safe(s.open_val), "high": _safe(s.high), "low": _safe(s.low), "close": _safe(s.close),
+                      "gold": _safe(s.gold_price), "silver": _safe(s.silver_price)}
                      for s in snapshots],
     })
 
@@ -832,18 +843,30 @@ def perf_attribution():
             else:
                 bucket_returns[bucket] = 0
 
+    import math
+    def _clean(v):
+        if v is None:
+            return None
+        try:
+            if math.isnan(v) or math.isinf(v):
+                return None
+        except (TypeError, ValueError):
+            pass
+        return v
+
     history = []
     for s in snaps:
-        entry = {"date": s.date.isoformat(), "total": s.close or s.total}
+        t = _clean(s.close) or _clean(s.total) or 0
+        entry = {"date": s.date.isoformat(), "total": t}
         if s.breakdown and isinstance(s.breakdown, dict):
             bd_rolled, _ = rollup_breakdown(s.breakdown, overrides=overrides)
-            entry["breakdown"] = {b: round(v, 2) for b, v in bd_rolled.items()}
+            entry["breakdown"] = {b: round(v, 2) for b, v in bd_rolled.items() if _clean(v) is not None}
         history.append(entry)
 
     return jsonify({
         "buckets": {b: round(v, 2) for b, v in rolled.items()},
         "total": round(total, 2),
-        "overall_return": round(overall_return, 2),
+        "overall_return": round(_clean(overall_return) or 0, 2),
         "bucket_returns": bucket_returns,
         "history": history,
     })

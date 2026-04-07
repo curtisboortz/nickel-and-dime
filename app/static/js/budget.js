@@ -296,6 +296,7 @@ document.addEventListener("keydown", function(e) {
 var TRANSACTIONS = [];
 var BUDGET_LIMITS = {};
 var BUDGET_CATS = [];
+var TRANSFER_CATS = ["Transfer"];
 var _budgetDataLoaded = false;
 function _initBudgetListeners() {
   if (_budgetDataLoaded) return;
@@ -306,6 +307,7 @@ function _initBudgetListeners() {
       TRANSACTIONS = d.transactions || [];
       BUDGET_LIMITS = d.budget_limits || {};
       BUDGET_CATS = d.budget_cats || [];
+      TRANSFER_CATS = d.transfer_categories || ["Transfer"];
       var incomeInput = document.getElementById("budget-income-input");
       if (incomeInput && d.budget && d.budget.monthly_income) {
         incomeInput.value = d.budget.monthly_income;
@@ -448,7 +450,9 @@ function renderTxns() {
   var body = document.getElementById("txn-body");
   if (!body) return;
   body.innerHTML = TRANSACTIONS.slice().reverse().slice(0,50).map(function(t) {
-    return "<tr><td class='mono'>"+t.date+"</td><td>"+t.category+"</td><td class='mono'>$"+parseFloat(t.amount).toFixed(2)+"</td><td class='hint'>"+( t.note||"")+"</td></tr>";
+    var isXfer = t.is_transfer || TRANSFER_CATS.indexOf(t.category) !== -1;
+    var catLabel = t.category + (isXfer ? ' <span style="font-size:0.68rem;color:var(--text-muted);font-style:italic;">(excluded)</span>' : '');
+    return "<tr><td class='mono'>"+t.date+"</td><td>"+catLabel+"</td><td class='mono'>$"+parseFloat(t.amount).toFixed(2)+"</td><td class='hint'>"+( t.note||"")+"</td></tr>";
   }).join("");
 }
 function saveTxn() {
@@ -508,18 +512,23 @@ function renderSpendingBreakdown() {
     return t.date && t.date.substring(0,7) === selectedMonth;
   });
 
-  // Separate income (negative amounts) from expenses (positive amounts)
   var byExpenseCat = {};
   var incomeTxns = [];
+  var transferTxns = [];
   var totalExpenses = 0;
   var totalIncome = 0;
+  var totalTransfers = 0;
   monthTxns.forEach(function(t) {
     var amt = parseFloat(t.amount) || 0;
     var cat = t.category || "Other";
     var isIncome = amt < 0 || t.type === "income" || cat === "Income";
+    var isTransfer = !isIncome && (t.is_transfer || TRANSFER_CATS.indexOf(cat) !== -1);
     if (isIncome) {
       incomeTxns.push(t);
       totalIncome += Math.abs(amt);
+    } else if (isTransfer) {
+      transferTxns.push(t);
+      totalTransfers += Math.abs(amt);
     } else {
       if (!byExpenseCat[cat]) byExpenseCat[cat] = { total: 0, txns: [] };
       byExpenseCat[cat].total += amt;
@@ -561,6 +570,45 @@ function renderSpendingBreakdown() {
       html += '<tr><td class="mono">' + t.date + '</td><td>' + desc + '</td><td class="mono" style="text-align:right;color:var(--success);">+$' + amt.toFixed(2) + '</td></tr>';
     });
     html += '    </tbody></table>';
+    html += '  </div>';
+    html += '</div>';
+    html += '<div style="height:6px;border-bottom:2px solid var(--border-subtle);margin-bottom:2px;"></div>';
+  }
+
+  // ── Transfers section (excluded from spending) ──
+  if (transferTxns.length > 0) {
+    var transferSorted = transferTxns.slice().sort(function(a,b) { return b.date.localeCompare(a.date); });
+    var expenseCats = BUDGET_CATS.filter(function(c) { return TRANSFER_CATS.indexOf(c) === -1 && c !== "Income"; });
+    if (expenseCats.indexOf("Other") === -1) expenseCats.push("Other");
+    html += '<div class="spend-row">';
+    html += '  <div class="spend-header" style="background:rgba(148,163,184,0.06);">';
+    html += '    <span class="spend-chevron">&#9654;</span>';
+    html += '    <span class="spend-cat" style="color:var(--text-muted);">';
+    html += '      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-2px;margin-right:4px;"><path d="M7 16l-4-4 4-4"/><path d="M17 8l4 4-4 4"/><line x1="3" y1="12" x2="21" y2="12"/></svg>';
+    html += '      Transfers (not counted as spending)';
+    html += '    </span>';
+    html += '    <div class="spend-amounts">';
+    html += '      <span style="color:var(--text-muted);font-family:var(--mono);font-size:0.82rem;">$' + totalTransfers.toLocaleString(undefined, {minimumFractionDigits:2}) + '</span>';
+    html += '      <span class="spend-budget">' + transferTxns.length + ' transaction' + (transferTxns.length > 1 ? 's' : '') + '</span>';
+    html += '    </div>';
+    html += '    <div style="flex:0 0 120px;"></div>';
+    html += '  </div>';
+    html += '  <div class="spend-details">';
+    html += '    <table><thead><tr><th>Date</th><th>Description</th><th style="text-align:right">Amount</th><th style="text-align:right;width:140px;">Recategorize</th></tr></thead><tbody>';
+    transferSorted.forEach(function(t) {
+      var desc = t.description || t.note || "\u2014";
+      var amt = Math.abs(parseFloat(t.amount));
+      var opts = '<option value="">Transfer</option>';
+      expenseCats.forEach(function(c) {
+        opts += '<option value="' + c + '">' + c + '</option>';
+      });
+      html += '<tr><td class="mono">' + t.date + '</td><td>' + desc + '</td>';
+      html += '<td class="mono" style="text-align:right">$' + amt.toFixed(2) + '</td>';
+      html += '<td style="text-align:right"><select class="transfer-recat" data-txn-id="' + t.id + '" style="padding:3px 6px;font-size:0.75rem;background:var(--card-bg);color:var(--text-primary);border:1px solid var(--border-subtle);border-radius:4px;">' + opts + '</select></td>';
+      html += '</tr>';
+    });
+    html += '    </tbody></table>';
+    html += '    <p class="hint" style="padding:6px 0 0;font-size:0.72rem;">Not all transfers are internal. If a transfer is actually an expense (rent via Venmo, etc.), recategorize it above.</p>';
     html += '  </div>';
     html += '</div>';
     html += '<div style="height:6px;border-bottom:2px solid var(--border-subtle);margin-bottom:2px;"></div>';
@@ -623,7 +671,7 @@ function renderSpendingBreakdown() {
     }
   });
 
-  // ── Summary: Income / Expenses / Net Cash Flow ──
+  // ── Summary: Income / Expenses / Transfers / Net Cash Flow ──
   html += '<div class="spend-total" style="flex-direction:column;gap:4px;">';
   if (totalIncome > 0) {
     html += '<div style="display:flex;justify-content:space-between;width:100%;color:var(--success);">';
@@ -635,6 +683,12 @@ function renderSpendingBreakdown() {
   html += '  <span>Total Expenses</span>';
   html += '  <span class="mono">$' + totalExpenses.toLocaleString(undefined, {minimumFractionDigits:2}) + (totalBudget > 0 ? ' / $' + totalBudget.toLocaleString(undefined, {minimumFractionDigits:0}) : '') + '</span>';
   html += '</div>';
+  if (totalTransfers > 0) {
+    html += '<div style="display:flex;justify-content:space-between;width:100%;color:var(--text-muted);font-size:0.82rem;">';
+    html += '  <span>Transfers (excluded)</span>';
+    html += '  <span class="mono">$' + totalTransfers.toLocaleString(undefined, {minimumFractionDigits:2}) + '</span>';
+    html += '</div>';
+  }
   if (totalIncome > 0) {
     var netCashFlow = totalIncome - totalExpenses;
     var netColor = netCashFlow >= 0 ? "var(--success)" : "var(--danger)";

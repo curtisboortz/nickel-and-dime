@@ -90,9 +90,11 @@ def budget_data():
         },
         "budget_limits": budget_limits,
         "budget_cats": budget_cats,
+        "transfer_categories": list(TRANSFER_CATEGORIES),
         "transactions": [
             {"id": t.id, "date": t.date.isoformat(), "description": t.description,
-             "amount": t.amount, "category": t.category, "source": t.source}
+             "amount": t.amount, "category": t.category, "source": t.source,
+             "is_transfer": t.category in TRANSFER_CATEGORIES}
             for t in recent_txns
         ],
     })
@@ -323,10 +325,19 @@ def delete_category_rule(rule_id):
     return jsonify({"success": True})
 
 
+TRANSFER_CATEGORIES = {"Transfer"}
+
+
 @api_budget_bp.route("/spending-insights")
 @login_required
 def spending_insights():
-    """Month-over-month spending comparison and savings rate."""
+    """Month-over-month spending comparison and savings rate.
+
+    Transfers between the user's own accounts (category == "Transfer") are
+    excluded from spending totals and savings-rate calculation but still
+    returned under ``transfer_comparisons`` so the frontend can display them
+    in a separate section.
+    """
     today = dt_date.today()
     this_month_start = today.replace(day=1)
     last_month_start = (this_month_start - timedelta(days=1)).replace(day=1)
@@ -345,8 +356,17 @@ def spending_insights():
     this_month = _month_totals(this_month_start, this_month_start + timedelta(days=32))
     last_month = _month_totals(last_month_start, this_month_start)
 
-    this_total = sum(abs(v) for v in this_month.values() if v < 0)
-    last_total = sum(abs(v) for v in last_month.values() if v < 0)
+    def _spending_total(month_data):
+        return sum(
+            abs(v) for cat, v in month_data.items()
+            if v < 0 and cat not in TRANSFER_CATEGORIES
+        )
+
+    this_total = _spending_total(this_month)
+    last_total = _spending_total(last_month)
+
+    this_transfer = sum(abs(v) for cat, v in this_month.items() if cat in TRANSFER_CATEGORIES)
+    last_transfer = sum(abs(v) for cat, v in last_month.items() if cat in TRANSFER_CATEGORIES)
 
     savings_rate = 0
     if monthly_income > 0:
@@ -354,16 +374,21 @@ def spending_insights():
 
     all_cats = sorted(set(list(this_month.keys()) + list(last_month.keys())))
     comparisons = []
+    transfer_comparisons = []
     for cat in all_cats:
         curr = abs(this_month.get(cat, 0))
         prev = abs(last_month.get(cat, 0))
         change_pct = round((curr - prev) / prev * 100, 1) if prev > 0 else 0
-        comparisons.append({
+        entry = {
             "category": cat,
             "this_month": curr,
             "last_month": prev,
             "change_pct": change_pct,
-        })
+        }
+        if cat in TRANSFER_CATEGORIES:
+            transfer_comparisons.append(entry)
+        else:
+            comparisons.append(entry)
 
     comparisons.sort(key=lambda x: x["this_month"], reverse=True)
 
@@ -373,6 +398,9 @@ def spending_insights():
         "last_month_total": last_total,
         "month_change_pct": round((this_total - last_total) / last_total * 100, 1) if last_total > 0 else 0,
         "comparisons": comparisons,
+        "transfer_comparisons": transfer_comparisons,
+        "this_month_transfers": this_transfer,
+        "last_month_transfers": last_transfer,
     })
 
 

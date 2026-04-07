@@ -134,6 +134,15 @@ function _renderAccountWidgets(wrap, accounts, grandTotal) {
   }
 
   var html = "";
+  html += '<div style="display:flex;align-items:center;gap:10px;padding:4px 16px 8px;font-size:0.7rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">';
+  html += '<span style="width:12px;"></span>';
+  html += '<span style="width:28px;"></span>';
+  html += '<span style="flex:1;">Account</span>';
+  html += '<div style="display:flex;align-items:center;gap:14px;">';
+  html += '<span style="white-space:nowrap;">Day P&amp;L</span>';
+  html += '<span style="white-space:nowrap;">Total Value</span>';
+  html += '</div>';
+  html += '</div>';
   var allGrandDayPL = 0, allGrandCost = 0, allGrandPL = 0, allGrandTotal = 0;
 
   accounts.forEach(function(g, gi) {

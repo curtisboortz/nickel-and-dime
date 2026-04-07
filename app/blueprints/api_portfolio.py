@@ -522,12 +522,20 @@ def portfolio_history():
                  .filter_by(user_id=current_user.id)
                  .order_by(PortfolioSnapshot.date)
                  .all())
-    return jsonify({
-        "history": [{"date": s.date.isoformat(), "total": _safe(s.total),
-                      "open": _safe(s.open_val), "high": _safe(s.high), "low": _safe(s.low), "close": _safe(s.close),
-                      "gold": _safe(s.gold_price), "silver": _safe(s.silver_price)}
-                     for s in snapshots],
-    })
+    history = []
+    for s in snapshots:
+        total = _safe(s.total)
+        close = _safe(s.close)
+        if not total and not close:
+            continue
+        history.append({
+            "date": s.date.isoformat(),
+            "total": total, "open": _safe(s.open_val),
+            "high": _safe(s.high), "low": _safe(s.low),
+            "close": close,
+            "gold": _safe(s.gold_price), "silver": _safe(s.silver_price),
+        })
+    return jsonify({"history": history})
 
 
 @api_portfolio_bp.route("/physical-metals", methods=["GET", "POST", "DELETE"])

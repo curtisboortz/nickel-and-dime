@@ -314,19 +314,19 @@ function saveAllocationTargets() {
 /* ── Allocation Donut ── */
 var _donutChart = null;
 var _donutColorMap = {
-  "Equities": "#3b82f6",
-  "International": "#06b6d4",
-  "Fixed Income": "#14b8a6",
-  "Cash": "#64748b",
-  "Alternatives": "#8b5cf6",
-  "Crypto": "#a855f7",
+  "Equities": "#34d399",
+  "International": "#2dd4bf",
+  "Fixed Income": "#60a5fa",
+  "Cash": "#94a3b8",
+  "Alternatives": "#818cf8",
+  "Crypto": "#a78bfa",
   "Real Assets": "#f59e0b",
   "Gold": "#eab308",
-  "Silver": "#94a3b8",
-  "Real Estate": "#0ea5e9",
-  "Art": "#ec4899",
-  "Managed Blend": "#22c55e",
-  "Retirement Blend": "#4ade80"
+  "Silver": "#a8a29e",
+  "Real Estate": "#06b6d4",
+  "Art": "#e879f9",
+  "Managed Blend": "#4ade80",
+  "Retirement Blend": "#86efac"
 };
 var _donutFallback = ["#ef4444","#f97316","#84cc16","#06b6d4","#e879f9","#fb923c","#a3e635"];
 
@@ -335,11 +335,27 @@ function _donutColor(label) {
 }
 function _hashStr(s) { var h = 0; for (var i = 0; i < s.length; i++) h = ((h << 5) - h) + s.charCodeAt(i); return h; }
 
+function _getDonutCollapseState() {
+  try { return JSON.parse(localStorage.getItem("nd-donut-collapse") || "{}"); } catch(e) { return {}; }
+}
+
+function _toggleDonutCategory(pk) {
+  var state = _getDonutCollapseState();
+  state[pk] = !state[pk];
+  localStorage.setItem("nd-donut-collapse", JSON.stringify(state));
+  var safeId = "donut-children-" + pk.replace(/[^a-zA-Z0-9]/g, "_");
+  var el = document.getElementById(safeId);
+  if (el) el.style.display = state[pk] ? "none" : "";
+  var arrow = document.getElementById("donut-arrow-" + pk.replace(/[^a-zA-Z0-9]/g, "_"));
+  if (arrow) arrow.textContent = state[pk] ? "\u25B6" : "\u25BC";
+}
+
 function _buildDonutLegend(parentData, detailData, total) {
   var legend = document.getElementById("donut-legend");
   if (!legend) return;
 
   var childrenMap = window.BUCKETS_CHILDREN || {};
+  var collapseState = _getDonutCollapseState();
   var parentKeys = Object.keys(parentData).filter(function(k) { return parentData[k] > 0; });
   var sorted = parentKeys.slice().sort(function(a, b) { return (parentData[b] || 0) - (parentData[a] || 0); });
 
@@ -348,26 +364,38 @@ function _buildDonutLegend(parentData, detailData, total) {
     var val = parentData[pk] || 0;
     var pct = total > 0 ? ((val / total) * 100).toFixed(1) : "0.0";
     var color = _donutColor(pk);
-    html += '<div style="margin-bottom:8px;">';
-    html += '<div style="display:flex;align-items:center;gap:8px;padding:4px 0;">';
+    var children = childrenMap[pk];
+    var hasChildren = children && Object.keys(children).length > 0;
+    var safeId = pk.replace(/[^a-zA-Z0-9]/g, "_");
+    var collapsed = collapseState[pk] || false;
+
+    html += '<div style="margin-bottom:6px;">';
+    html += '<div style="display:flex;align-items:center;gap:8px;padding:4px 0;' + (hasChildren ? 'cursor:pointer;' : '') + '"' + (hasChildren ? ' onclick="_toggleDonutCategory(\'' + pk.replace(/'/g, "\\'") + '\')"' : '') + '>';
+    if (hasChildren) {
+      html += '<span id="donut-arrow-' + safeId + '" style="font-size:0.55rem;color:var(--text-muted);width:8px;flex-shrink:0;">' + (collapsed ? "\u25B6" : "\u25BC") + '</span>';
+    } else {
+      html += '<span style="width:8px;flex-shrink:0;"></span>';
+    }
     html += '<span style="width:10px;height:10px;border-radius:50%;background:' + color + ';flex-shrink:0;"></span>';
-    html += '<span style="flex:1;font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + pk + '</span>';
-    html += '<span style="font-family:var(--mono);color:var(--text-muted);font-size:0.75rem;white-space:nowrap;">' + pct + '%</span>';
+    html += '<span style="flex:1;font-weight:600;color:var(--text-primary);font-size:0.82rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + pk + '</span>';
+    html += '<span style="font-family:var(--mono);color:var(--text-muted);font-size:0.72rem;white-space:nowrap;">' + pct + '%</span>';
     html += '<span style="font-family:var(--mono);color:var(--text-primary);font-size:0.78rem;white-space:nowrap;">$' + val.toLocaleString(undefined, {maximumFractionDigits: 0}) + '</span>';
     html += '</div>';
-    var children = childrenMap[pk];
-    if (children) {
+
+    if (hasChildren) {
       var childKeys = Object.keys(children).sort(function(a, b) { return (children[b] || 0) - (children[a] || 0); });
+      html += '<div id="donut-children-' + safeId + '"' + (collapsed ? ' style="display:none;"' : '') + '>';
       childKeys.forEach(function(ck) {
         var cv = children[ck] || 0;
         var cpct = total > 0 ? ((cv / total) * 100).toFixed(1) : "0.0";
-        html += '<div style="display:flex;align-items:center;gap:8px;padding:2px 0 2px 18px;">';
-        html += '<span style="width:6px;height:6px;border-radius:50%;background:' + color + ';opacity:0.5;flex-shrink:0;"></span>';
-        html += '<span style="flex:1;color:var(--text-muted);font-size:0.75rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + ck + '</span>';
-        html += '<span style="font-family:var(--mono);color:var(--text-muted);font-size:0.7rem;white-space:nowrap;">' + cpct + '%</span>';
-        html += '<span style="font-family:var(--mono);color:var(--text-muted);font-size:0.72rem;white-space:nowrap;">$' + cv.toLocaleString(undefined, {maximumFractionDigits: 0}) + '</span>';
+        html += '<div style="display:flex;align-items:center;gap:8px;padding:2px 0 2px 26px;">';
+        html += '<span style="width:6px;height:6px;border-radius:50%;background:' + color + ';opacity:0.45;flex-shrink:0;"></span>';
+        html += '<span style="flex:1;color:var(--text-muted);font-size:0.72rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + ck + '</span>';
+        html += '<span style="font-family:var(--mono);color:var(--text-muted);font-size:0.68rem;white-space:nowrap;">' + cpct + '%</span>';
+        html += '<span style="font-family:var(--mono);color:var(--text-muted);font-size:0.7rem;white-space:nowrap;">$' + cv.toLocaleString(undefined, {maximumFractionDigits: 0}) + '</span>';
         html += '</div>';
       });
+      html += '</div>';
     }
     html += '</div>';
   });

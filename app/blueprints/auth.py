@@ -146,17 +146,22 @@ def logout():
 @auth_bp.route("/forgot-password", methods=["GET", "POST"])
 @limiter.limit("5 per hour")
 def forgot_password():
+    import sys
     if request.method == "POST":
         email = request.form.get("email", "").strip().lower()
+        print(f"[ForgotPW] Lookup email: {email}", flush=True, file=sys.stderr)
         user = User.query.filter_by(email=email).first()
+        print(f"[ForgotPW] User found: {user is not None}", flush=True, file=sys.stderr)
         if user:
             token = secrets.token_urlsafe(32)
             user.reset_token = token
             user.reset_token_expiry = datetime.now(timezone.utc) + timedelta(hours=1)
             db.session.commit()
+            print(f"[ForgotPW] Token saved, calling send_password_reset", flush=True, file=sys.stderr)
 
             from ..services.email_service import send_password_reset
             send_password_reset(user, token)
+            print(f"[ForgotPW] send_password_reset returned", flush=True, file=sys.stderr)
 
         flash("If that email exists, a reset link has been sent.", "info")
         return redirect(url_for("auth.login"))

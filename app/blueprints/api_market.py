@@ -232,7 +232,7 @@ def _yf_fetch(symbols, period, interval):
     Returns (data_list, actual_period, actual_interval) or ([], p, i)."""
     for sym in symbols:
         try:
-            hist = yf.Ticker(sym).history(period=period, interval=interval, repair=True)
+            hist = yf.Ticker(sym).history(period=period, interval=interval)
             if not hist.empty:
                 data = [{"date": str(idx),
                          "o": round(row["Open"], 4),

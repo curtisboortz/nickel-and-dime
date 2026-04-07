@@ -498,6 +498,8 @@ function restoreAllPulseCards() {
       + "&type=" + pcmState.type;
     fetch(url).then(function(r) { return r.json(); }).then(function(resp) {
       spinner.classList.remove("show");
+      var proxyEl = document.getElementById("pcm-proxy");
+      if (proxyEl) { proxyEl.style.display = "none"; proxyEl.textContent = ""; }
       if (resp.error || !resp.data || resp.data.length === 0) {
         if (pcmChart) { pcmChart.destroy(); pcmChart = null; }
         document.getElementById("pcm-price").textContent = "(no data)";
@@ -514,6 +516,10 @@ function restoreAllPulseCards() {
       document.getElementById("pcm-price").textContent = prefix + lastPrice.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})
         + "  " + sign + chg.toFixed(2) + " (" + sign + chgPct.toFixed(2) + "%)";
       document.getElementById("pcm-price").style.color = chg >= 0 ? "var(--accent-green, #22c55e)" : "var(--danger, #ef4444)";
+      if (resp.proxy && proxyEl) {
+        proxyEl.textContent = "via " + resp.proxy;
+        proxyEl.style.display = "inline";
+      }
       renderPcmChart(d);
     }).catch(function() {
       spinner.classList.remove("show");

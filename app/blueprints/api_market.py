@@ -203,6 +203,15 @@ def _spark_ratio(result, key, ratio_ticker):
             continue
 
 
+_SYMBOL_ETF_FALLBACKS = {
+    "GC=F": ["GLD", "IAU"],
+    "SI=F": ["SLV"],
+    "CL=F": ["USO", "BNO"],
+    "HG=F": ["CPER"],
+    "DX=F": ["UUP"],
+    "DX-Y.NYB": ["UUP"],
+}
+
 _HIST_FALLBACKS = {
     ("1d", "1m"):   [("1d", "2m"), ("1d", "5m"), ("5d", "15m"), ("5d", "30m")],
     ("1d", "2m"):   [("1d", "5m"), ("5d", "15m"), ("5d", "30m")],
@@ -223,7 +232,7 @@ def _yf_fetch(symbols, period, interval):
     Returns (data_list, actual_period, actual_interval) or ([], p, i)."""
     for sym in symbols:
         try:
-            hist = yf.Ticker(sym).history(period=period, interval=interval)
+            hist = yf.Ticker(sym).history(period=period, interval=interval, repair=True)
             if not hist.empty:
                 data = [{"date": str(idx),
                          "o": round(row["Open"], 4),
@@ -265,12 +274,40 @@ def historical():
             if data:
                 break
 
-    return jsonify({
+    proxy_sym = None
+    if not data:
+        primary = dxy_syms[0] if dxy_syms else symbol
+        etf_alts = _SYMBOL_ETF_FALLBACKS.get(primary, [])
+        for etf in etf_alts:
+            data, actual_p, actual_i = _yf_fetch([etf], period, interval)
+            if not data:
+                for fb_p, fb_i in _HIST_FALLBACKS.get((period, interval), []):
+                    data, actual_p, actual_i = _yf_fetch([etf], fb_p, fb_i)
+                    if data:
+                        break
+            if data:
+                proxy_sym = etf
+                spot = PriceCache.query.get(primary)
+                if spot and spot.price and spot.price > 0:
+                    etf_latest = data[-1]["c"]
+                    if etf_latest and etf_latest > 0:
+                        scale = spot.price / etf_latest
+                        for pt in data:
+                            pt["o"] = round(pt["o"] * scale, 4)
+                            pt["h"] = round(pt["h"] * scale, 4)
+                            pt["l"] = round(pt["l"] * scale, 4)
+                            pt["c"] = round(pt["c"] * scale, 4)
+                break
+
+    result = {
         "symbol": symbol,
         "period": actual_p,
         "interval": actual_i,
         "data": data,
-    })
+    }
+    if proxy_sym:
+        result["proxy"] = proxy_sym
+    return jsonify(result)
 
 
 def _historical_ratio(ratio_ticker, period, interval, label):

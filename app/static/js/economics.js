@@ -1,14 +1,15 @@
-﻿/* Nickel&Dime - Economics tab: FRED charts, FedWatch, CAPE, Buffett, calendar */
+/* Nickel&Dime - Economics tab: FRED charts, FedWatch, CAPE, Buffett, calendar */
 /* FRED_JS_START */
 /* ── FRED Economics ── */
 var fredTooltipOpts = { yAlign: "bottom", caretPadding: 8, backgroundColor: "rgba(30,30,30,0.95)", titleColor: "#e2e8f0", bodyColor: "#e2e8f0", borderColor: "rgba(99,102,241,0.4)", borderWidth: 1 };
 var fredCharts = {};
+function fredDateLabel(d) { return d ? d.replace(/T.*$/, "") : d; }
 function fredSeries(data, id) { var e = data[id]; return (e && e.data) ? e.data : []; }
 function fredLatest(arr) { for (var i = (arr && arr.length) ? arr.length - 1 : -1; i >= 0; i--) if (arr[i].value != null) return arr[i].value; return null; }
 function fredLineChart(canvasId, points, label, yFmt) {
   var ctx = document.getElementById(canvasId);
   if (!ctx || typeof Chart === "undefined") return;
-  var labels = (points || []).map(function(p) { return p.date; });
+  var labels = (points || []).map(function(p) { return fredDateLabel(p.date); });
   var values = (points || []).map(function(p) { return p.value; });
   if (fredCharts[canvasId]) {
     fredCharts[canvasId].data.labels = labels;
@@ -26,7 +27,7 @@ function fredLineChart(canvasId, points, label, yFmt) {
 function fredBarChart(canvasId, points, label, colorFn) {
   var ctx = document.getElementById(canvasId);
   if (!ctx || typeof Chart === "undefined") return;
-  var labels = (points || []).map(function(p) { return p.date; });
+  var labels = (points || []).map(function(p) { return fredDateLabel(p.date); });
   var values = (points || []).map(function(p) { return p.value; });
   var colors = (colorFn && values) ? values.map(colorFn) : "rgba(212,160,23,0.6)";
   if (fredCharts[canvasId]) {
@@ -81,11 +82,11 @@ function renderFredDebt(data) {
   if (receipts.length && outlays.length) {
     fredCharts["fred-chart-revenue-spending"] && fredCharts["fred-chart-revenue-spending"].destroy();
     var allDates = {};
-    receipts.forEach(function(p) { allDates[p.date] = true; });
-    outlays.forEach(function(p) { allDates[p.date] = true; });
+    receipts.forEach(function(p) { allDates[fredDateLabel(p.date)] = true; });
+    outlays.forEach(function(p) { allDates[fredDateLabel(p.date)] = true; });
     var dates = Object.keys(allDates).sort();
-    var rVals = dates.map(function(d) { var p = receipts.find(function(x) { return x.date === d; }); return p ? p.value : null; });
-    var oVals = dates.map(function(d) { var p = outlays.find(function(x) { return x.date === d; }); return p ? p.value : null; });
+    var rVals = dates.map(function(d) { var p = receipts.find(function(x) { return fredDateLabel(x.date) === d; }); return p ? p.value : null; });
+    var oVals = dates.map(function(d) { var p = outlays.find(function(x) { return fredDateLabel(x.date) === d; }); return p ? p.value : null; });
     var ctx = document.getElementById("fred-chart-revenue-spending");
     if (ctx) { fredCharts["fred-chart-revenue-spending"] = new Chart(ctx, { type: "line", data: { labels: dates, datasets: [{ label: "Receipts", data: rVals, borderColor: "rgba(52,211,153,0.9)", fill: false, tension: 0.2, pointRadius: 0 }, { label: "Outlays", data: oVals, borderColor: "rgba(248,113,113,0.9)", fill: false, tension: 0.2, pointRadius: 0 }] }, options: { responsive: true, maintainAspectRatio: false, interaction: { mode: "index", intersect: false }, plugins: { legend: { labels: { color: "#94a3b8" } }, tooltip: fredTooltipOpts }, scales: { x: { ticks: { color: "#64748b", maxTicksLimit: 8 }, grid: { display: false } }, y: { ticks: { color: "#64748b", callback: function(v) { return v != null ? v.toFixed(0) + " B" : ""; } }, grid: { color: "rgba(255,255,255,0.03)" } } } } }); }
   }
@@ -99,10 +100,11 @@ function renderFredInflation(data) {
   fredCharts["fred-chart-inflation"] && fredCharts["fred-chart-inflation"].destroy();
   var ctx = document.getElementById("fred-chart-inflation");
   if (!ctx || !cpi.length) return;
-  var labels = cpi.map(function(p) { return p.date; });
+  var rawDates = cpi.map(function(p) { return p.date; });
+  var labels = rawDates.map(fredDateLabel);
   var cpiV = cpi.map(function(p) { return p.value; });
-  var coreV = labels.map(function(d) { var p = core.find(function(x) { return x.date === d; }); return p ? p.value : null; });
-  var pceV = labels.map(function(d) { var p = pce.find(function(x) { return x.date === d; }); return p ? p.value : null; });
+  var coreV = rawDates.map(function(d) { var p = core.find(function(x) { return x.date === d; }); return p ? p.value : null; });
+  var pceV = rawDates.map(function(d) { var p = pce.find(function(x) { return x.date === d; }); return p ? p.value : null; });
   fredCharts["fred-chart-inflation"] = new Chart(ctx, {
     type: "line",
     data: { labels: labels, datasets: [{ label: "CPI-U", data: cpiV, borderColor: "rgba(212,160,23,0.9)", fill: false, pointRadius: 0 }, { label: "Core CPI", data: coreV, borderColor: "rgba(100,116,139,0.9)", fill: false, pointRadius: 0 }, { label: "PCE", data: pceV, borderColor: "rgba(52,211,153,0.7)", fill: false, pointRadius: 0 }] },
@@ -146,7 +148,7 @@ function renderFredCredit(data) {
   fredCharts["fred-chart-hy-spread"] && fredCharts["fred-chart-hy-spread"].destroy();
   var ctx = document.getElementById("fred-chart-hy-spread");
   if (!ctx || !hy.length) return;
-  var labels = hy.map(function(p) { return p.date; });
+  var labels = hy.map(function(p) { return fredDateLabel(p.date); });
   var values = hy.map(function(p) { return p.value; });
   var threshold5 = values.map(function() { return 5; });
   fredCharts["fred-chart-hy-spread"] = new Chart(ctx, {
@@ -168,9 +170,10 @@ function renderFredRealYields(data) {
   fredCharts["fred-chart-breakeven"] && fredCharts["fred-chart-breakeven"].destroy();
   var ctx = document.getElementById("fred-chart-breakeven");
   if (!ctx) return;
-  var labels = be10.length ? be10.map(function(p) { return p.date; }) : be5.map(function(p) { return p.date; });
-  var be5V = labels.map(function(d) { var p = be5.find(function(x) { return x.date === d; }); return p ? p.value : null; });
-  var be10V = labels.map(function(d) { var p = be10.find(function(x) { return x.date === d; }); return p ? p.value : null; });
+  var rawBeDates = be10.length ? be10.map(function(p) { return p.date; }) : be5.map(function(p) { return p.date; });
+  var labels = rawBeDates.map(fredDateLabel);
+  var be5V = rawBeDates.map(function(d) { var p = be5.find(function(x) { return x.date === d; }); return p ? p.value : null; });
+  var be10V = rawBeDates.map(function(d) { var p = be10.find(function(x) { return x.date === d; }); return p ? p.value : null; });
   fredCharts["fred-chart-breakeven"] = new Chart(ctx, {
     type: "line",
     data: { labels: labels, datasets: [{ label: "5Y Breakeven", data: be5V, borderColor: "rgba(96,165,250,0.9)", fill: false, tension: 0.2, pointRadius: 0 }, { label: "10Y Breakeven", data: be10V, borderColor: "rgba(212,160,23,0.9)", fill: false, tension: 0.2, pointRadius: 0 }] },
@@ -195,7 +198,7 @@ function renderFredSahm(data) {
   fredCharts["fred-chart-sahm"] && fredCharts["fred-chart-sahm"].destroy();
   var ctx = document.getElementById("fred-chart-sahm");
   if (!ctx || !sahm.length) return;
-  var labels = sahm.map(function(p) { return p.date; });
+  var labels = sahm.map(function(p) { return fredDateLabel(p.date); });
   var values = sahm.map(function(p) { return p.value; });
   var threshold50 = values.map(function() { return 0.5; });
   fredCharts["fred-chart-sahm"] = new Chart(ctx, {
@@ -375,7 +378,7 @@ function renderCape(d) {
   fredCharts["cape-chart"] && fredCharts["cape-chart"].destroy();
   var ctx = document.getElementById("cape-chart");
   if (!ctx || typeof Chart === "undefined") return;
-  var labels = pts.map(function(p) { return p.date; });
+  var labels = pts.map(function(p) { return fredDateLabel(p.date); });
   var values = pts.map(function(p) { return p.value; });
   fredCharts["cape-chart"] = new Chart(ctx, {
     type: "line",
@@ -424,7 +427,7 @@ function renderBuffett(d) {
   fredCharts["buffett-chart"] && fredCharts["buffett-chart"].destroy();
   var ctx = document.getElementById("buffett-chart");
   if (!ctx || typeof Chart === "undefined") return;
-  var labels = pts.map(function(p) { return p.date; });
+  var labels = pts.map(function(p) { return fredDateLabel(p.date); });
   var values = pts.map(function(p) { return p.value; });
   fredCharts["buffett-chart"] = new Chart(ctx, {
     type: "line",
@@ -460,7 +463,7 @@ function renderFredWui(data) {
   fredCharts["fred-chart-wui"] && fredCharts["fred-chart-wui"].destroy();
   var ctx = document.getElementById("fred-chart-wui");
   if (!ctx || !wui.length) return;
-  var labels = wui.map(function(p) { return p.date; });
+  var labels = wui.map(function(p) { return fredDateLabel(p.date); });
   var values = wui.map(function(p) { return p.value; });
   fredCharts["fred-chart-wui"] = new Chart(ctx, {
     type: "line",

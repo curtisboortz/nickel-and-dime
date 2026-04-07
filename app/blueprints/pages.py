@@ -195,7 +195,7 @@ def dashboard_page(tab="summary"):
     from ..models.settings import UserSettings, CustomPulseCard
     valid_tabs = [
         "summary", "balances", "holdings", "budget",
-        "import", "history", "economics", "technical",
+        "import", "history", "economics", "technical", "ai",
     ]
     if tab not in valid_tabs:
         tab = "summary"

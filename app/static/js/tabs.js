@@ -104,7 +104,7 @@
   var tabMap = {
     "balances":"balances","budget":"budget","holdings":"holdings",
     "import":"import","history":"history","economics":"economics",
-    "charts":"history","technical":"technical"
+    "charts":"history","technical":"technical","ai":"ai"
   };
   var pathParts = window.location.pathname.split("/").filter(Boolean);
   var pathTab = pathParts.length > 1 ? pathParts[pathParts.length - 1] : null;

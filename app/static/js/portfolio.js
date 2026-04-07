@@ -23,16 +23,19 @@ function rebuildProjectionData() {
   var months = years * 12;
   var labels = [];
   var values = [];
+  var contribs = [];
   for (var m = 0; m <= months; m += 3) {
     labels.push((m / 12).toFixed(1) + "Y");
     values.push(Math.round(projFV(current, monthly, ratePct, m)));
+    contribs.push(Math.round(current + monthly * m));
   }
   if (months > 0 && labels[labels.length - 1] !== (years + "Y")) {
     labels.push(years + "Y");
     values.push(Math.round(projFV(current, monthly, ratePct, months)));
+    contribs.push(Math.round(current + monthly * months));
   }
-  projectionData = { labels: labels, values: values };
-  return { labels: labels, values: values, years: years, monthly: monthly, ratePct: ratePct };
+  projectionData = { labels: labels, values: values, contribs: contribs };
+  return { labels: labels, values: values, contribs: contribs, years: years, monthly: monthly, ratePct: ratePct };
 }
 
 function updateProjectionSummary() {
@@ -60,6 +63,7 @@ function updateProjectionChart() {
   if (projectionChart) {
     projectionChart.data.labels = data.labels;
     projectionChart.data.datasets[0].data = data.values;
+    projectionChart.data.datasets[1].data = data.contribs;
     projectionChart.update();
   } else {
     var ctx = document.getElementById("projection-chart");
@@ -69,14 +73,24 @@ function updateProjectionChart() {
       data: {
         labels: data.labels,
         datasets: [{
-          label: "Projected value",
+          label: "Total Value",
           data: data.values,
           borderColor: "rgba(212,160,23,0.9)",
-          backgroundColor: "rgba(212,160,23,0.1)",
+          backgroundColor: "rgba(212,160,23,0.08)",
           fill: true,
           tension: 0.2,
           pointRadius: 0,
           pointHoverRadius: 4
+        }, {
+          label: "Contributions",
+          data: data.contribs,
+          borderColor: "rgba(99,102,241,0.7)",
+          backgroundColor: "rgba(99,102,241,0.15)",
+          fill: true,
+          tension: 0,
+          pointRadius: 0,
+          pointHoverRadius: 4,
+          borderDash: [4, 3]
         }]
       },
       options: {
@@ -84,16 +98,31 @@ function updateProjectionChart() {
         maintainAspectRatio: false,
         interaction: { intersect: false, mode: "index" },
         plugins: {
-          legend: { display: false },
+          legend: {
+            display: true, position: "top",
+            labels: { color: "#94a3b8", font: { size: 10 }, usePointStyle: true, pointStyle: "line", padding: 16 }
+          },
           tooltip: {
+            backgroundColor: "rgba(9,9,11,0.95)",
+            titleColor: "#f1f5f9", bodyColor: "#cbd5e1",
+            borderColor: "rgba(255,255,255,0.08)", borderWidth: 1,
+            padding: 12, cornerRadius: 8,
             callbacks: {
-              label: function(c) { return "$" + c.raw.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 }); }
+              label: function(c) {
+                var fmt = "$" + c.raw.toLocaleString(undefined, { maximumFractionDigits: 0 });
+                if (c.datasetIndex === 0) {
+                  var contrib = c.chart.data.datasets[1].data[c.dataIndex] || 0;
+                  var growth = c.raw - contrib;
+                  return c.dataset.label + ": " + fmt + "  (Growth: $" + growth.toLocaleString(undefined, { maximumFractionDigits: 0 }) + ")";
+                }
+                return c.dataset.label + ": " + fmt;
+              }
             }
           }
         },
         scales: {
           x: { ticks: { color: "#64748b", font: { size: 10 }, maxTicksLimit: 12 }, grid: { display: false } },
-          y: { ticks: { color: "#64748b", font: { size: 10 }, callback: function(v) { return "$" + (v/1000).toFixed(0) + "K"; } }, grid: { color: "rgba(255,255,255,0.03)" } }
+          y: { ticks: { color: "#64748b", font: { size: 10 }, callback: function(v) { return v >= 1000000 ? "$" + (v/1000000).toFixed(1) + "M" : "$" + (v/1000).toFixed(0) + "K"; } }, grid: { color: "rgba(255,255,255,0.03)" } }
         }
       }
     });
@@ -1170,48 +1199,6 @@ function toggleMetricDetail(key) {
     '<div style="color:var(--text-secondary);">' + info.body.replace(/\n/g, "<br>") + '</div>';
   panel.style.display = "";
   _metricOpen = key;
-}
-
-/* ── AI Portfolio Advisor ── */
-function requestAIAdvice() {
-  var btn = document.getElementById("ai-advice-btn");
-  var result = document.getElementById("ai-advice-result");
-  if (!btn || !result) return;
-
-  btn.disabled = true;
-  btn.textContent = "Generating…";
-  result.style.display = "";
-  result.textContent = "Analyzing your portfolio…";
-
-  fetch("/api/insights/ai-advice", { method: "POST" })
-    .then(function(r) {
-      if (r.status === 403) throw new Error("pro");
-      if (r.status === 503) throw new Error("nokey");
-      if (!r.ok) throw new Error("fail");
-      return r.json();
-    })
-    .then(function(d) {
-      result.innerHTML = _formatAdvice(d.advice || "No advice generated.");
-      btn.textContent = "Refresh Advice";
-      btn.disabled = false;
-    })
-    .catch(function(e) {
-      if (e.message === "pro") {
-        result.innerHTML = '<span style="color:var(--warning);">This feature requires a Pro subscription.</span>';
-      } else if (e.message === "nokey") {
-        result.innerHTML = '<span style="color:var(--warning);">AI advice is not yet configured. An API key is needed on the server.</span>';
-      } else {
-        result.innerHTML = '<span style="color:var(--danger);">Failed to generate advice. Please try again.</span>';
-      }
-      btn.textContent = "Generate AI Advice";
-      btn.disabled = false;
-    });
-}
-
-function _formatAdvice(text) {
-  return text
-    .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
-    .replace(/\n/g, "<br>");
 }
 
 /* ── Allocation Templates ── */

@@ -34,6 +34,7 @@ function _skeletonRows(r,c){var h="";for(var i=0;i<(r||5);i++){h+="<tr>";for(var
       ("history",   "Portfolio", '<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>'),
       ("economics", "Economics", '<path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/>'),
       ("technical", "Technical", '<line x1="7" y1="2" x2="7" y2="8"/><rect x="5" y="8" width="4" height="7"/><line x1="7" y1="15" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="6"/><rect x="15" y="6" width="4" height="10"/><line x1="17" y1="16" x2="17" y2="22"/>'),
+      ("ai",        "AI Advisor",'<path d="M12 2a2 2 0 012 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 017 7h1a1 1 0 110 2h-1.07A7 7 0 0113 22h-2a7 7 0 01-6.93-6H3a1 1 0 110-2h1a7 7 0 017-7h1V5.73A2 2 0 0112 2z"/><circle cx="9" cy="14" r="1"/><circle cx="15" cy="14" r="1"/>'),
     ] %}
     {% for tab_id, tab_label, tab_icon in tabs %}
     <a class="nav-item{% if active_tab == tab_id %} active{% endif %}" data-tab="{{ tab_id }}" href="#">
@@ -89,6 +90,7 @@ function _skeletonRows(r,c){var h="";for(var i=0;i<(r||5);i++){h+="<tr>";for(var
     <button class="mob-item{% if active_tab == 'history' %} active{% endif %}" data-tab="history"><svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Portfolio</button>
     <button class="mob-item{% if active_tab == 'economics' %} active{% endif %}" data-tab="economics"><svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>Econ</button>
     <button class="mob-item{% if active_tab == 'technical' %} active{% endif %}" data-tab="technical"><svg viewBox="0 0 24 24"><line x1="7" y1="2" x2="7" y2="8"/><rect x="5" y="8" width="4" height="7"/><line x1="7" y1="15" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="6"/><rect x="15" y="6" width="4" height="10"/><line x1="17" y1="16" x2="17" y2="22"/></svg>TA</button>
+    <button class="mob-item{% if active_tab == 'ai' %} active{% endif %}" data-tab="ai"><svg viewBox="0 0 24 24"><path d="M12 2a2 2 0 012 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 017 7h1a1 1 0 110 2h-1.07A7 7 0 0113 22h-2a7 7 0 01-6.93-6H3a1 1 0 110-2h1a7 7 0 017-7h1V5.73A2 2 0 0112 2z"/><circle cx="9" cy="14" r="1"/><circle cx="15" cy="14" r="1"/></svg>AI</button>
   </div>
 </nav>
 
@@ -1066,15 +1068,14 @@ function obFinish() {
     </div>
 
     <div style="border-top:1px solid var(--border-subtle);padding-top:18px;margin-top:4px;">
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
         <div style="font-weight:600;font-size:0.85rem;">AI Portfolio Advisor</div>
-        <span class="pro-badge" style="font-size:0.65rem;padding:2px 8px;border-radius:9999px;background:var(--accent-primary);color:#09090b;font-weight:600;">PRO</span>
+        <span style="font-size:0.65rem;padding:2px 8px;border-radius:9999px;background:var(--accent-primary);color:#09090b;font-weight:600;">PRO</span>
       </div>
-      <p class="hint" style="margin-bottom:12px;">Get personalized portfolio advice powered by AI — tailored to your holdings, allocation, and risk profile.</p>
-      <button id="ai-advice-btn" onclick="requestAIAdvice()" style="padding:8px 20px;font-size:0.82rem;border-radius:var(--radius);border:1px solid var(--accent-primary);background:var(--accent-primary);color:#09090b;cursor:pointer;font-weight:600;transition:opacity .15s;">
-        Generate AI Advice
-      </button>
-      <div id="ai-advice-result" style="display:none;margin-top:14px;padding:16px 20px;background:var(--surface-raised);border-radius:var(--radius);border:1px solid var(--border-subtle);font-size:0.82rem;line-height:1.7;white-space:pre-wrap;"></div>
+      <p class="hint" style="margin-bottom:12px;">Get personalized portfolio advice, market insights, and rebalancing plans in the AI Advisor tab.</p>
+      <a href="#" onclick="showTab('ai');return false;" style="display:inline-block;padding:8px 20px;font-size:0.82rem;border-radius:var(--radius);background:var(--accent-primary);color:#09090b;font-weight:600;text-decoration:none;transition:opacity .15s;">
+        Open AI Advisor &rarr;
+      </a>
     </div>
   </div>
 
@@ -1165,6 +1166,62 @@ function obFinish() {
       <div id="ta-ticker-btns" style="display:flex;flex-wrap:wrap;gap:4px;"></div>
     </div>
     <div id="tv_chart_container" style="height:calc(100vh - 130px);border-radius:8px;overflow:hidden;background:#131722;"></div>
+  </div>
+  {% endif %}
+</div>
+
+<!-- ═══ AI ADVISOR TAB ═══ -->
+<div id="tab-ai" class="tab{% if active_tab == 'ai' %} active{% endif %}">
+  {% if not is_pro %}
+  <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 20px;text-align:center;">
+    <div style="font-size:2.5rem;margin-bottom:16px;">&#129302;</div>
+    <h2 style="font-size:1.2rem;margin-bottom:8px;">AI Advisor is a Pro feature</h2>
+    <p style="color:var(--text-muted);margin-bottom:20px;max-width:400px;">
+      Get personalized portfolio advice, market insights, and rebalancing plans powered by AI.
+    </p>
+    <a href="{{ url_for('pages.pricing') }}" style="padding:12px 28px;background:linear-gradient(135deg,var(--accent-primary),var(--accent-secondary));color:#09090b;border-radius:8px;font-weight:600;text-decoration:none;box-shadow:0 2px 8px var(--accent-glow);">Upgrade to Pro</a>
+  </div>
+  {% else %}
+  <div style="display:flex;flex-direction:column;height:calc(100vh - 80px);max-height:calc(100vh - 80px);">
+
+    <!-- Quick Actions -->
+    <div style="padding:16px 20px 0;flex-shrink:0;">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+        <div style="font-weight:600;font-size:1rem;">AI Advisor</div>
+        <span style="font-size:0.65rem;padding:2px 8px;border-radius:9999px;background:var(--accent-primary);color:#09090b;font-weight:600;">PRO</span>
+        <div style="margin-left:auto;display:flex;align-items:center;gap:8px;">
+          <span id="ai-usage-label" style="font-size:0.72rem;color:var(--text-muted);"></span>
+          <button id="ai-new-chat-btn" onclick="aiNewChat()" style="padding:5px 12px;font-size:0.75rem;border-radius:var(--radius);border:1px solid var(--border-subtle);background:transparent;color:var(--text-primary);cursor:pointer;">New chat</button>
+          <select id="ai-history-select" onchange="aiLoadConversation(this.value)" style="padding:5px 10px;font-size:0.75rem;border-radius:var(--radius);border:1px solid var(--border-subtle);background:var(--bg-input);color:var(--text-primary);cursor:pointer;max-width:200px;">
+            <option value="">History</option>
+          </select>
+        </div>
+      </div>
+      <div id="ai-quick-actions" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
+        <button class="ai-action-btn" onclick="aiSendQuick('portfolio')" style="padding:6px 14px;font-size:0.78rem;border-radius:var(--radius);border:1px solid var(--border-subtle);background:transparent;color:var(--text-primary);cursor:pointer;transition:all .15s;">Build My Portfolio</button>
+        <button class="ai-action-btn" onclick="aiSendQuick('outlook')" style="padding:6px 14px;font-size:0.78rem;border-radius:var(--radius);border:1px solid var(--border-subtle);background:transparent;color:var(--text-primary);cursor:pointer;transition:all .15s;">Market Outlook</button>
+        <button class="ai-action-btn" onclick="aiSendQuick('risk')" style="padding:6px 14px;font-size:0.78rem;border-radius:var(--radius);border:1px solid var(--border-subtle);background:transparent;color:var(--text-primary);cursor:pointer;transition:all .15s;">Analyze My Risk</button>
+        <button class="ai-action-btn" onclick="aiSendQuick('rebalance')" style="padding:6px 14px;font-size:0.78rem;border-radius:var(--radius);border:1px solid var(--border-subtle);background:transparent;color:var(--text-primary);cursor:pointer;transition:all .15s;">Rebalance Plan</button>
+      </div>
+    </div>
+
+    <!-- Chat Messages -->
+    <div id="ai-chat-messages" style="flex:1;overflow-y:auto;padding:0 20px 16px;display:flex;flex-direction:column;gap:12px;">
+      <div id="ai-welcome" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;text-align:center;color:var(--text-muted);">
+        <div style="font-size:2rem;margin-bottom:12px;">&#129302;</div>
+        <div style="font-size:0.92rem;font-weight:500;color:var(--text-primary);margin-bottom:6px;">What can I help you with?</div>
+        <div style="font-size:0.8rem;max-width:420px;">Ask me anything about your portfolio, market conditions, or investment strategy. Use the quick actions above, or type your own question below.</div>
+      </div>
+    </div>
+
+    <!-- Input Bar -->
+    <div style="padding:12px 20px 16px;flex-shrink:0;border-top:1px solid var(--border-subtle);">
+      <div style="display:flex;gap:10px;align-items:flex-end;">
+        <textarea id="ai-chat-input" rows="1" placeholder="Ask about your portfolio, markets, or strategy..." style="flex:1;padding:10px 14px;font-size:0.85rem;border-radius:var(--radius);border:1px solid var(--border-subtle);background:var(--bg-input);color:var(--text-primary);resize:none;line-height:1.5;max-height:120px;font-family:inherit;" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();aiSend();}"></textarea>
+        <button id="ai-send-btn" onclick="aiSend()" style="padding:10px 20px;font-size:0.85rem;border-radius:var(--radius);border:none;background:var(--accent-primary);color:#09090b;font-weight:600;cursor:pointer;transition:opacity .15s;white-space:nowrap;">Send</button>
+      </div>
+    </div>
+
   </div>
   {% endif %}
 </div>
@@ -1504,6 +1561,7 @@ document.addEventListener("keydown", function(e) {
 <script src="{{ url_for('static', filename='js/settings.js') }}?v={{ v }}"></script>
 {% if is_pro %}
 <script src="{{ url_for('static', filename='js/import.js') }}?v={{ v }}"></script>
+<script src="{{ url_for('static', filename='js/ai.js') }}?v={{ v }}"></script>
 {% endif %}
 <script>
 (function() {

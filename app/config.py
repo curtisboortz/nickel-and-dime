@@ -17,6 +17,7 @@ class Config:
     # External API keys
     FRED_API_KEY = os.environ.get("FRED_API_KEY", "")
     OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
+    AI_DAILY_LIMIT = int(os.environ.get("AI_DAILY_LIMIT", "25"))
 
     # Mail (for email verification / password reset)
     MAIL_SERVER = os.environ.get("MAIL_SERVER", "smtp.gmail.com")

@@ -22,8 +22,14 @@
   --gold: #fbbf24;
   --silver: #cbd5e1;
   --sidebar-w: 72px;
+  --surface-raised: #1c1c20;
   --radius: 12px;
   --mono: 'JetBrains Mono', monospace;
+}
+.ins-metric-card:hover {
+  background: #252529 !important;
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 1px var(--accent-primary);
 }
 *{ box-sizing:border-box; margin:0; padding:0; }
 html { scroll-behavior:smooth; }

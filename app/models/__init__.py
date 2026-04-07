@@ -12,3 +12,4 @@ from .snapshot import PortfolioSnapshot  # noqa: F401
 from .plaid import PlaidItem  # noqa: F401
 from .referral import ReferralCode, ReferralRedemption  # noqa: F401
 from .blog import BlogPost  # noqa: F401
+from .ai import AIConversation, AIMessage, AIUsage  # noqa: F401

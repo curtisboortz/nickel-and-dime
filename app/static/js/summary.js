@@ -339,28 +339,8 @@ function _buildDonutLegend(parentData, detailData, total) {
   var legend = document.getElementById("donut-legend");
   if (!legend) return;
 
-  var childrenOf = {};
-  var detailKeys = Object.keys(detailData).filter(function(k) { return detailData[k] > 0; });
+  var childrenMap = window.BUCKETS_CHILDREN || {};
   var parentKeys = Object.keys(parentData).filter(function(k) { return parentData[k] > 0; });
-  parentKeys.forEach(function(pk) { childrenOf[pk] = []; });
-  detailKeys.forEach(function(dk) {
-    var matched = false;
-    parentKeys.forEach(function(pk) {
-      if (dk !== pk && !matched) {
-        if (childrenOf[pk] !== undefined) {
-          var isChild = dk.toLowerCase().indexOf(pk.toLowerCase().split(" ")[0]) >= 0;
-          if (!isChild && parentData[pk] && Math.abs(parentData[pk] - detailData[dk]) < 1) isChild = true;
-          if (isChild) { childrenOf[pk].push(dk); matched = true; }
-        }
-      }
-    });
-    if (!matched && parentKeys.indexOf(dk) === -1) {
-      parentKeys.forEach(function(pk) {
-        if (!matched && childrenOf[pk] !== undefined) { childrenOf[pk].push(dk); matched = true; }
-      });
-    }
-  });
-
   var sorted = parentKeys.slice().sort(function(a, b) { return (parentData[b] || 0) - (parentData[a] || 0); });
 
   var html = "";
@@ -369,23 +349,26 @@ function _buildDonutLegend(parentData, detailData, total) {
     var pct = total > 0 ? ((val / total) * 100).toFixed(1) : "0.0";
     var color = _donutColor(pk);
     html += '<div style="margin-bottom:8px;">';
-    html += '<div style="display:flex;align-items:center;gap:8px;padding:4px 0;cursor:default;" onmouseover="this.style.opacity=\'0.8\'" onmouseout="this.style.opacity=\'1\'">';
+    html += '<div style="display:flex;align-items:center;gap:8px;padding:4px 0;">';
     html += '<span style="width:10px;height:10px;border-radius:50%;background:' + color + ';flex-shrink:0;"></span>';
     html += '<span style="flex:1;font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + pk + '</span>';
     html += '<span style="font-family:var(--mono);color:var(--text-muted);font-size:0.75rem;white-space:nowrap;">' + pct + '%</span>';
     html += '<span style="font-family:var(--mono);color:var(--text-primary);font-size:0.78rem;white-space:nowrap;">$' + val.toLocaleString(undefined, {maximumFractionDigits: 0}) + '</span>';
     html += '</div>';
-    var children = childrenOf[pk] || [];
-    children.forEach(function(ck) {
-      var cv = detailData[ck] || 0;
-      var cpct = total > 0 ? ((cv / total) * 100).toFixed(1) : "0.0";
-      html += '<div style="display:flex;align-items:center;gap:8px;padding:2px 0 2px 18px;">';
-      html += '<span style="width:6px;height:6px;border-radius:50%;background:' + color + ';opacity:0.5;flex-shrink:0;"></span>';
-      html += '<span style="flex:1;color:var(--text-muted);font-size:0.75rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + ck + '</span>';
-      html += '<span style="font-family:var(--mono);color:var(--text-muted);font-size:0.7rem;white-space:nowrap;">' + cpct + '%</span>';
-      html += '<span style="font-family:var(--mono);color:var(--text-muted);font-size:0.72rem;white-space:nowrap;">$' + cv.toLocaleString(undefined, {maximumFractionDigits: 0}) + '</span>';
-      html += '</div>';
-    });
+    var children = childrenMap[pk];
+    if (children) {
+      var childKeys = Object.keys(children).sort(function(a, b) { return (children[b] || 0) - (children[a] || 0); });
+      childKeys.forEach(function(ck) {
+        var cv = children[ck] || 0;
+        var cpct = total > 0 ? ((cv / total) * 100).toFixed(1) : "0.0";
+        html += '<div style="display:flex;align-items:center;gap:8px;padding:2px 0 2px 18px;">';
+        html += '<span style="width:6px;height:6px;border-radius:50%;background:' + color + ';opacity:0.5;flex-shrink:0;"></span>';
+        html += '<span style="flex:1;color:var(--text-muted);font-size:0.75rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + ck + '</span>';
+        html += '<span style="font-family:var(--mono);color:var(--text-muted);font-size:0.7rem;white-space:nowrap;">' + cpct + '%</span>';
+        html += '<span style="font-family:var(--mono);color:var(--text-muted);font-size:0.72rem;white-space:nowrap;">$' + cv.toLocaleString(undefined, {maximumFractionDigits: 0}) + '</span>';
+        html += '</div>';
+      });
+    }
     html += '</div>';
   });
   legend.innerHTML = html;

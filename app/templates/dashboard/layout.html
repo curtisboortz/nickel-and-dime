@@ -1391,6 +1391,7 @@ var IS_PRO = {{ 'true' if is_pro else 'false' }};
 var ACTIVE_TAB = "{{ active_tab }}";
 window.BUCKETS_DATA = {};
 window.BUCKETS_DETAIL = {};
+window.BUCKETS_CHILDREN = {};
 window.PRICE_HISTORY_DATA = [];
 window.SAVED_PULSE_ORDER = {{ pulse_order | tojson }};
 
@@ -1500,6 +1501,7 @@ document.addEventListener("keydown", function(e) {
     if (d && d.buckets) {
       window.BUCKETS_DATA = d.buckets;
       if (d.buckets_detail) window.BUCKETS_DETAIL = d.buckets_detail;
+      if (d.buckets_children) window.BUCKETS_CHILDREN = d.buckets_children;
       if (typeof buildDonut === "function") buildDonut();
     }
     var priceCount = Object.keys(d || {}).filter(function(k) { return k !== "buckets" && k !== "_ratio_ids"; }).length;

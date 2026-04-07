@@ -74,6 +74,7 @@ def live_data():
     rolled, bk_children = rollup_breakdown(pv.get("breakdown", {}), overrides=_overrides)
     result["buckets"] = rolled
     result["buckets_detail"] = {normalize_bucket(k): v for k, v in pv.get("breakdown", {}).items()}
+    result["buckets_children"] = {p: {k: round(v, 2) for k, v in ch.items()} for p, ch in bk_children.items()}
 
     yesterday = PortfolioSnapshot.query.filter_by(user_id=current_user.id)\
         .filter(PortfolioSnapshot.date < date.today())\

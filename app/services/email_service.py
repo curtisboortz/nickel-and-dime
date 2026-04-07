@@ -40,6 +40,7 @@ def _send_via_resend(api_key, from_addr, to, subject, html_body, text_body=None)
         headers={
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
+            "User-Agent": "NickelAndDime/1.0",
         },
     )
     try:

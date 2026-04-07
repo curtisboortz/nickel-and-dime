@@ -51,7 +51,7 @@ def init_scheduler(app):
 
     _scheduler.add_job(
         _run_in_context(app, _sync_plaid),
-        "interval", hours=12, id="sync_plaid",
+        "interval", hours=2, id="sync_plaid",
         max_instances=1, replace_existing=True,
     )
 

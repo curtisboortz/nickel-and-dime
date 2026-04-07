@@ -61,6 +61,19 @@ def init_scheduler(app):
         id="snapshot_portfolios", max_instances=1, replace_existing=True,
     )
 
+    _scheduler.add_job(
+        _run_in_context(app, _snapshot_portfolios),
+        "cron", hour="10,11,12,13,14,15", minute=0,
+        day_of_week="mon-fri", timezone="America/New_York",
+        id="intraday_snapshots", max_instances=1, replace_existing=True,
+    )
+
+    _scheduler.add_job(
+        _run_in_context(app, _backfill_all),
+        "cron", hour=17, minute=0, timezone="America/New_York",
+        id="backfill_snapshots", max_instances=1, replace_existing=True,
+    )
+
     # Run initial refreshes shortly after startup to let gunicorn boot fully
     from datetime import datetime, timedelta
     _scheduler.add_job(
@@ -150,3 +163,12 @@ def _snapshot_portfolios():
         log.info("Portfolio snapshots completed")
     except Exception as e:
         log.error("Portfolio snapshot error: %s", e)
+
+
+def _backfill_all():
+    from ..services.portfolio_service import backfill_all_users
+    try:
+        backfill_all_users()
+        log.info("Portfolio backfill completed")
+    except Exception as e:
+        log.error("Portfolio backfill error: %s", e)

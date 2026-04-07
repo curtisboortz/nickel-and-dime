@@ -4,12 +4,15 @@ Extracted from finance_manager.py -- computes portfolio values,
 allocation percentages, and generates daily snapshots.
 """
 
-from datetime import datetime, date, timezone
+import logging
+from datetime import datetime, date, timedelta, timezone
 from ..extensions import db
 from ..models.portfolio import Holding, CryptoHolding, PhysicalMetal, Account, BlendedAccount
 from ..models.market import PriceCache
 from ..models.snapshot import PortfolioSnapshot
 from ..models.settings import UserSettings
+
+log = logging.getLogger("nd")
 
 
 def compute_portfolio_value(user_id):
@@ -150,4 +153,158 @@ def snapshot_all_users():
         try:
             snapshot_portfolio(user.id)
         except Exception as e:
-            print(f"[Snapshot] Error for user {user.id}: {e}")
+            log.error("Snapshot error for user %s: %s", user.id, e)
+
+
+def backfill_snapshots(user_id, max_days=90):
+    """Fill gaps in snapshot history using yfinance historical close prices.
+
+    Uses the user's current holdings to compute what the portfolio value
+    would have been on each missing date. This is an approximation that
+    doesn't account for trades made on those days, but eliminates chart gaps.
+    """
+    import yfinance as yf
+    from ..utils.buckets import normalize_bucket as _normalize_bucket
+
+    today = date.today()
+    cutoff = today - timedelta(days=max_days)
+
+    existing_dates = set(
+        row.date for row in
+        PortfolioSnapshot.query
+        .filter(
+            PortfolioSnapshot.user_id == user_id,
+            PortfolioSnapshot.date >= cutoff,
+        )
+        .with_entities(PortfolioSnapshot.date)
+        .all()
+    )
+
+    missing_dates = []
+    d = cutoff
+    while d < today:
+        if d.weekday() < 5 and d not in existing_dates:
+            missing_dates.append(d)
+        d += timedelta(days=1)
+
+    if not missing_dates:
+        return 0
+
+    holdings = Holding.query.filter_by(user_id=user_id).all()
+    crypto = CryptoHolding.query.filter_by(user_id=user_id).all()
+    metals = PhysicalMetal.query.filter_by(user_id=user_id).all()
+    accounts = Account.query.filter_by(user_id=user_id).all()
+    blended = BlendedAccount.query.filter_by(user_id=user_id).all()
+
+    cash_total = sum(
+        a.balance for a in accounts
+        if a.account_type in ("checking", "savings")
+    )
+    blended_total = sum(b.value for b in blended)
+
+    tickers = set()
+    for h in holdings:
+        if h.ticker and h.shares and not h.value_override:
+            t = h.ticker
+            if t.startswith("PRIV:"):
+                continue
+            tickers.add(t)
+    tickers.add("GC=F")
+    tickers.add("SI=F")
+
+    if not tickers:
+        return 0
+
+    start_str = (missing_dates[0] - timedelta(days=1)).isoformat()
+    end_str = (missing_dates[-1] + timedelta(days=1)).isoformat()
+
+    try:
+        hist = yf.download(
+            list(tickers), start=start_str, end=end_str,
+            progress=False, auto_adjust=True, threads=True,
+        )
+    except Exception as e:
+        log.error("yfinance backfill download failed: %s", e)
+        return 0
+
+    if hist.empty:
+        return 0
+
+    is_multi = isinstance(hist.columns, __import__("pandas").MultiIndex)
+
+    def _get_close(ticker, dt):
+        try:
+            ts = __import__("pandas").Timestamp(dt)
+            if is_multi:
+                return float(hist.loc[ts, ("Close", ticker)])
+            elif len(tickers) == 1:
+                return float(hist.loc[ts, "Close"])
+        except (KeyError, TypeError, ValueError):
+            pass
+        return None
+
+    filled = 0
+    for d in missing_dates:
+        total = cash_total + blended_total
+
+        for h in holdings:
+            if h.value_override:
+                total += h.value_override
+                continue
+            if not h.shares or not h.ticker:
+                continue
+            if h.ticker.startswith("PRIV:"):
+                total += h.value_override or 0
+                continue
+            price = _get_close(h.ticker, d)
+            if price is None:
+                continue
+            total += h.shares * price
+
+        gold_price = _get_close("GC=F", d)
+        silver_price = _get_close("SI=F", d)
+
+        for m in metals:
+            spot = gold_price if m.metal.lower() == "gold" else silver_price
+            if spot:
+                total += m.oz * spot
+
+        for c in crypto:
+            pass
+
+        if total <= 0:
+            continue
+
+        db.session.add(PortfolioSnapshot(
+            user_id=user_id,
+            date=d,
+            total=round(total, 2),
+            open_val=round(total, 2),
+            high=round(total, 2),
+            low=round(total, 2),
+            close=round(total, 2),
+            gold_price=gold_price,
+            silver_price=silver_price,
+        ))
+        filled += 1
+
+    if filled:
+        db.session.commit()
+        log.info("Backfilled %d snapshots for user %s", filled, user_id)
+
+    return filled
+
+
+def backfill_all_users():
+    """Run backfill for every registered user. Called by daily scheduler."""
+    from ..models.user import User
+    users = User.query.all()
+    total_filled = 0
+    for user in users:
+        try:
+            total_filled += backfill_snapshots(user.id)
+        except Exception as e:
+            log.error("Backfill error for user %s: %s", user.id, e)
+            db.session.rollback()
+    if total_filled:
+        log.info("Backfill complete: %d total snapshots filled", total_filled)

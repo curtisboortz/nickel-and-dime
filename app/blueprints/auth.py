@@ -124,6 +124,13 @@ def login():
             user.last_login = datetime.now(timezone.utc)
             db.session.commit()
             login_user(user, remember=remember)
+
+            try:
+                from ..services.portfolio_service import backfill_snapshots
+                backfill_snapshots(user.id)
+            except Exception:
+                pass
+
             next_page = request.args.get("next")
             if next_page:
                 parsed = urlparse(next_page)

@@ -4,6 +4,19 @@ All notable changes to Nickel&Dime are documented here.
 
 ---
 
+## [2.6.1] — 2026-04-07 — Intraday Snapshots & Historical Backfill
+
+### Added
+- **Hourly intraday portfolio snapshots** — new scheduler job runs `snapshot_all_users()` every hour from 10 AM to 3 PM ET on weekdays, plus the existing 4:30 PM closing snapshot; produces up to 7 data points per trading day so candlestick charts show real open/high/low/close swings instead of single-line dots
+- **Historical backfill for missed days** — new `backfill_snapshots()` function uses `yfinance` batch download to reconstruct portfolio values for any dates missing from the last 90 days using the user's current holdings; eliminates chart gaps when the server was down or the user was offline
+- **Backfill on login** — `backfill_snapshots` runs automatically after each successful login so returning users immediately see filled-in history
+- **Daily backfill scheduler job** — runs at 5:00 PM ET as a safety net to backfill any gaps for users who haven't logged in
+
+### Fixed
+- Metals table cursor showing question mark on entire row instead of just the note text
+
+---
+
 ## [2.6.0] — 2026-04-07 — UX Polish, AI Advisor Upgrade & Amortization Calculator
 
 ### Added

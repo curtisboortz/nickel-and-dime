@@ -20,9 +20,9 @@ def _send_async(app, msg):
     with app.app_context():
         try:
             mail.send(msg)
-            log.info("Email sent to %s: %s", msg.recipients, msg.subject)
+            print(f"[Email] Sent to {msg.recipients}: {msg.subject}")
         except Exception as e:
-            log.error("Failed to send email to %s: %s", msg.recipients, e)
+            print(f"[Email] FAILED to {msg.recipients}: {e}")
 
 
 def send_email(to, subject, template, **kwargs):
@@ -38,7 +38,7 @@ def send_email(to, subject, template, **kwargs):
     app = current_app._get_current_object()
 
     if not app.config.get("MAIL_USERNAME"):
-        log.warning("MAIL_USERNAME not set; email to %s skipped (subject: %s)", to, subject)
+        print(f"[Email] SKIPPED (no MAIL_USERNAME): to={to} subject={subject}")
         return
 
     recipients = [to] if isinstance(to, str) else to

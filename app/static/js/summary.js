@@ -82,12 +82,18 @@ function _renderAllocRows(rows) {
     html += '</tr>';
     if (hasChildren) {
       r.children.forEach(function(c) {
+        var cdCls = "";
+        var cdStr = "";
+        if (c.drift != null) {
+          cdCls = c.drift > 1 ? "color:var(--success)" : c.drift < -1 ? "color:var(--danger)" : "color:var(--text-muted)";
+          cdStr = (c.drift > 0 ? "+" : "") + c.drift.toFixed(1) + "%";
+        }
         html += '<tr class="' + toggleId + '" style="display:none;">';
         html += '<td style="padding:4px 6px 4px 24px;font-size:0.8rem;color:var(--text-muted);">' + _esc(c.bucket) + '</td>';
         html += '<td style="padding:4px 6px;font-family:var(--mono);font-size:0.8rem;color:var(--text-muted);">$' + c.value.toLocaleString(undefined, {maximumFractionDigits:0}) + '</td>';
         html += '<td style="padding:4px 6px;font-family:var(--mono);font-size:0.8rem;color:var(--text-muted);">' + c.pct.toFixed(1) + '%</td>';
         html += '<td style="padding:4px 6px;font-family:var(--mono);font-size:0.8rem;color:var(--text-muted);">' + (c.target ? c.target + '%' : '') + '</td>';
-        html += '<td></td>';
+        html += '<td style="padding:4px 6px;font-family:var(--mono);font-size:0.8rem;' + cdCls + '">' + cdStr + '</td>';
         html += '</tr>';
       });
     }

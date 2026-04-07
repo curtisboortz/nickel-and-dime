@@ -535,9 +535,10 @@ def get_allocation_targets():
                 cv = val_children.get(ck, 0)
                 ct = tgt_children.get(ck, 0)
                 cp = round(cv / total * 100, 1) if total > 0 else 0
+                cd = round(cp - ct, 1) if ct else None
                 row["children"].append({
                     "bucket": ck, "value": round(cv, 2),
-                    "pct": cp, "target": ct,
+                    "pct": cp, "target": ct, "drift": cd,
                 })
         rows.append(row)
 

@@ -1237,8 +1237,8 @@ function loadTemplates() {
         btn.style.cssText =
           "padding:6px 14px;font-size:0.8rem;border-radius:" +
           "var(--radius);border:1px solid var(--border-subtle)" +
-          ";background:transparent;cursor:pointer;" +
-          "transition:all .15s;";
+          ";background:transparent;color:var(--text-primary);" +
+          "cursor:pointer;transition:all .15s;";
         btn.onclick = function() { selectTemplate(t.id); };
         sel.appendChild(btn);
       });
@@ -1250,7 +1250,7 @@ function selectTemplate(id) {
     var active = b.dataset.id === id;
     b.style.background = active
       ? "var(--accent-primary)" : "transparent";
-    b.style.color = active ? "#09090b" : "";
+    b.style.color = active ? "#09090b" : "var(--text-primary)";
     b.style.borderColor = active
       ? "var(--accent-primary)" : "var(--border-subtle)";
   });

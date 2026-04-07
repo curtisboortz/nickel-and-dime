@@ -128,6 +128,34 @@ def trigger_coinbase_sync():
     return jsonify({"success": True, **result})
 
 
+@api_settings_bp.route("/settings/category-colors")
+@login_required
+def get_category_colors():
+    """Return the user's custom category color overrides."""
+    settings = UserSettings.query.filter_by(user_id=current_user.id).first()
+    wo = (settings.widget_order if settings and isinstance(settings.widget_order, dict) else {}) or {}
+    return jsonify({"colors": wo.get("category_colors", {})})
+
+
+@api_settings_bp.route("/settings/category-colors", methods=["POST"])
+@login_required
+def save_category_colors():
+    """Save the user's custom category color overrides."""
+    data = flask_request.get_json(silent=True) or {}
+    colors = data.get("colors", {})
+    settings = UserSettings.query.filter_by(user_id=current_user.id).first()
+    if not settings:
+        settings = UserSettings(user_id=current_user.id, widget_order={})
+        db.session.add(settings)
+    wo = settings.widget_order if isinstance(settings.widget_order, dict) else {}
+    wo["category_colors"] = colors
+    settings.widget_order = wo
+    from sqlalchemy.orm.attributes import flag_modified
+    flag_modified(settings, "widget_order")
+    db.session.commit()
+    return jsonify({"success": True})
+
+
 @api_settings_bp.route(
     "/settings/onboarding-complete", methods=["POST"]
 )

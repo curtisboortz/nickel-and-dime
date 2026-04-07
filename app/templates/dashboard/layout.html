@@ -1064,7 +1064,7 @@ function obFinish() {
         <div style="overflow-x:auto;" id="ins-corr-matrix"></div>
       </div>
       <div style="flex:1;min-width:280px;">
-        <div style="font-weight:600;font-size:0.85rem;margin-bottom:8px;">AI Summary</div>
+        <div style="font-weight:600;font-size:0.85rem;margin-bottom:8px;">Summary</div>
         <ul id="ins-summaries" style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:8px;"></ul>
       </div>
     </div>
@@ -1317,6 +1317,22 @@ function obFinish() {
       </div>
     </div>
 
+    <!-- Category Colors -->
+    <div style="border:1px solid var(--border-subtle);border-radius:var(--radius);padding:18px;margin-bottom:16px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+        <svg viewBox="0 0 24 24" style="width:24px;height:24px;fill:none;stroke:var(--text-secondary);stroke-width:2;"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 0 20"/><path d="M2 12h20"/></svg>
+        <div>
+          <div style="font-weight:600;font-size:0.95rem;">Category Colors</div>
+          <div class="hint" style="margin:0;">Customize the colors used in charts and allocations</div>
+        </div>
+      </div>
+      <div id="category-color-rows" style="display:flex;flex-direction:column;gap:2px;max-height:240px;overflow-y:auto;"></div>
+      <div style="margin-top:12px;display:flex;justify-content:space-between;align-items:center;">
+        <button type="button" onclick="resetAllCategoryColors()" style="font-size:0.75rem;color:var(--text-muted);background:none;border:none;cursor:pointer;text-decoration:underline;">Reset All to Defaults</button>
+        <button type="button" onclick="saveCategoryColors()" id="save-colors-btn" style="padding:8px 18px;font-size:0.82rem;">Save Colors</button>
+      </div>
+    </div>
+
     <!-- Referral Program -->
     <div style="border:1px solid var(--border-subtle);border-radius:var(--radius);padding:18px;margin-bottom:16px;">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
@@ -1496,7 +1512,13 @@ document.addEventListener("keydown", function(e) {
 <script>
 (function() {
   if (typeof NDDiag !== "undefined") NDDiag.track("live-data", "loading");
-  fetch("/api/live-data").then(function(r) { return r.json(); }).then(function(d) {
+  Promise.all([
+    fetch("/api/live-data").then(function(r) { return r.json(); }),
+    fetch("/api/settings/category-colors").then(function(r) { return r.json(); }).catch(function() { return {colors:{}}; })
+  ]).then(function(results) {
+    var d = results[0];
+    var cc = results[1];
+    if (cc && cc.colors) window.ND_CATEGORY_COLORS = cc.colors;
     if (typeof applyLiveDataToDOM === "function") applyLiveDataToDOM(d);
     if (d && d.buckets) {
       window.BUCKETS_DATA = d.buckets;

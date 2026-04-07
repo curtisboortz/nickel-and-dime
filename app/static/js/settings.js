@@ -11,6 +11,7 @@ function openSettingsModal() {
   _loadIntegrationStatus();
   _loadPlaidAccounts();
   _loadBucketRollup();
+  _loadCategoryColors();
   _loadReferralCode();
 }
 
@@ -308,6 +309,78 @@ function saveBucketRollup() {
     if (btn) { btn.disabled = false; btn.textContent = "Save Grouping"; }
     alert("Failed to save category grouping.");
   });
+}
+
+/* ═══════════════════════════════════════════════
+   Category Colors
+   ═══════════════════════════════════════════════ */
+
+var _colorCategories = ["Equities","International","Fixed Income","Cash","Alternatives","Crypto","Real Assets","Gold","Silver","Real Estate","Art","Managed Blend","Retirement Blend"];
+
+function _loadCategoryColors() {
+  var wrap = document.getElementById("category-color-rows");
+  if (!wrap) return;
+  fetch("/api/settings/category-colors").then(function(r) { return r.json(); }).then(function(d) {
+    var custom = d.colors || {};
+    Object.keys(custom).forEach(function(k) { window.ND_CATEGORY_COLORS[k] = custom[k]; });
+    var html = "";
+    _colorCategories.forEach(function(cat) {
+      var current = ndCategoryColor(cat);
+      var defColor = ndDefaultCategoryColor(cat);
+      var isCustom = custom[cat] ? true : false;
+      html += '<div style="display:flex;align-items:center;gap:10px;padding:5px 0;">';
+      html += '<input type="color" data-cat="' + cat + '" value="' + current + '" style="width:28px;height:28px;border:1px solid var(--border-subtle);border-radius:4px;background:none;cursor:pointer;padding:0;">';
+      html += '<span style="flex:1;font-size:0.82rem;color:var(--text-primary);">' + cat + '</span>';
+      if (isCustom) {
+        html += '<button type="button" onclick="_resetCategoryColor(\'' + cat + '\',\'' + defColor + '\')" style="font-size:0.7rem;color:var(--text-muted);background:none;border:none;cursor:pointer;text-decoration:underline;">reset</button>';
+      }
+      html += '</div>';
+    });
+    wrap.innerHTML = html;
+  }).catch(function() {});
+}
+
+function _resetCategoryColor(cat, defColor) {
+  var input = document.querySelector('#category-color-rows input[data-cat="' + cat + '"]');
+  if (input) input.value = defColor;
+  window.ND_CATEGORY_COLORS[cat] = undefined;
+}
+
+function saveCategoryColors() {
+  var btn = document.getElementById("save-colors-btn");
+  if (btn) { btn.disabled = true; btn.textContent = "Saving..."; }
+  var inputs = document.querySelectorAll("#category-color-rows input[type=color]");
+  var colors = {};
+  inputs.forEach(function(inp) {
+    var cat = inp.getAttribute("data-cat");
+    var val = inp.value;
+    var def = ndDefaultCategoryColor(cat);
+    if (val && val !== def) colors[cat] = val;
+  });
+  fetch("/api/settings/category-colors", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ colors: colors })
+  }).then(function(r) { return r.json(); }).then(function() {
+    window.ND_CATEGORY_COLORS = colors;
+    if (btn) { btn.disabled = false; btn.textContent = "Saved!"; setTimeout(function() { btn.textContent = "Save Colors"; }, 1500); }
+    if (typeof buildDonut === "function") buildDonut();
+    if (typeof buildPerfAttribution === "function") { window.PERF_DATA = {}; buildPerfAttribution(); }
+  }).catch(function() {
+    if (btn) { btn.disabled = false; btn.textContent = "Save Colors"; }
+    alert("Failed to save colors.");
+  });
+}
+
+function resetAllCategoryColors() {
+  if (!confirm("Reset all category colors to defaults?")) return;
+  var inputs = document.querySelectorAll("#category-color-rows input[type=color]");
+  inputs.forEach(function(inp) {
+    var cat = inp.getAttribute("data-cat");
+    inp.value = ndDefaultCategoryColor(cat);
+  });
+  window.ND_CATEGORY_COLORS = {};
+  saveCategoryColors();
 }
 
 /* ── Referral Program ── */

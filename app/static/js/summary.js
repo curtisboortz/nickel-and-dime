@@ -313,27 +313,9 @@ function saveAllocationTargets() {
 
 /* ── Allocation Donut ── */
 var _donutChart = null;
-var _donutColorMap = {
-  "Equities": "#34d399",
-  "International": "#2dd4bf",
-  "Fixed Income": "#60a5fa",
-  "Cash": "#94a3b8",
-  "Alternatives": "#818cf8",
-  "Crypto": "#a78bfa",
-  "Real Assets": "#f59e0b",
-  "Gold": "#eab308",
-  "Silver": "#a8a29e",
-  "Real Estate": "#06b6d4",
-  "Art": "#e879f9",
-  "Managed Blend": "#4ade80",
-  "Retirement Blend": "#86efac"
-};
-var _donutFallback = ["#ef4444","#f97316","#84cc16","#06b6d4","#e879f9","#fb923c","#a3e635"];
-
 function _donutColor(label) {
-  return _donutColorMap[label] || _donutFallback[Math.abs(_hashStr(label)) % _donutFallback.length];
+  return ndCategoryColor(label);
 }
-function _hashStr(s) { var h = 0; for (var i = 0; i < s.length; i++) h = ((h << 5) - h) + s.charCodeAt(i); return h; }
 
 function _getDonutCollapseState() {
   try { return JSON.parse(localStorage.getItem("nd-donut-collapse") || "{}"); } catch(e) { return {}; }

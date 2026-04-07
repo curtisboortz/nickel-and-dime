@@ -140,6 +140,36 @@ window.addEventListener("unhandledrejection", function(e) {
   };
 })();
 
+/* ── Canonical category color palette ── */
+var _ND_DEFAULT_COLORS = {
+  "Equities": "#34d399",
+  "International": "#2dd4bf",
+  "Fixed Income": "#60a5fa",
+  "Cash": "#94a3b8",
+  "Alternatives": "#818cf8",
+  "Crypto": "#a78bfa",
+  "Real Assets": "#f59e0b",
+  "Gold": "#eab308",
+  "Silver": "#a8a29e",
+  "Real Estate": "#06b6d4",
+  "Art": "#e879f9",
+  "Managed Blend": "#4ade80",
+  "Retirement Blend": "#86efac"
+};
+window.ND_CATEGORY_COLORS = {};
+var _ndColorFallback = ["#f87171","#fbbf24","#2dd4bf","#a3e635","#f472b6","#fb923c","#84cc16"];
+function _ndHashStr(s) { var h = 0; for (var i = 0; i < s.length; i++) h = ((h << 5) - h) + s.charCodeAt(i); return h; }
+
+function ndCategoryColor(label) {
+  if (window.ND_CATEGORY_COLORS[label]) return window.ND_CATEGORY_COLORS[label];
+  if (_ND_DEFAULT_COLORS[label]) return _ND_DEFAULT_COLORS[label];
+  return _ndColorFallback[Math.abs(_ndHashStr(label)) % _ndColorFallback.length];
+}
+
+function ndDefaultCategoryColor(label) {
+  return _ND_DEFAULT_COLORS[label] || _ndColorFallback[Math.abs(_ndHashStr(label)) % _ndColorFallback.length];
+}
+
 /* Fix candlestick wick-through-body artifact: redraw opaque bodies over wicks.
    CandlestickElement pixel props: x, open, high, low, close, width.
    In canvas coords lower y = higher price, so close < open means price went UP. */

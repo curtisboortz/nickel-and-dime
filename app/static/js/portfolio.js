@@ -857,7 +857,7 @@ buildDrawdownChart();
 /* ── Performance Attribution ── */
 var PERF_DATA = window.PERF_DATA || {};
 var _perfAttrChart = null;
-var _perfAttrColorMap = { "Cash":"#94a3b8","Equities":"#34d399","Gold":"#eab308","Silver":"#a8a29e","Crypto":"#a78bfa","Alternatives":"#818cf8","Fixed Income":"#60a5fa","International":"#2dd4bf","Real Assets":"#06b6d4","Art":"#e879f9","Managed Blend":"#4ade80","Retirement Blend":"#86efac","Real Estate":"#22d3ee" };
+/* Color map unified in shared.js via ndCategoryColor() */
 
 function buildPerfAttribution() {
   NDDiag.track("perf-attr", "loading");
@@ -878,7 +878,7 @@ function buildPerfAttribution() {
   var labels = Object.keys(buckets).sort(function(a, b) { return (buckets[b] || 0) - (buckets[a] || 0); });
   var values = labels.map(function(b) { return buckets[b]; });
   var pcts = labels.map(function(b) { return ((buckets[b] / total) * 100).toFixed(1); });
-  var colors = labels.map(function(b) { return _perfAttrColorMap[b] || "#94a3b8"; });
+  var colors = labels.map(function(b) { return ndCategoryColor(b); });
   var bReturns = PERF_DATA.bucket_returns || {};
 
   var ctx = document.getElementById("perf-attr-chart");

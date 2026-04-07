@@ -1,29 +1,51 @@
 """Email sending service for transactional emails.
 
-Uses Flask-Mail for delivery. Falls back to logging if MAIL_USERNAME is not
-configured (development / CI environments).
+Uses Resend HTTP API for delivery. Falls back to logging if MAIL_PASSWORD
+(Resend API key) is not configured.
 """
 
+import json
 import logging
+import sys
+import urllib.request
+import urllib.error
 from threading import Thread
 
 from flask import current_app, render_template
-from flask_mail import Message
-
-from ..extensions import mail
 
 log = logging.getLogger("nd.email")
 
 
-def _send_async(app, msg):
-    """Send a message inside an app context (called from a background thread)."""
-    import sys
-    with app.app_context():
-        try:
-            mail.send(msg)
-            print(f"[Email] Sent to {msg.recipients}: {msg.subject}", flush=True, file=sys.stderr)
-        except Exception as e:
-            print(f"[Email] FAILED to {msg.recipients}: {e}", flush=True, file=sys.stderr)
+def _send_via_resend(api_key, from_addr, to, subject, html_body, text_body=None):
+    """Send an email via Resend's HTTP API. Returns None on success or error string."""
+    payload = {
+        "from": from_addr,
+        "to": [to] if isinstance(to, str) else to,
+        "subject": subject,
+    }
+    if html_body:
+        payload["html"] = html_body
+    if text_body:
+        payload["text"] = text_body
+
+    data = json.dumps(payload).encode("utf-8")
+    req = urllib.request.Request(
+        "https://api.resend.com/emails",
+        data=data,
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        },
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            result = json.loads(resp.read().decode())
+            return None
+    except urllib.error.HTTPError as e:
+        body = e.read().decode() if e.fp else ""
+        return f"Resend HTTP {e.code}: {body}"
+    except Exception as e:
+        return f"Resend error: {e}"
 
 
 def send_email(to, subject, template, **kwargs):
@@ -37,32 +59,39 @@ def send_email(to, subject, template, **kwargs):
         **kwargs: Context variables passed to the templates.
     """
     app = current_app._get_current_object()
+    api_key = app.config.get("MAIL_PASSWORD", "")
+    from_addr = app.config.get("MAIL_DEFAULT_SENDER", "noreply@nickelanddime.io")
 
-    import sys
-    if not app.config.get("MAIL_USERNAME"):
-        print(f"[Email] SKIPPED (no MAIL_USERNAME): to={to} subject={subject}", flush=True, file=sys.stderr)
+    if not api_key:
+        print(f"[Email] SKIPPED (no MAIL_PASSWORD/API key): to={to} subject={subject}", flush=True, file=sys.stderr)
         return
-    print(f"[Email] Preparing: to={to} subject={subject} server={app.config.get('MAIL_SERVER')}:{app.config.get('MAIL_PORT')}", flush=True, file=sys.stderr)
 
-    recipients = [to] if isinstance(to, str) else to
-    msg = Message(
-        subject=f"Nickel&Dime - {subject}",
-        recipients=recipients,
-    )
+    full_subject = f"Nickel&Dime - {subject}"
+    html_body = None
+    text_body = None
 
     try:
-        msg.html = render_template(f"{template}.html", **kwargs)
+        html_body = render_template(f"{template}.html", **kwargs)
+    except Exception:
+        pass
+    try:
+        text_body = render_template(f"{template}.txt", **kwargs)
     except Exception:
         pass
 
-    try:
-        msg.body = render_template(f"{template}.txt", **kwargs)
-    except Exception:
-        if not msg.html:
-            log.error("No template found for %s", template)
-            return
+    if not html_body and not text_body:
+        print(f"[Email] No template found for {template}", flush=True, file=sys.stderr)
+        return
 
-    thread = Thread(target=_send_async, args=(app, msg))
+    def _send():
+        with app.app_context():
+            err = _send_via_resend(api_key, from_addr, to, full_subject, html_body, text_body)
+            if err:
+                print(f"[Email] FAILED to {to}: {err}", flush=True, file=sys.stderr)
+            else:
+                print(f"[Email] Sent to {to}: {full_subject}", flush=True, file=sys.stderr)
+
+    thread = Thread(target=_send)
     thread.daemon = True
     thread.start()
 
@@ -85,29 +114,24 @@ def send_password_reset_sync(user, token):
     from flask import url_for, current_app
     reset_url = url_for("auth.reset_password", token=token, _external=True)
     app = current_app._get_current_object()
+    api_key = app.config.get("MAIL_PASSWORD", "")
+    from_addr = app.config.get("MAIL_DEFAULT_SENDER", "noreply@nickelanddime.io")
 
-    if not app.config.get("MAIL_USERNAME"):
-        return "MAIL_USERNAME not configured"
+    if not api_key:
+        return "MAIL_PASSWORD (Resend API key) not configured"
 
-    msg = Message(
-        subject="Nickel&Dime - Reset Your Password",
-        recipients=[user.email],
-    )
     try:
-        msg.html = render_template("email/reset_password.html", user=user, reset_url=reset_url)
+        html_body = render_template("email/reset_password.html", user=user, reset_url=reset_url)
     except Exception as e:
         return f"Template error: {e}"
 
+    text_body = None
     try:
-        msg.body = render_template("email/reset_password.txt", user=user, reset_url=reset_url)
+        text_body = render_template("email/reset_password.txt", user=user, reset_url=reset_url)
     except Exception:
         pass
 
-    try:
-        mail.send(msg)
-        return None
-    except Exception as e:
-        return str(e)
+    return _send_via_resend(api_key, from_addr, user.email, "Nickel&Dime - Reset Your Password", html_body, text_body)
 
 
 def send_email_verification(user, token):

@@ -14,15 +14,26 @@ branch_labels = None
 depends_on = None
 
 
+def _column_exists(table, column):
+    conn = op.get_bind()
+    result = conn.execute(sa.text(
+        "SELECT 1 FROM information_schema.columns "
+        "WHERE table_name = :t AND column_name = :c"
+    ), {"t": table, "c": column})
+    return result.fetchone() is not None
+
+
 def upgrade():
     with op.batch_alter_table("plaid_items") as batch_op:
-        batch_op.add_column(sa.Column(
-            "logo_base64", sa.Text(), nullable=True,
-        ))
-        batch_op.add_column(sa.Column(
-            "primary_color", sa.String(20),
-            server_default="", nullable=True,
-        ))
+        if not _column_exists("plaid_items", "logo_base64"):
+            batch_op.add_column(sa.Column(
+                "logo_base64", sa.Text(), nullable=True,
+            ))
+        if not _column_exists("plaid_items", "primary_color"):
+            batch_op.add_column(sa.Column(
+                "primary_color", sa.String(20),
+                server_default="", nullable=True,
+            ))
 
 
 def downgrade():

@@ -520,7 +520,23 @@ function restoreAllPulseCards() {
         proxyEl.textContent = "via " + resp.proxy;
         proxyEl.style.display = "inline";
       }
-      renderPcmChart(d);
+      try {
+        renderPcmChart(d);
+        var meta = pcmChart && pcmChart.getDatasetMeta(0);
+        var hasVisible = meta && meta.data && meta.data.length > 0 &&
+          meta.data.some(function(pt) { return isFinite(pt.x) && isFinite(pt.y); });
+        if (!hasVisible) {
+          pcmState.chartType = pcmState.chartType === "line" ? "candlestick" : "line";
+          var btn = document.querySelector("#pcm-overlay .pcm-toggle-chart");
+          if (btn) btn.textContent = pcmState.chartType === "line" ? "Candlestick" : "Line";
+          renderPcmChart(d);
+        }
+      } catch(_e) {
+        pcmState.chartType = pcmState.chartType === "line" ? "candlestick" : "line";
+        var btn2 = document.querySelector("#pcm-overlay .pcm-toggle-chart");
+        if (btn2) btn2.textContent = pcmState.chartType === "line" ? "Candlestick" : "Line";
+        try { renderPcmChart(d); } catch(_e2) { /* both types failed */ }
+      }
     }).catch(function() {
       spinner.classList.remove("show");
     });
@@ -592,7 +608,7 @@ function restoreAllPulseCards() {
           fill: true, tension: 0.15
         }] };
       } else {
-        var pointData = data.map(function(p) { return { x: p.date, y: p.c }; });
+        var pointData = data.map(function(p) { return { x: new Date(p.date).getTime(), y: p.c }; });
         xScale = { type: "time", time: { unit: timeUnit, tooltipFormat: "MMM d, yyyy" },
           grid: { color: "rgba(255,255,255,0.04)" },
           ticks: { color: "rgba(255,255,255,0.5)", maxTicksLimit: 8 }

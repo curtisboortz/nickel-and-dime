@@ -1756,9 +1756,19 @@ document.addEventListener("keydown", function(e) {
   }).catch(function(e) { if (typeof NDDiag !== "undefined") NDDiag.track("live-data", "error", e.message || String(e)); });
 
   if (typeof NDDiag !== "undefined") NDDiag.track("portfolio-history", "loading");
-  fetch("/api/portfolio-history").then(function(r) { return r.json(); }).then(function(d) {
+  var _userTz = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+  fetch("/api/portfolio-history?tz=" + encodeURIComponent(_userTz)).then(function(r) { return r.json(); }).then(function(d) {
     if (d && d.history) {
       window.PRICE_HISTORY_DATA = d.history;
+      var todayStr = new Date().toLocaleDateString("en-CA");
+      var lastEntry = d.history[d.history.length - 1];
+      if (lastEntry && lastEntry.date !== todayStr && window.PORTFOLIO_TOTAL) {
+        d.history.push({
+          date: todayStr, total: window.PORTFOLIO_TOTAL, open: window.PORTFOLIO_TOTAL,
+          high: window.PORTFOLIO_TOTAL, low: window.PORTFOLIO_TOTAL,
+          close: window.PORTFOLIO_TOTAL, gold: null, silver: null
+        });
+      }
       if (typeof buildHistoryChart === "function") buildHistoryChart("total");
       if (typeof NDDiag !== "undefined") NDDiag.track("portfolio-history", "ok", d.history.length + " data points");
     } else {

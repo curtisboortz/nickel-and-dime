@@ -518,8 +518,15 @@ def portfolio_history():
             pass
         return v
 
-    from datetime import date as _date
+    from datetime import date as _date, datetime as _dt
     from ..services.portfolio_service import compute_portfolio_value
+
+    tz_name = flask_request.args.get("tz", "UTC")
+    try:
+        from zoneinfo import ZoneInfo
+        today = _dt.now(ZoneInfo(tz_name)).date()
+    except Exception:
+        today = _date.today()
 
     snapshots = (PortfolioSnapshot.query
                  .filter_by(user_id=current_user.id)
@@ -542,8 +549,6 @@ def portfolio_history():
             "gold": _safe(s.gold_price), "silver": _safe(s.silver_price),
         })
         last_snap_date = s.date
-
-    today = _date.today()
     pv = compute_portfolio_value(current_user.id)
     live_total = pv.get("total", 0)
     if live_total and live_total > 0:

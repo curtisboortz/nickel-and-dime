@@ -289,8 +289,8 @@ function _buildAccountTable(holdings, acctName) {
 
     if (isLinked) {
       html += '<tr data-hid="' + h.id + '" data-source="plaid">';
-      html += '<td style="padding:6px;font-weight:600;">' + (h.ticker || "") + '</td>';
-      html += '<td style="padding:6px;color:var(--text-muted);font-size:0.82rem;">' + (h.bucket || "") + '</td>';
+      html += '<td style="padding:6px;font-weight:600;">' + (h.ticker || "") + '<input type="hidden" data-field="ticker" value="' + (h.ticker || "") + '"><input type="hidden" data-field="account" value="' + (h.account || acctName || "") + '"></td>';
+      html += '<td style="padding:4px 4px;">' + _buildBucketSelect(h.bucket || "", false) + '</td>';
       html += '<td ' + rCell + '>' + qtyStr + '</td>';
       html += '<td ' + rCell + '>' + (h.cost_basis ? fmtMoney(h.cost_basis) : "") + '</td>';
       html += '<td ' + rCell + ' style="padding:6px;text-align:right;color:var(--text-muted);font-family:var(--mono);white-space:nowrap;">' + priceStr + '</td>';

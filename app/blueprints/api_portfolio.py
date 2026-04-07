@@ -282,6 +282,7 @@ def _save_holdings_bulk(rows):
     """
     all_existing = Holding.query.filter_by(user_id=current_user.id).all()
     editable = {h.id: h for h in all_existing if h.source != "plaid"}
+    plaid_holdings = {h.id: h for h in all_existing if h.source == "plaid"}
     seen_ids = set()
 
     for row in rows:
@@ -289,6 +290,11 @@ def _save_holdings_bulk(rows):
         if not ticker:
             continue
         hid = row.get("id")
+        if hid and hid in plaid_holdings:
+            ph = plaid_holdings[hid]
+            if "bucket" in row:
+                ph.bucket = _normalize_bucket(row["bucket"])
+            continue
         if hid and hid in editable:
             h = editable[hid]
             seen_ids.add(hid)

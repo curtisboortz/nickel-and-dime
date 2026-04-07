@@ -375,7 +375,7 @@ function saveRecurring() {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ name: name, amount: amount, category: category, frequency: frequency })
   }).then(function(r) { return r.json(); }).then(function(d) {
-    if (d.ok) location.reload();
+    if (d.ok) ndSoftReload();
     else alert(d.error || "Error saving recurring transaction.");
   }).catch(function() { alert("Network error."); });
 }
@@ -383,14 +383,14 @@ function deleteRecurring(idx) {
   if (!confirm("Remove this recurring transaction?")) return;
   fetch("/api/recurring?idx=" + idx, { method: "DELETE" })
     .then(function(r) { return r.json(); })
-    .then(function(d) { if (d.ok) location.reload(); })
+    .then(function(d) { if (d.ok) ndSoftReload(); })
     .catch(function() {});
 }
 function applyRecurring() {
   fetch("/api/recurring/apply", { method: "POST" })
     .then(function(r) { return r.json(); })
     .then(function(d) {
-      if (d.ok) { alert("Added " + d.count + " recurring transactions for this month."); location.reload(); }
+      if (d.ok) { alert("Added " + d.count + " recurring transactions for this month."); ndSoftReload(); }
       else alert(d.error || "Error applying recurring transactions.");
     }).catch(function() { alert("Network error."); });
 }
@@ -491,7 +491,7 @@ function saveMetalPurchase() {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ metal: metal, form: form, qty_oz: qty, cost_per_oz: cost, date: date, note: note })
   }).then(function(r) { return r.json(); }).then(function(d) {
-    if (d.ok) location.reload();
+    if (d.ok) ndSoftReload();
     else alert(d.error || "Error saving.");
   }).catch(function() { alert("Network error."); });
 }
@@ -502,7 +502,7 @@ function deleteMetalRow(idx) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ index: idx })
   }).then(function(r) { return r.json(); }).then(function(d) {
-    if (d.ok) location.reload();
+    if (d.ok) ndSoftReload();
     else alert(d.error || "Error removing.");
   }).catch(function() { alert("Network error."); });
 }
@@ -525,7 +525,7 @@ function saveDividend() {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ date: date, ticker: ticker, amount: amount, type: dtype, note: note })
   }).then(function(r) { return r.json(); }).then(function(d) {
-    if (d.ok) location.reload();
+    if (d.ok) ndSoftReload();
     else alert(d.error || "Error saving.");
   }).catch(function() { alert("Network error."); });
 }
@@ -682,14 +682,14 @@ function saveGoal() {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ name: name, target: target, current: current, target_date: date })
   }).then(function(r) { return r.json(); }).then(function(d) {
-    if (d.ok) location.reload();
+    if (d.ok) ndSoftReload();
   }).catch(function() { alert("Error saving goal."); });
 }
 function deleteGoal(idx) {
   if (!confirm("Remove this goal?")) return;
   fetch("/api/goals?idx=" + idx, { method: "DELETE" })
     .then(function(r) { return r.json(); })
-    .then(function(d) { if (d.ok) location.reload(); });
+    .then(function(d) { if (d.ok) ndSoftReload(); });
 }
 function updateGoalAmount(idx) {
   var val = prompt("Enter current amount for this goal:");
@@ -701,7 +701,7 @@ function updateGoalAmount(idx) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ idx: idx, current: amount })
   }).then(function(r) { return r.json(); }).then(function(d) {
-    if (d.ok) location.reload();
+    if (d.ok) ndSoftReload();
   });
 }
 

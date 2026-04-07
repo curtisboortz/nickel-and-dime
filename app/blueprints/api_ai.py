@@ -71,13 +71,12 @@ def ai_chat():
                     model="gpt-4o-mini",
                     messages=messages,
                     tools=TOOL_DEFINITIONS,
-                    temperature=0.7,
-                    max_tokens=800,
+                    temperature=0.6,
+                    max_tokens=1500,
                     stream=True,
                 )
 
                 tool_calls_acc = {}
-                finished_with_content = False
 
                 for chunk in stream:
                     delta = chunk.choices[0].delta if chunk.choices else None
@@ -87,7 +86,6 @@ def ai_chat():
                     if delta.content:
                         full_response += delta.content
                         yield f"data: {json.dumps({'token': delta.content})}\n\n"
-                        finished_with_content = True
 
                     if delta.tool_calls:
                         for tc in delta.tool_calls:

@@ -4,6 +4,39 @@ All notable changes to Nickel&Dime are documented here.
 
 ---
 
+## [2.6.0] — 2026-04-07 — UX Polish, AI Advisor Upgrade & Amortization Calculator
+
+### Added
+- **Loan amortization calculator** — full-featured calculator in the Budget tab supporting three modes: fixed-rate, adjustable-rate (ARM), and refinance comparison; stacked bar chart showing principal vs interest breakdown over the life of the loan; paginated amortization schedule table; extra payment scenarios showing months and interest saved; ARM mode with configurable fixed period, adjustment interval, rate cap; refinance mode with cumulative cost comparison chart and break-even analysis
+- **AI investment philosophy frameworks** — system prompt now incorporates analytical frameworks from Ray Dalio (risk parity / All Weather), Benjamin Graham & Warren Buffett (margin of safety / value investing), Jack Bogle (low-cost indexing), and Howard Marks (market cycles); AI attributes reasoning to specific frameworks when relevant
+- **Three new AI tools** — `get_portfolio_history` (trend analysis with growth %, peak, drawdown), `get_sector_exposure` (bucket concentration with top holdings per sector), `get_tax_loss_harvest_candidates` (unrealized losses, wash sale flags, substitute ETF suggestions with estimated tax savings)
+- **AI quick action buttons** — added "Tax-Loss Harvest" and "Portfolio Trend" quick prompts; existing prompts rewritten to reference investment frameworks (All Weather Check, Risk Analysis via Buffett lens, Market Outlook via Marks cycle framework)
+- **View Transitions API** — tab switching now uses browser-native crossfade transitions for SPA-like navigation feel (graceful fallback for older browsers)
+- **Animated number counters** — net worth and pulse card prices animate smoothly between values on live data updates with ease-out easing and directional color flash (green for up, red for down)
+- **Staggered card entry animations** — cards cascade in with 50ms stagger when switching tabs, replacing the instant appear
+- **Top loading bar** — thin gold progress bar at the top of the page during data fetches (refresh, initial load)
+- **AI legal disclaimers** — "Not financial advice" disclaimer on AI welcome screen, persistent footer below chat input linking to /disclaimer page; AI system prompt enforces educational framing and hedge language
+
+### Changed
+- **Refresh button** — no longer triggers a full page reload; uses in-place data update via `applyLiveDataToDOM` with spinning animation on the refresh icon
+- **All page reloads softened** — 25+ `location.reload()` calls across pulse, portfolio, and budget JS replaced with `ndSoftReload()` which wraps reloads in a 150ms fade transition
+- **AI token limits increased** — streaming chat `max_tokens` raised from 800 to 1500; insights card from 600 to 800; temperature lowered from 0.7 to 0.6 for more consistent analysis
+- **AI identity reframed** — changed from "senior portfolio analyst" to "portfolio research assistant" providing educational opinions, not professional financial advice
+- **Quick action button labels** — "Build My Portfolio" renamed to "All Weather Check", "Analyze My Risk" to "Risk Analysis"
+
+### Fixed
+- Pre-existing lint issues: removed unused `finished_with_content` variable in `api_ai.py`, removed unused `compute_portfolio_value` import and call in `ai_context_service.py`
+
+### UX Micro-Interactions
+- Sidebar tooltip hover delay (200ms in, instant out)
+- Button active press feedback (`scale(0.97)`)
+- Focus-visible keyboard accessibility rings on all interactive elements
+- Smooth scroll in AI chat instead of instant jump
+- Currency switch uses soft reload transition
+- Card hover transitions for background and border
+
+---
+
 ## [2.5.0] — 2026-04-07 — Allocation Chart Redesign, Plaid Hardening & Data Fixes
 
 ### Added

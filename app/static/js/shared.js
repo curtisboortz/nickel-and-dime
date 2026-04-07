@@ -118,6 +118,83 @@ window.addEventListener("unhandledrejection", function(e) {
   NDDiag.track("global", "error", "Unhandled promise: " + (e.reason ? (e.reason.message || String(e.reason)) : "unknown"));
 });
 
+/* ── Animated Number Counter ── */
+function ndCountUp(el, target, opts) {
+  if (!el) return;
+  opts = opts || {};
+  var duration = opts.duration || 600;
+  var decimals = typeof opts.decimals === "number" ? opts.decimals : 2;
+  var prefix = opts.prefix || "";
+  var start = parseFloat(el.dataset.ndCurrent || "0") || 0;
+  if (Math.abs(target - start) < 0.01) return;
+  el.dataset.ndCurrent = target;
+
+  var direction = target > start ? "up" : "down";
+  el.classList.remove("value-tick-up", "value-tick-down");
+
+  var startTime = null;
+  function step(ts) {
+    if (!startTime) startTime = ts;
+    var progress = Math.min((ts - startTime) / duration, 1);
+    var eased = 1 - Math.pow(1 - progress, 3);
+    var current = start + (target - start) * eased;
+    el.textContent = prefix + current.toLocaleString(undefined, {
+      minimumFractionDigits: decimals, maximumFractionDigits: decimals
+    });
+    if (progress < 1) {
+      requestAnimationFrame(step);
+    } else {
+      if (opts.tickClass !== false) {
+        el.classList.add(direction === "up" ? "value-tick-up" : "value-tick-down");
+        setTimeout(function() { el.classList.remove("value-tick-up", "value-tick-down"); }, 450);
+      }
+    }
+  }
+  requestAnimationFrame(step);
+}
+
+/* ── Top Loading Bar ── */
+(function() {
+  var bar = document.createElement("div");
+  bar.id = "nd-loading-bar";
+  document.body.appendChild(bar);
+
+  var overlay = document.createElement("div");
+  overlay.id = "nd-page-transition";
+  document.body.appendChild(overlay);
+})();
+
+var _ndLoadingCount = 0;
+function ndLoadingStart() {
+  _ndLoadingCount++;
+  var bar = document.getElementById("nd-loading-bar");
+  if (bar) {
+    bar.classList.remove("done");
+    bar.classList.add("active");
+  }
+}
+function ndLoadingDone() {
+  _ndLoadingCount = Math.max(0, _ndLoadingCount - 1);
+  if (_ndLoadingCount > 0) return;
+  var bar = document.getElementById("nd-loading-bar");
+  if (bar) {
+    bar.classList.remove("active");
+    bar.classList.add("done");
+    setTimeout(function() { bar.classList.remove("done"); }, 500);
+  }
+}
+
+/* ── Soft Reload: view-transition-wrapped page reload ── */
+function ndSoftReload() {
+  var overlay = document.getElementById("nd-page-transition");
+  if (overlay) {
+    overlay.classList.add("active");
+    setTimeout(function() { location.reload(); }, 160);
+  } else {
+    location.reload();
+  }
+}
+
 /* ── Auto-inject CSRF token on every mutating fetch ── */
 (function() {
   var _origFetch = window.fetch;
@@ -212,17 +289,23 @@ var TARGETS_DATA = window.TARGETS_DATA || {};
 /* ── Manual Refresh ── */
 window.refreshData = function() {
   var btn = document.getElementById("refresh-btn");
-  if (btn) btn.style.opacity = "0.5";
+  if (btn) btn.classList.add("spinning");
+  ndLoadingStart();
+
   fetch("/api/refresh", { method: "POST" })
     .then(function(r) { return r.json(); })
+    .then(function() {
+      return fetch("/api/live-data").then(function(r) { return r.json(); });
+    })
     .then(function(d) {
-      if (btn) btn.style.opacity = "1";
-      if (d.success) {
-        window.location.reload();
-      }
+      if (btn) btn.classList.remove("spinning");
+      ndLoadingDone();
+      if (typeof applyLiveDataToDOM === "function") applyLiveDataToDOM(d);
+      _flashUpdatedPulseCards();
     })
     .catch(function() {
-      if (btn) btn.style.opacity = "1";
+      if (btn) btn.classList.remove("spinning");
+      ndLoadingDone();
     });
 };
 
@@ -241,7 +324,7 @@ function changeCurrency(currency) {
   BASE_CURRENCY = currency;
   if (currency === "USD") {
     _fxRate = 1; _fxSymbol = "$";
-    location.reload();
+    ndSoftReload();
     return;
   }
   fetchFxAndConvert(currency);
@@ -340,7 +423,11 @@ function convertDisplayCurrency(rate, symbol) {
     var intervalSec = parseInt((document.getElementById("auto-interval") && document.getElementById("auto-interval").value) || 60);
     if (enabled !== false && intervalSec >= 15) startPeriodicLivePoll(intervalSec);
   }
-  fetch("/api/live-data").then(function(r) { return r.json(); }).then(function(d) { if (typeof applyLiveDataToDOM === "function") applyLiveDataToDOM(d); }).catch(function() {});
+  ndLoadingStart();
+  fetch("/api/live-data").then(function(r) { return r.json(); }).then(function(d) {
+    if (typeof applyLiveDataToDOM === "function") applyLiveDataToDOM(d);
+    ndLoadingDone();
+  }).catch(function() { ndLoadingDone(); });
   fetch("/api/bg-refresh", { method:"POST" }).then(function() {
     var polls = 0;
     var maxPolls = 6;

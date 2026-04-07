@@ -708,6 +708,143 @@ function obFinish() {
     </div>
   </div>
 
+  <!-- Amortization Calculator -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Loan Amortization Calculator</div>
+      <div style="display:flex;gap:4px;">
+        <button class="amort-mode-btn active" data-mode="fixed" onclick="amortSetMode('fixed')">Fixed Rate</button>
+        <button class="amort-mode-btn" data-mode="arm" onclick="amortSetMode('arm')">ARM</button>
+        <button class="amort-mode-btn" data-mode="refi" onclick="amortSetMode('refi')">Refinance</button>
+      </div>
+    </div>
+
+    <!-- Fixed Rate Inputs -->
+    <div id="amort-fixed-inputs" class="amort-input-grid">
+      <div class="amort-field">
+        <label class="label">Loan Amount</label>
+        <input type="number" id="amort-amount" class="num" placeholder="250,000" step="1000" style="width:100%">
+      </div>
+      <div class="amort-field">
+        <label class="label">Annual Rate (%)</label>
+        <input type="number" id="amort-rate" class="num" placeholder="6.5" step="0.125" style="width:100%">
+      </div>
+      <div class="amort-field">
+        <label class="label">Term (years)</label>
+        <input type="number" id="amort-term" class="num" placeholder="30" step="1" style="width:100%">
+      </div>
+      <div class="amort-field">
+        <label class="label">Extra Payment / mo</label>
+        <input type="number" id="amort-extra" class="num" placeholder="0" step="50" style="width:100%">
+      </div>
+      <div class="amort-field" style="display:flex;align-items:flex-end;">
+        <button onclick="amortCalc()" style="width:100%">Calculate</button>
+      </div>
+    </div>
+
+    <!-- ARM Inputs -->
+    <div id="amort-arm-inputs" class="amort-input-grid" style="display:none">
+      <div class="amort-field">
+        <label class="label">Loan Amount</label>
+        <input type="number" id="amort-arm-amount" class="num" placeholder="250,000" step="1000" style="width:100%">
+      </div>
+      <div class="amort-field">
+        <label class="label">Initial Rate (%)</label>
+        <input type="number" id="amort-arm-rate" class="num" placeholder="5.0" step="0.125" style="width:100%">
+      </div>
+      <div class="amort-field">
+        <label class="label">Term (years)</label>
+        <input type="number" id="amort-arm-term" class="num" placeholder="30" step="1" style="width:100%">
+      </div>
+      <div class="amort-field">
+        <label class="label">Fixed Period (years)</label>
+        <input type="number" id="amort-arm-fixed-period" class="num" placeholder="5" step="1" style="width:100%">
+      </div>
+      <div class="amort-field">
+        <label class="label">Adjustment Interval (mo)</label>
+        <input type="number" id="amort-arm-adj-interval" class="num" placeholder="12" step="6" value="12" style="width:100%">
+      </div>
+      <div class="amort-field">
+        <label class="label">Rate Adj. per Period (%)</label>
+        <input type="number" id="amort-arm-rate-adj" class="num" placeholder="0.5" step="0.25" style="width:100%">
+      </div>
+      <div class="amort-field">
+        <label class="label">Rate Cap (%)</label>
+        <input type="number" id="amort-arm-rate-cap" class="num" placeholder="10" step="0.5" style="width:100%">
+      </div>
+      <div class="amort-field">
+        <label class="label">Extra Payment / mo</label>
+        <input type="number" id="amort-arm-extra" class="num" placeholder="0" step="50" style="width:100%">
+      </div>
+      <div class="amort-field" style="display:flex;align-items:flex-end;">
+        <button onclick="amortCalc()" style="width:100%">Calculate</button>
+      </div>
+    </div>
+
+    <!-- Refinance Inputs -->
+    <div id="amort-refi-inputs" class="amort-input-grid" style="display:none">
+      <div style="grid-column:1/-1;font-size:0.72rem;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);padding-bottom:2px;">Current Loan</div>
+      <div class="amort-field">
+        <label class="label">Remaining Balance</label>
+        <input type="number" id="amort-refi-balance" class="num" placeholder="200,000" step="1000" style="width:100%">
+      </div>
+      <div class="amort-field">
+        <label class="label">Current Rate (%)</label>
+        <input type="number" id="amort-refi-cur-rate" class="num" placeholder="7.0" step="0.125" style="width:100%">
+      </div>
+      <div class="amort-field">
+        <label class="label">Remaining Term (years)</label>
+        <input type="number" id="amort-refi-cur-remain" class="num" placeholder="25" step="1" style="width:100%">
+      </div>
+      <div style="grid-column:1/-1;font-size:0.72rem;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);padding:6px 0 2px;">New Loan</div>
+      <div class="amort-field">
+        <label class="label">New Rate (%)</label>
+        <input type="number" id="amort-refi-new-rate" class="num" placeholder="5.5" step="0.125" style="width:100%">
+      </div>
+      <div class="amort-field">
+        <label class="label">New Term (years)</label>
+        <input type="number" id="amort-refi-new-term" class="num" placeholder="30" step="1" style="width:100%">
+      </div>
+      <div class="amort-field">
+        <label class="label">Closing Costs</label>
+        <input type="number" id="amort-refi-closing" class="num" placeholder="4,000" step="500" style="width:100%">
+      </div>
+      <div class="amort-field" style="display:flex;align-items:flex-end;">
+        <button onclick="amortCalc()" style="width:100%">Calculate</button>
+      </div>
+    </div>
+
+    <!-- Output Section -->
+    <div id="amort-output" style="display:none;margin-top:16px;">
+      <div id="amort-summary" class="amort-summary-grid"></div>
+      <div style="height:260px;margin:16px 0;">
+        <canvas id="amort-chart"></canvas>
+      </div>
+      <div class="card-title" style="margin-top:16px;">Amortization Schedule</div>
+      <div style="overflow-x:auto;max-height:380px;overflow-y:auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>Month</th>
+              <th style="text-align:right">Payment</th>
+              <th style="text-align:right">Principal</th>
+              <th style="text-align:right">Interest</th>
+              <th style="text-align:right">Extra</th>
+              <th id="amort-rate-th" style="text-align:right;display:none">Rate</th>
+              <th style="text-align:right">Balance</th>
+            </tr>
+          </thead>
+          <tbody id="amort-schedule-tbody"></tbody>
+        </table>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;">
+        <button id="amort-prev-btn" class="secondary" style="padding:5px 14px;font-size:0.75rem;" onclick="amortPagePrev()" disabled>&laquo; Prev</button>
+        <span id="amort-page-info" class="hint"></span>
+        <button id="amort-next-btn" class="secondary" style="padding:5px 14px;font-size:0.75rem;" onclick="amortPageNext()">Next &raquo;</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Transaction Log -->
   <div class="card">
     <div class="card-header">
@@ -1197,28 +1334,34 @@ function obFinish() {
         </div>
       </div>
       <div id="ai-quick-actions" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
-        <button class="ai-action-btn" onclick="aiSendQuick('portfolio')" style="padding:6px 14px;font-size:0.78rem;border-radius:var(--radius);border:1px solid var(--border-subtle);background:transparent;color:var(--text-primary);cursor:pointer;transition:all .15s;">Build My Portfolio</button>
+        <button class="ai-action-btn" onclick="aiSendQuick('portfolio')" style="padding:6px 14px;font-size:0.78rem;border-radius:var(--radius);border:1px solid var(--border-subtle);background:transparent;color:var(--text-primary);cursor:pointer;transition:all .15s;">All Weather Check</button>
         <button class="ai-action-btn" onclick="aiSendQuick('outlook')" style="padding:6px 14px;font-size:0.78rem;border-radius:var(--radius);border:1px solid var(--border-subtle);background:transparent;color:var(--text-primary);cursor:pointer;transition:all .15s;">Market Outlook</button>
-        <button class="ai-action-btn" onclick="aiSendQuick('risk')" style="padding:6px 14px;font-size:0.78rem;border-radius:var(--radius);border:1px solid var(--border-subtle);background:transparent;color:var(--text-primary);cursor:pointer;transition:all .15s;">Analyze My Risk</button>
+        <button class="ai-action-btn" onclick="aiSendQuick('risk')" style="padding:6px 14px;font-size:0.78rem;border-radius:var(--radius);border:1px solid var(--border-subtle);background:transparent;color:var(--text-primary);cursor:pointer;transition:all .15s;">Risk Analysis</button>
         <button class="ai-action-btn" onclick="aiSendQuick('rebalance')" style="padding:6px 14px;font-size:0.78rem;border-radius:var(--radius);border:1px solid var(--border-subtle);background:transparent;color:var(--text-primary);cursor:pointer;transition:all .15s;">Rebalance Plan</button>
+        <button class="ai-action-btn" onclick="aiSendQuick('tlh')" style="padding:6px 14px;font-size:0.78rem;border-radius:var(--radius);border:1px solid var(--border-subtle);background:transparent;color:var(--text-primary);cursor:pointer;transition:all .15s;">Tax-Loss Harvest</button>
+        <button class="ai-action-btn" onclick="aiSendQuick('history')" style="padding:6px 14px;font-size:0.78rem;border-radius:var(--radius);border:1px solid var(--border-subtle);background:transparent;color:var(--text-primary);cursor:pointer;transition:all .15s;">Portfolio Trend</button>
       </div>
     </div>
 
     <!-- Chat Messages -->
     <div id="ai-chat-messages" style="flex:1;overflow-y:auto;padding:0 20px 16px;display:flex;flex-direction:column;gap:12px;">
-      <div id="ai-welcome" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;text-align:center;color:var(--text-muted);">
+      <div id="ai-welcome" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:48px 20px;text-align:center;color:var(--text-muted);">
         <div style="font-size:2rem;margin-bottom:12px;">&#129302;</div>
         <div style="font-size:0.92rem;font-weight:500;color:var(--text-primary);margin-bottom:6px;">What can I help you with?</div>
-        <div style="font-size:0.8rem;max-width:420px;">Ask me anything about your portfolio, market conditions, or investment strategy. Use the quick actions above, or type your own question below.</div>
+        <div style="font-size:0.8rem;max-width:420px;margin-bottom:16px;">Ask me anything about your portfolio, market conditions, or investment strategy. Use the quick actions above, or type your own question below.</div>
+        <div style="font-size:0.68rem;max-width:480px;padding:10px 16px;background:rgba(251,191,36,0.06);border:1px solid rgba(251,191,36,0.15);border-radius:8px;color:var(--text-muted);line-height:1.5;">
+          <strong style="color:var(--warning);">Not financial advice.</strong> This AI provides educational commentary and opinions based on well-known investment frameworks. It is not a licensed financial advisor. Always do your own research and consider consulting a qualified professional before making investment decisions.
+        </div>
       </div>
     </div>
 
     <!-- Input Bar -->
-    <div style="padding:12px 20px 16px;flex-shrink:0;border-top:1px solid var(--border-subtle);">
+    <div style="padding:12px 20px 12px;flex-shrink:0;border-top:1px solid var(--border-subtle);">
       <div style="display:flex;gap:10px;align-items:flex-end;">
         <textarea id="ai-chat-input" rows="1" placeholder="Ask about your portfolio, markets, or strategy..." style="flex:1;padding:10px 14px;font-size:0.85rem;border-radius:var(--radius);border:1px solid var(--border-subtle);background:var(--bg-input);color:var(--text-primary);resize:none;line-height:1.5;max-height:120px;font-family:inherit;" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();aiSend();}"></textarea>
         <button id="ai-send-btn" onclick="aiSend()" style="padding:10px 20px;font-size:0.85rem;border-radius:var(--radius);border:none;background:var(--accent-primary);color:#09090b;font-weight:600;cursor:pointer;transition:opacity .15s;white-space:nowrap;">Send</button>
       </div>
+      <div style="font-size:0.62rem;color:var(--text-muted);text-align:center;margin-top:6px;padding-bottom:2px;">For educational purposes only &mdash; not financial advice. <a href="/disclaimer" style="color:var(--text-muted);text-decoration:underline;">Learn more</a></div>
     </div>
 
   </div>
@@ -1567,6 +1710,7 @@ document.addEventListener("keydown", function(e) {
 <script src="{{ url_for('static', filename='js/history.js') }}?v={{ v }}"></script>
 <script src="{{ url_for('static', filename='js/pulse.js') }}?v={{ v }}"></script>
 <script src="{{ url_for('static', filename='js/budget.js') }}?v={{ v }}"></script>
+<script src="{{ url_for('static', filename='js/amortization.js') }}?v={{ v }}"></script>
 <script src="{{ url_for('static', filename='js/economics.js') }}?v={{ v }}"></script>
 <script src="{{ url_for('static', filename='js/portfolio.js') }}?v={{ v }}"></script>
 <script src="{{ url_for('static', filename='js/sentiment.js') }}?v={{ v }}"></script>

@@ -90,17 +90,17 @@ function saveContributions() {
     if(res.success) {
       var btn=document.querySelector("button[onclick*='saveContributions']");
       if(btn) { btn.textContent="Saved!"; }
-      setTimeout(function() { location.reload(); }, 600);
+      setTimeout(function() { ndSoftReload(); }, 600);
     }
   });
 }
 function newMonth() {
   if(!confirm("Start a new month? This resets all investment contributions to $0.")) return;
-  fetch("/api/new-month",{method:"POST"}).then(function(r){return r.json();}).then(function(d){ if(d.success) location.reload(); });
+  fetch("/api/new-month",{method:"POST"}).then(function(r){return r.json();}).then(function(d){ if(d.success) ndSoftReload(); });
 }
 function newBudgetMonth() {
   if(!confirm("Start a new budget month? This updates both budget and investment months, and resets contributions.")) return;
-  fetch("/api/new-budget-month",{method:"POST"}).then(function(r){return r.json();}).then(function(d){ if(d.success) location.reload(); });
+  fetch("/api/new-budget-month",{method:"POST"}).then(function(r){return r.json();}).then(function(d){ if(d.success) ndSoftReload(); });
 }
 var saveTimeout;
 function _autoSaveContributions() {
@@ -292,7 +292,7 @@ function processInvestChat() {
     var cdata={};
     document.querySelectorAll(".contrib-input").forEach(function(i) { cdata[i.dataset.key]=parseFloat(i.value)||0; });
     fetch("/api/save-contributions",{ method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(cdata) })
-    .then(function() { setTimeout(function() { location.reload(); }, 800); });
+    .then(function() { setTimeout(function() { ndSoftReload(); }, 800); });
     updateTotals();
   }
 }
@@ -379,7 +379,7 @@ function addPulseCard() {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ ticker: ticker, label: label })
   }).then(function(r) { return r.json(); }).then(function(d) {
-    if (d.success) location.reload();
+    if (d.success) ndSoftReload();
     else alert(d.error || "Failed to add ticker.");
   });
 }
@@ -411,7 +411,7 @@ function restoreAllPulseCards() {
   if (!confirm("Restore all hidden pulse cards?")) return;
   fetch("/api/pulse-cards/restore-all", { method: "POST" })
     .then(function(r) { return r.json(); })
-    .then(function(d) { if (d.success) location.reload(); });
+    .then(function(d) { if (d.success) ndSoftReload(); });
 }
 
 /* ── Pulse Chart Modal ── */

@@ -5,10 +5,12 @@ on demand during a conversation.
 """
 
 import json
+from datetime import date, datetime, timedelta, timezone
 
 from ..extensions import db
 from ..models.market import PriceCache, SentimentCache, FredCache
-from ..models.portfolio import Holding
+from ..models.portfolio import Holding, CryptoHolding
+from ..models.snapshot import PortfolioSnapshot
 from ..models.settings import UserSettings
 from ..services.portfolio_service import compute_portfolio_value
 from ..services.templates_service import (
@@ -129,12 +131,60 @@ TOOL_DEFINITIONS = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_portfolio_history",
+            "description": (
+                "Get the user's portfolio value over time (daily snapshots). "
+                "Returns dates and total values. Useful for analyzing trends, "
+                "drawdowns, and growth rate."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "days": {
+                        "type": "integer",
+                        "description": "Number of days of history (default 90, max 365)",
+                    },
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_sector_exposure",
+            "description": (
+                "Analyze the user's portfolio concentration by asset class bucket. "
+                "Returns each bucket's value, weight, and the top holdings within it."
+            ),
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_tax_loss_harvest_candidates",
+            "description": (
+                "Find holdings currently at an unrealized loss that could "
+                "potentially be sold for tax-loss harvesting. Includes wash "
+                "sale risk flags and substitute ETF suggestions."
+            ),
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
 ]
 
 
 def execute_tool(name, arguments, user_id):
     """Dispatch a tool call to the appropriate handler."""
     args = json.loads(arguments) if isinstance(arguments, str) else arguments
+    _user_tools = {
+        "compare_to_template", "suggest_rebalance",
+        "get_portfolio_history", "get_sector_exposure",
+        "get_tax_loss_harvest_candidates",
+    }
     handlers = {
         "get_ticker_price": _handle_ticker_price,
         "get_market_sentiment": _handle_market_sentiment,
@@ -142,13 +192,16 @@ def execute_tool(name, arguments, user_id):
         "get_allocation_templates": _handle_allocation_templates,
         "compare_to_template": _handle_compare_to_template,
         "suggest_rebalance": _handle_suggest_rebalance,
+        "get_portfolio_history": _handle_portfolio_history,
+        "get_sector_exposure": _handle_sector_exposure,
+        "get_tax_loss_harvest_candidates": _handle_tlh_candidates,
     }
     handler = handlers.get(name)
     if not handler:
         return json.dumps({"error": f"Unknown tool: {name}"})
 
     try:
-        if name in ("compare_to_template", "suggest_rebalance"):
+        if name in _user_tools:
             result = handler(args, user_id)
         else:
             result = handler(args)
@@ -294,4 +347,213 @@ def _handle_suggest_rebalance(args, user_id):
     return {
         "portfolio_total": round(total, 2),
         "trades": trades,
+    }
+
+
+def _handle_portfolio_history(args, user_id):
+    days = min(args.get("days", 90), 365)
+    cutoff = date.today() - timedelta(days=days)
+    snaps = (
+        PortfolioSnapshot.query
+        .filter(
+            PortfolioSnapshot.user_id == user_id,
+            PortfolioSnapshot.date >= cutoff,
+        )
+        .order_by(PortfolioSnapshot.date)
+        .all()
+    )
+    if not snaps:
+        return {"error": "No portfolio history available yet"}
+
+    points = []
+    for s in snaps:
+        points.append({
+            "date": s.date.isoformat(),
+            "total": round(s.total, 2),
+        })
+
+    first_val = snaps[0].total or 0
+    last_val = snaps[-1].total or 0
+    peak = max(s.total for s in snaps) if snaps else 0
+    trough = min(s.total for s in snaps) if snaps else 0
+
+    growth_pct = ((last_val - first_val) / first_val * 100) if first_val else 0
+    max_drawdown_pct = ((trough - peak) / peak * 100) if peak else 0
+
+    return {
+        "days": days,
+        "data_points": len(points),
+        "first": points[0] if points else None,
+        "last": points[-1] if points else None,
+        "peak": round(peak, 2),
+        "trough": round(trough, 2),
+        "growth_pct": round(growth_pct, 2),
+        "max_drawdown_pct": round(max_drawdown_pct, 2),
+        "history": points[-60:],
+    }
+
+
+def _handle_sector_exposure(args, user_id):
+    settings = (
+        db.session.query(UserSettings)
+        .filter_by(user_id=user_id)
+        .first()
+    )
+    overrides = (
+        settings.bucket_rollup
+        if settings and hasattr(settings, "bucket_rollup")
+        else None
+    )
+
+    pv = compute_portfolio_value(user_id)
+    breakdown, _ = rollup_breakdown(pv.get("breakdown", {}), overrides=overrides)
+    total = pv["total"]
+
+    if total == 0:
+        return {"error": "Portfolio is empty"}
+
+    holdings = Holding.query.filter_by(user_id=user_id).all()
+    tickers = list({h.ticker for h in holdings if h.ticker})
+    price_map = {}
+    if tickers:
+        price_map = {
+            r.symbol: r.price
+            for r in PriceCache.query.filter(
+                PriceCache.symbol.in_(tickers)
+            ).all()
+            if r.price
+        }
+
+    bucket_holdings = {}
+    for h in holdings:
+        if h.value_override:
+            val = h.value_override
+        elif h.shares:
+            val = h.shares * (price_map.get(h.ticker) or 0)
+        else:
+            val = 0
+        bucket = h.bucket or "Other"
+        if bucket not in bucket_holdings:
+            bucket_holdings[bucket] = []
+        bucket_holdings[bucket].append({
+            "ticker": h.ticker,
+            "value": round(val, 2),
+            "shares": round(h.shares or 0, 2),
+            "cost_basis": round(h.cost_basis or 0, 2) if h.cost_basis else None,
+        })
+
+    for bh in bucket_holdings.values():
+        bh.sort(key=lambda x: -x["value"])
+
+    buckets = []
+    for bucket in sorted(breakdown.keys(), key=lambda b: -breakdown[b]):
+        bval = breakdown[bucket]
+        top = bucket_holdings.get(bucket, [])[:5]
+        buckets.append({
+            "bucket": bucket,
+            "value": round(bval, 2),
+            "weight_pct": round(bval / total * 100, 1),
+            "top_holdings": top,
+        })
+
+    crypto = CryptoHolding.query.filter_by(user_id=user_id).all()
+    crypto_list = []
+    for c in crypto:
+        pc = PriceCache.query.filter_by(symbol=f"CG:{c.coingecko_id}").first()
+        price = pc.price if pc and pc.price else 0
+        crypto_list.append({
+            "symbol": c.symbol,
+            "quantity": round(c.quantity, 4),
+            "value": round(c.quantity * price, 2),
+        })
+
+    return {
+        "portfolio_total": round(total, 2),
+        "bucket_count": len(buckets),
+        "buckets": buckets,
+        "crypto": crypto_list if crypto_list else None,
+    }
+
+
+_SUBSTITUTE_ETFS = {
+    "SPY": "IVV", "IVV": "VOO", "VOO": "SPY",
+    "QQQ": "QQQM", "QQQM": "QQQ",
+    "VTI": "ITOT", "ITOT": "VTI",
+    "SCHB": "VTI", "SPTM": "VTI",
+    "VEA": "IEFA", "IEFA": "VEA",
+    "VXUS": "IXUS", "IXUS": "VXUS",
+    "VWO": "IEMG", "IEMG": "VWO",
+    "BND": "AGG", "AGG": "BND",
+    "VCIT": "LQD", "LQD": "VCIT",
+    "TLT": "VGLT", "VGLT": "TLT",
+    "GLD": "IAU", "IAU": "GLD",
+    "SLV": "SIVR", "SIVR": "SLV",
+    "VNQ": "IYR", "IYR": "VNQ",
+    "XLE": "VDE", "VDE": "XLE",
+    "XLK": "VGT", "VGT": "XLK",
+    "XLF": "VFH", "VFH": "XLF",
+    "XLV": "VHT", "VHT": "XLV",
+    "ARKK": "QQQM",
+}
+
+
+def _handle_tlh_candidates(args, user_id):
+    holdings = Holding.query.filter_by(user_id=user_id).all()
+    tickers = list({h.ticker for h in holdings if h.ticker})
+    price_map = {}
+    if tickers:
+        price_map = {
+            r.symbol: r.price
+            for r in PriceCache.query.filter(
+                PriceCache.symbol.in_(tickers)
+            ).all()
+            if r.price
+        }
+
+    now = datetime.now(timezone.utc)
+    wash_window = now - timedelta(days=30)
+    recent_tickers = set()
+    for h in holdings:
+        added = h.added_at
+        if added and added.tzinfo is None:
+            added = added.replace(tzinfo=timezone.utc)
+        if added and added >= wash_window:
+            recent_tickers.add(h.ticker)
+
+    candidates = []
+    total_loss = 0
+    for h in holdings:
+        qty = h.shares or 0
+        cost_per = h.cost_basis or 0
+        if not qty or not cost_per:
+            continue
+        live_price = price_map.get(h.ticker, 0)
+        if not live_price:
+            continue
+        unrealized = (live_price - cost_per) * qty
+        if unrealized < -50:
+            wash_risk = h.ticker in recent_tickers
+            substitute = _SUBSTITUTE_ETFS.get(h.ticker)
+            candidates.append({
+                "ticker": h.ticker,
+                "shares": round(qty, 3),
+                "cost_basis_per_share": round(cost_per, 2),
+                "current_price": round(live_price, 2),
+                "unrealized_loss": round(unrealized, 2),
+                "wash_sale_risk": wash_risk,
+                "substitute_etf": substitute,
+            })
+            total_loss += unrealized
+
+    candidates.sort(key=lambda r: r["unrealized_loss"])
+    est_tax_savings = round(abs(total_loss) * 0.25, 2) if total_loss < 0 else 0
+
+    if not candidates:
+        return {"message": "No tax-loss harvesting candidates found (all positions are above cost basis or losses are under $50)."}
+
+    return {
+        "candidates": candidates,
+        "total_unrealized_loss": round(total_loss, 2),
+        "estimated_tax_savings_25pct": est_tax_savings,
+        "note": "Estimated savings assume a 25% marginal tax rate. Wash sale risk means the same ticker was purchased within the last 30 days.",
     }

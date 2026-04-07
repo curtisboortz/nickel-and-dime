@@ -45,7 +45,13 @@ function applyLiveDataToDOM(d) {
   var nw = document.getElementById("net-worth-counter");
   if (nw && typeof d.total === "number") {
     nw.dataset.target = d.total;
-    nw.textContent = fxS + (d.total * fxR).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
+    var _nwConverted = d.total * fxR;
+    if (typeof ndCountUp === "function" && nw.dataset.ndCurrent) {
+      ndCountUp(nw, _nwConverted, { prefix: fxS, decimals: 2, duration: 700 });
+    } else {
+      nw.dataset.ndCurrent = _nwConverted;
+      nw.textContent = fxS + _nwConverted.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
+    }
     window.PORTFOLIO_TOTAL = d.total;
     PROJ_CURRENT = d.total;
     var projStartEl = document.getElementById("proj-starting");
@@ -88,12 +94,23 @@ function applyLiveDataToDOM(d) {
     var entry = pulseMap[pid];
     if (!entry || !entry.val) return;
     var v = entry.val;
-    if (entry.fmt === "dollar0") el.textContent = "$" + v.toLocaleString(undefined, {minimumFractionDigits:0, maximumFractionDigits:0});
-    else if (entry.fmt === "dollar2") el.textContent = "$" + v.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
-    else if (entry.fmt === "nodollar2") el.textContent = v.toFixed(2);
-    else if (entry.fmt === "pct") el.textContent = v.toFixed(2) + "%";
-    else if (entry.fmt === "raw2") el.textContent = v.toFixed(2);
-    else if (entry.fmt === "raw1") el.textContent = v.toFixed(1);
+    var canAnimate = typeof ndCountUp === "function" && el.dataset.ndCurrent;
+    if (entry.fmt === "dollar0") {
+      if (canAnimate) ndCountUp(el, v, { prefix: "$", decimals: 0, duration: 500 });
+      else { el.dataset.ndCurrent = v; el.textContent = "$" + v.toLocaleString(undefined, {minimumFractionDigits:0, maximumFractionDigits:0}); }
+    } else if (entry.fmt === "dollar2") {
+      if (canAnimate) ndCountUp(el, v, { prefix: "$", decimals: 2, duration: 500 });
+      else { el.dataset.ndCurrent = v; el.textContent = "$" + v.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}); }
+    } else if (entry.fmt === "nodollar2") {
+      if (canAnimate) ndCountUp(el, v, { prefix: "", decimals: 2, duration: 500 });
+      else { el.dataset.ndCurrent = v; el.textContent = v.toFixed(2); }
+    } else if (entry.fmt === "pct") {
+      el.textContent = v.toFixed(2) + "%";
+    } else if (entry.fmt === "raw2") {
+      el.textContent = v.toFixed(2);
+    } else if (entry.fmt === "raw1") {
+      el.textContent = v.toFixed(1);
+    }
   });
   // Update physical metals spot prices on holdings page
   var metalsTotalVal = 0, metalsTotalCost = 0, metalsAu = 0, metalsAg = 0;
@@ -605,7 +622,7 @@ function undoLastImport() {
     .then(function(d) {
       if (d.success) {
         alert(d.message);
-        location.reload();
+        ndSoftReload();
       } else {
         alert(d.error || "Nothing to undo.");
       }
@@ -620,7 +637,7 @@ function clearAllTransactions() {
     .then(function(d) {
       if (d.success) {
         alert(d.message);
-        location.reload();
+        ndSoftReload();
       } else {
         alert(d.error || "Failed to clear.");
       }

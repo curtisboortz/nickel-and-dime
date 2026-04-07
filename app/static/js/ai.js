@@ -6,19 +6,32 @@ var _aiLoaded = false;
 
 var AI_QUICK_PROMPTS = {
   portfolio:
-    "Based on my current holdings and risk profile, suggest a target allocation " +
-    "and the specific trades I'd need to make to get there. Use the allocation " +
-    "templates tool to compare against proven strategies.",
+    "Analyze my portfolio through Ray Dalio's All Weather lens. Am I truly " +
+    "diversified across economic environments (growth, recession, inflation, " +
+    "deflation), or am I just diversified across ticker symbols? Compare me " +
+    "to the All Weather template and share your opinion on what I might adjust.",
   outlook:
-    "Give me a market outlook based on current sentiment indicators and economic " +
-    "data. Look up the VIX, Fear & Greed indexes, and any relevant FRED indicators. " +
-    "Then tell me how current conditions might affect my portfolio.",
+    "What's the macro environment telling us right now? Check sentiment, VIX, " +
+    "yield curve, and any relevant FRED data. Then share your opinion — using " +
+    "Howard Marks' cycle framework — on where we might be in the market cycle " +
+    "and what positioning ideas are worth considering.",
   risk:
-    "Do a deep analysis of my portfolio risk — concentration, correlation, volatility. " +
-    "Look up current prices for my top holdings and tell me what I should be worried about.",
+    "Channel Warren Buffett's thinking: look at my top holdings and sector " +
+    "exposure and tell me — do I seem to understand what I own? Where's my " +
+    "biggest concentration risk, and what's my margin of safety if markets " +
+    "dropped 30%? Be honest with your opinion.",
   rebalance:
-    "Compare my current allocation to my targets and give me a step-by-step rebalance plan " +
-    "with specific dollar amounts per bucket. Use the suggest_rebalance tool if I have targets set."
+    "Give me a specific rebalance plan. Compare my current allocation to my " +
+    "targets, calculate the exact dollar trades, and share your thoughts on " +
+    "which trades to prioritize based on tax efficiency and market conditions.",
+  tlh:
+    "Check my portfolio for tax-loss harvesting opportunities. What's sitting " +
+    "at a loss that I could consider selling, what are the substitute ETFs to " +
+    "avoid wash sales, and roughly how much could I potentially save on taxes?",
+  history:
+    "Look at my portfolio history and trend over the recent period. How has " +
+    "my portfolio performed? What was the peak, the worst drawdown, and the " +
+    "overall growth rate? Share your thoughts on whether the trajectory looks healthy."
 };
 
 /* ── Initialization ── */
@@ -202,7 +215,7 @@ function _aiShowWelcome() {
 function _aiScrollBottom() {
   var container = document.getElementById("ai-chat-messages");
   if (container) {
-    container.scrollTop = container.scrollHeight;
+    container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
   }
 }
 

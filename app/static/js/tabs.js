@@ -43,7 +43,16 @@
     if (t === "holdings") _safe(function() { if (typeof loadHoldings === "function") loadHoldings(); }, "loadHoldings");
   }
 
-  window.showTab = function(t) {
+  function _animateCards(container) {
+    if (!container) return;
+    var cards = container.querySelectorAll(".card, .hero-row, .pulse-bar, .summary-grid, .income-bar");
+    cards.forEach(function(c) { c.classList.remove("card-enter"); });
+    requestAnimationFrame(function() {
+      cards.forEach(function(c) { c.classList.add("card-enter"); });
+    });
+  }
+
+  function _doTabSwitch(t) {
     document.querySelectorAll(".tab").forEach(function(d) { d.classList.remove("active"); });
     document.querySelectorAll(".nav-item, .mob-item").forEach(function(l) { l.classList.remove("active"); });
     var el = document.getElementById("tab-" + t);
@@ -57,16 +66,26 @@
           _injectTabContent(el, html);
           _tabLoaded[t] = true;
           _postTabInit(t);
+          _animateCards(el);
         })
         .catch(function() {
           el.innerHTML = '<div style="text-align:center;padding:60px;color:var(--danger);">Failed to load tab. <button onclick="showTab(\'' + t + '\')" style="color:var(--accent-primary);text-decoration:underline;background:none;border:none;cursor:pointer;">Retry</button></div>';
         });
     } else {
       _postTabInit(t);
+      _animateCards(el);
     }
 
     var url = "/dashboard" + (t === "summary" ? "" : "/" + t);
     if (window.location.pathname !== url) history.pushState({tab:t}, "", url);
+  }
+
+  window.showTab = function(t) {
+    if (document.startViewTransition) {
+      document.startViewTransition(function() { _doTabSwitch(t); });
+    } else {
+      _doTabSwitch(t);
+    }
   };
 
   window.addEventListener("popstate", function(e) {

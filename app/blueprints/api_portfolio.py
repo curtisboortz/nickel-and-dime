@@ -518,26 +518,39 @@ def portfolio_history():
             pass
         return v
 
-    start_date = current_user.created_at.date() if current_user.created_at else None
-    query = PortfolioSnapshot.query.filter_by(user_id=current_user.id)
-    if start_date:
-        query = query.filter(PortfolioSnapshot.date >= start_date)
-    snapshots = query.order_by(PortfolioSnapshot.date).all()
+    snapshots = (PortfolioSnapshot.query
+                 .filter_by(user_id=current_user.id)
+                 .order_by(PortfolioSnapshot.date)
+                 .all())
 
-    history = []
+    all_entries = []
     for s in snapshots:
         total = _safe(s.total)
         close = _safe(s.close)
-        if not total and not close:
+        val = close or total
+        if not val:
             continue
-        history.append({
+        all_entries.append({
             "date": s.date.isoformat(),
             "total": total, "open": _safe(s.open_val),
             "high": _safe(s.high), "low": _safe(s.low),
-            "close": close,
+            "close": close, "val": val,
             "gold": _safe(s.gold_price), "silver": _safe(s.silver_price),
         })
-    return jsonify({"history": history})
+
+    if len(all_entries) >= 3:
+        latest_val = all_entries[-1]["val"]
+        threshold = latest_val * 0.4
+        start_idx = 0
+        for i, e in enumerate(all_entries):
+            if e["val"] >= threshold:
+                start_idx = i
+                break
+        all_entries = all_entries[start_idx:]
+
+    for e in all_entries:
+        e.pop("val", None)
+    return jsonify({"history": all_entries})
 
 
 @api_portfolio_bp.route("/physical-metals", methods=["GET", "POST", "DELETE"])

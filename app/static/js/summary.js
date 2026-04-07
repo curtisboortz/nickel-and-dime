@@ -458,6 +458,7 @@ function _buildDonutLegend(parentData, detailData, total) {
   legend.innerHTML = html;
 }
 
+var _lastDonutHash = "";
 function buildDonut() {
   NDDiag.track("donut", "loading");
   var parentData = window.BUCKETS_DATA;
@@ -467,17 +468,25 @@ function buildDonut() {
   var labels = Object.keys(parentData).filter(function(k) { return parentData[k] > 0; });
   var values = labels.map(function(k) { return parentData[k]; });
   var colors = labels.map(function(l) { return _donutColor(l); });
-  var bucketSum = values.reduce(function(a, b) { return a + b; }, 0);
-  var total = (typeof window.PORTFOLIO_TOTAL === "number" && window.PORTFOLIO_TOTAL > 0)
-    ? window.PORTFOLIO_TOTAL : bucketSum;
+  var total = values.reduce(function(a, b) { return a + b; }, 0);
 
   if (labels.length === 0) { NDDiag.track("donut", "warn", "empty buckets"); return; }
-  var ctx = document.getElementById("allocation-donut");
-  if (!ctx || typeof Chart === "undefined") return;
-  if (_donutChart) { try { _donutChart.destroy(); } catch(e) {} }
+
+  var newHash = labels.join("|") + ":" + values.map(function(v) { return Math.round(v); }).join(",");
+  var dataChanged = (newHash !== _lastDonutHash);
+  _lastDonutHash = newHash;
 
   var centerVal = document.getElementById("donut-center-value");
   if (centerVal) centerVal.textContent = "$" + total.toLocaleString(undefined, {maximumFractionDigits: 0});
+
+  if (!dataChanged && _donutChart) {
+    _buildDonutLegend(parentData, detailData, total);
+    return;
+  }
+
+  var ctx = document.getElementById("allocation-donut");
+  if (!ctx || typeof Chart === "undefined") return;
+  if (_donutChart) { try { _donutChart.destroy(); } catch(e) {} }
 
   _donutChart = new Chart(ctx, {
     type: "doughnut",

@@ -544,10 +544,16 @@ def portfolio_history():
         last_snap_date = s.date
 
     today = _date.today()
-    if last_snap_date != today:
-        pv = compute_portfolio_value(current_user.id)
-        live_total = pv.get("total", 0)
-        if live_total and live_total > 0:
+    pv = compute_portfolio_value(current_user.id)
+    live_total = pv.get("total", 0)
+    if live_total and live_total > 0:
+        if last_snap_date == today and all_entries:
+            all_entries[-1]["close"] = live_total
+            all_entries[-1]["total"] = live_total
+            all_entries[-1]["high"] = max(all_entries[-1].get("high") or live_total, live_total)
+            all_entries[-1]["low"] = min(all_entries[-1].get("low") or live_total, live_total)
+            all_entries[-1]["val"] = live_total
+        else:
             all_entries.append({
                 "date": today.isoformat(),
                 "total": live_total, "open": live_total,

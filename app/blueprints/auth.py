@@ -157,11 +157,11 @@ def forgot_password():
             user.reset_token = token
             user.reset_token_expiry = datetime.now(timezone.utc) + timedelta(hours=1)
             db.session.commit()
-            print(f"[ForgotPW] Token saved, calling send_password_reset", flush=True, file=sys.stderr)
 
-            from ..services.email_service import send_password_reset
-            send_password_reset(user, token)
-            print(f"[ForgotPW] send_password_reset returned", flush=True, file=sys.stderr)
+            from ..services.email_service import send_password_reset_sync
+            err = send_password_reset_sync(user, token)
+            if err:
+                print(f"[ForgotPW] EMAIL ERROR: {err}", flush=True, file=sys.stderr)
 
         flash("If that email exists, a reset link has been sent.", "info")
         return redirect(url_for("auth.login"))

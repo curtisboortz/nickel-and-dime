@@ -68,7 +68,7 @@ def send_email(to, subject, template, **kwargs):
 
 
 def send_password_reset(user, token):
-    """Send a password reset email."""
+    """Send a password reset email (async)."""
     from flask import url_for
     reset_url = url_for("auth.reset_password", token=token, _external=True)
     send_email(
@@ -78,6 +78,36 @@ def send_password_reset(user, token):
         user=user,
         reset_url=reset_url,
     )
+
+
+def send_password_reset_sync(user, token):
+    """Send a password reset email synchronously. Returns error string or None."""
+    from flask import url_for, current_app
+    reset_url = url_for("auth.reset_password", token=token, _external=True)
+    app = current_app._get_current_object()
+
+    if not app.config.get("MAIL_USERNAME"):
+        return "MAIL_USERNAME not configured"
+
+    msg = Message(
+        subject="Nickel&Dime - Reset Your Password",
+        recipients=[user.email],
+    )
+    try:
+        msg.html = render_template("email/reset_password.html", user=user, reset_url=reset_url)
+    except Exception as e:
+        return f"Template error: {e}"
+
+    try:
+        msg.body = render_template("email/reset_password.txt", user=user, reset_url=reset_url)
+    except Exception:
+        pass
+
+    try:
+        mail.send(msg)
+        return None
+    except Exception as e:
+        return str(e)
 
 
 def send_email_verification(user, token):

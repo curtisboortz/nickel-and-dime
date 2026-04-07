@@ -150,7 +150,10 @@ function openPlaidLink() {
   if (btn) { btn.disabled = true; btn.textContent = "Connecting..."; }
   if (msg) { msg.textContent = ""; }
 
-  fetch("/api/plaid/link-token", { method: "POST" }).then(function(r) { return r.json(); }).then(function(d) {
+  fetch("/api/plaid/link-token", { method: "POST" }).then(function(r) {
+    if (!r.ok) throw new Error("Server returned " + r.status);
+    return r.json();
+  }).then(function(d) {
     if (d.error) {
       if (msg) { msg.textContent = d.error; msg.style.color = "var(--danger)"; }
       if (btn) { btn.disabled = false; btn.textContent = "+ Connect Account"; }
@@ -191,8 +194,8 @@ function openPlaidLink() {
       },
     });
     handler.open();
-  }).catch(function() {
-    if (msg) { msg.textContent = "Failed to start connection. Please try again."; msg.style.color = "var(--danger)"; }
+  }).catch(function(e) {
+    if (msg) { msg.textContent = "Failed to start connection: " + (e.message || "unknown error") + ". Try refreshing the page."; msg.style.color = "var(--danger)"; }
     if (btn) { btn.disabled = false; btn.textContent = "+ Connect Account"; }
   });
 }

@@ -103,6 +103,13 @@ def _register_error_handlers(app):
     """Register custom error pages."""
     from flask import render_template, jsonify, request
 
+    @app.errorhandler(400)
+    def bad_request(e):
+        if request.path.startswith("/api/"):
+            msg = getattr(e, "description", "Bad request")
+            return jsonify({"error": msg}), 400
+        return render_template("errors/500.html"), 400
+
     @app.errorhandler(403)
     def forbidden(e):
         if request.path.startswith("/api/"):

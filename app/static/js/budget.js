@@ -708,6 +708,33 @@ function renderSpendingBreakdown() {
       if (row) row.classList.toggle("open");
     });
   });
+  // Transfer recategorization
+  container.querySelectorAll(".transfer-recat").forEach(function(sel) {
+    sel.addEventListener("change", function() {
+      var newCat = this.value;
+      var txnId = this.dataset.txnId;
+      if (!newCat || !txnId) return;
+      fetch("/api/transactions/" + txnId, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ category: newCat })
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        if (d.success) {
+          for (var i = 0; i < TRANSACTIONS.length; i++) {
+            if (TRANSACTIONS[i].id == txnId) {
+              TRANSACTIONS[i].category = newCat;
+              TRANSACTIONS[i].is_transfer = false;
+              break;
+            }
+          }
+          renderSpendingBreakdown();
+          buildSpendingChart();
+        }
+      });
+    });
+  });
 }
 /* ── Statement Import ── */
 var stmtData = null;
@@ -845,15 +872,16 @@ function importStatement() {
 function buildSpendingChart() {
   var ctx = document.getElementById("spending-chart");
   if (!ctx || typeof Chart==="undefined") return;
-  // Aggregate transactions by month/category
   var months = {};
   TRANSACTIONS.forEach(function(t) {
+    var cat = t.category || "Other";
+    if (t.is_transfer || TRANSFER_CATS.indexOf(cat) !== -1) return;
     var m = t.date ? t.date.substring(0,7) : "unknown";
     if (!months[m]) months[m] = {};
-    months[m][t.category] = (months[m][t.category]||0) + (parseFloat(t.amount)||0);
+    months[m][cat] = (months[m][cat]||0) + (parseFloat(t.amount)||0);
   });
   var labels = Object.keys(months).sort().slice(-6);
-  var cats = BUDGET_CATS.length ? BUDGET_CATS : [];
+  var cats = BUDGET_CATS.length ? BUDGET_CATS.filter(function(c) { return TRANSFER_CATS.indexOf(c) === -1; }) : [];
   var colors = ["#d4a017","#f5c842","#34d399","#818cf8","#f87171","#06b6d4","#a78bfa","#fb923c"];
   var datasets = cats.map(function(cat,i) {
     return { label:cat, data:labels.map(function(m){ return months[m]&&months[m][cat]?months[m][cat]:0; }), backgroundColor:colors[i%colors.length] };

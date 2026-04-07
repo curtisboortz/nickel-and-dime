@@ -17,12 +17,13 @@ log = logging.getLogger("nd.email")
 
 def _send_async(app, msg):
     """Send a message inside an app context (called from a background thread)."""
+    import sys
     with app.app_context():
         try:
             mail.send(msg)
-            print(f"[Email] Sent to {msg.recipients}: {msg.subject}")
+            print(f"[Email] Sent to {msg.recipients}: {msg.subject}", flush=True, file=sys.stderr)
         except Exception as e:
-            print(f"[Email] FAILED to {msg.recipients}: {e}")
+            print(f"[Email] FAILED to {msg.recipients}: {e}", flush=True, file=sys.stderr)
 
 
 def send_email(to, subject, template, **kwargs):
@@ -37,9 +38,11 @@ def send_email(to, subject, template, **kwargs):
     """
     app = current_app._get_current_object()
 
+    import sys
     if not app.config.get("MAIL_USERNAME"):
-        print(f"[Email] SKIPPED (no MAIL_USERNAME): to={to} subject={subject}")
+        print(f"[Email] SKIPPED (no MAIL_USERNAME): to={to} subject={subject}", flush=True, file=sys.stderr)
         return
+    print(f"[Email] Preparing: to={to} subject={subject} server={app.config.get('MAIL_SERVER')}:{app.config.get('MAIL_PORT')}", flush=True, file=sys.stderr)
 
     recipients = [to] if isinstance(to, str) else to
     msg = Message(

@@ -67,11 +67,15 @@ def exchange_token():
 @requires_pro
 def list_accounts():
     """List the current user's connected Plaid institutions."""
-    items = (PlaidItem.query.filter_by(user_id=current_user.id)
-             .order_by(PlaidItem.created_at).all())
+    try:
+        items = (PlaidItem.query.filter_by(user_id=current_user.id)
+                 .order_by(PlaidItem.created_at).all())
+    except Exception:
+        db.session.rollback()
+        items = []
     out = []
     for item in items:
-        out.append({
+        entry = {
             "id": item.id,
             "institution_name": item.institution_name,
             "institution_id": item.institution_id,
@@ -81,7 +85,12 @@ def list_accounts():
             "last_synced_at": (item.last_synced_at.isoformat()
                               if item.last_synced_at else None),
             "created_at": item.created_at.isoformat() if item.created_at else None,
-        })
+        }
+        if hasattr(item, "logo_base64"):
+            entry["logo_base64"] = item.logo_base64
+        if hasattr(item, "primary_color"):
+            entry["primary_color"] = item.primary_color
+        out.append(entry)
     return jsonify({"accounts": out})
 
 

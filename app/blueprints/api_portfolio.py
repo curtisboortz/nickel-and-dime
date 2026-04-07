@@ -518,12 +518,16 @@ def portfolio_history():
             pass
         return v
 
+    from datetime import date as _date
+    from ..services.portfolio_service import compute_portfolio_value
+
     snapshots = (PortfolioSnapshot.query
                  .filter_by(user_id=current_user.id)
                  .order_by(PortfolioSnapshot.date)
                  .all())
 
     all_entries = []
+    last_snap_date = None
     for s in snapshots:
         total = _safe(s.total)
         close = _safe(s.close)
@@ -537,6 +541,20 @@ def portfolio_history():
             "close": close, "val": val,
             "gold": _safe(s.gold_price), "silver": _safe(s.silver_price),
         })
+        last_snap_date = s.date
+
+    today = _date.today()
+    if last_snap_date != today:
+        pv = compute_portfolio_value(current_user.id)
+        live_total = pv.get("total", 0)
+        if live_total and live_total > 0:
+            all_entries.append({
+                "date": today.isoformat(),
+                "total": live_total, "open": live_total,
+                "high": live_total, "low": live_total,
+                "close": live_total, "val": live_total,
+                "gold": None, "silver": None,
+            })
 
     if len(all_entries) >= 3:
         latest_val = all_entries[-1]["val"]

@@ -195,6 +195,12 @@ function startPeriodicLivePoll(intervalSec) {
     fetch("/api/live-data").then(function(r) { return r.json(); }).then(function(d) {
       applyLiveDataToDOM(d);
       _flashUpdatedPulseCards();
+      if (d && d.buckets) {
+        window.BUCKETS_DATA = d.buckets;
+        if (d.buckets_detail) window.BUCKETS_DETAIL = d.buckets_detail;
+        if (d.buckets_children) window.BUCKETS_CHILDREN = d.buckets_children;
+        if (typeof buildDonut === "function") buildDonut();
+      }
     }).catch(function() {});
   }, ms);
 }

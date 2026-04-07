@@ -467,7 +467,9 @@ function buildDonut() {
   var labels = Object.keys(parentData).filter(function(k) { return parentData[k] > 0; });
   var values = labels.map(function(k) { return parentData[k]; });
   var colors = labels.map(function(l) { return _donutColor(l); });
-  var total = values.reduce(function(a, b) { return a + b; }, 0);
+  var bucketSum = values.reduce(function(a, b) { return a + b; }, 0);
+  var total = (typeof window.PORTFOLIO_TOTAL === "number" && window.PORTFOLIO_TOTAL > 0)
+    ? window.PORTFOLIO_TOTAL : bucketSum;
 
   if (labels.length === 0) { NDDiag.track("donut", "warn", "empty buckets"); return; }
   var ctx = document.getElementById("allocation-donut");

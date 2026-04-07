@@ -145,6 +145,15 @@ function _renderAccountWidgets(wrap, accounts, grandTotal) {
     var sourceBadge = g.source === "plaid" ? '<span style="font-size:0.65rem;background:rgba(99,102,241,0.15);color:#a5b4fc;padding:2px 6px;border-radius:4px;margin-left:8px;">Plaid</span>' : '';
     var countBadge = '<span style="font-size:0.72rem;color:var(--text-muted);margin-left:8px;">' + g.holdings.length + ' holding' + (g.holdings.length !== 1 ? 's' : '') + '</span>';
 
+    var acctDayPL = 0;
+    g.holdings.forEach(function(h) {
+      if (h.price && h.prev_close && h.shares) acctDayPL += (h.price - h.prev_close) * h.shares;
+    });
+    var acctDayColor = acctDayPL >= 0 ? "var(--success)" : "var(--danger)";
+    var acctDaySign = acctDayPL >= 0 ? "+" : "";
+    var acctDayPct = (g.subtotal - acctDayPL) > 0 ? (acctDayPL / (g.subtotal - acctDayPL)) * 100 : 0;
+    var acctDayHtml = '<span style="font-family:var(--mono);font-size:0.78rem;color:' + acctDayColor + ';white-space:nowrap;">' + acctDaySign + '$' + Math.abs(acctDayPL).toLocaleString(undefined,{maximumFractionDigits:0}) + ' (' + acctDaySign + acctDayPct.toFixed(2) + '%)</span>';
+
     html += '<div style="border:1px solid var(--border-subtle);border-radius:8px;margin-bottom:12px;overflow:hidden;">';
     html += '<div onclick="_toggleAccountCollapse(\'' + key.replace(/'/g, "\\'") + '\')" style="display:flex;align-items:center;gap:10px;padding:12px 16px;background:var(--surface-raised);cursor:pointer;user-select:none;">';
     html += '<span id="acct-arrow-' + safeKey + '" style="font-size:0.7rem;color:var(--text-muted);width:12px;">' + (collapsed ? "\u25B6" : "\u25BC") + '</span>';
@@ -152,7 +161,10 @@ function _renderAccountWidgets(wrap, accounts, grandTotal) {
     html += '<div style="flex:1;min-width:0;">';
     html += '<span style="font-weight:600;font-size:0.92rem;">' + title + '</span>' + sourceBadge + countBadge;
     html += '</div>';
+    html += '<div style="display:flex;align-items:center;gap:14px;">';
+    html += acctDayHtml;
     html += '<span style="font-family:var(--mono);font-weight:600;font-size:0.95rem;color:#58a6ff;">' + fmtMoney(g.subtotal) + '</span>';
+    html += '</div>';
     html += '</div>';
 
     html += '<div id="acct-body-' + safeKey + '"' + (collapsed ? ' style="display:none;"' : '') + '>';

@@ -9,7 +9,7 @@ from alembic import op
 import sqlalchemy as sa
 
 revision = "d005"
-down_revision = "d004"
+down_revision = "d004_plaid_support"
 branch_labels = None
 depends_on = None
 

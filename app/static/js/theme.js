@@ -33,13 +33,20 @@
     });
   }
 
+  function _updateLabel(isLight) {
+    var label = document.getElementById("theme-mode-label");
+    if (label) label.textContent = isLight ? "Light mode" : "Dark mode";
+  }
+
   window.toggleTheme = function() {
     var isLight = document.documentElement.classList.toggle("light");
     localStorage.setItem(THEME_KEY, isLight ? "light" : "dark");
     _updateIcon(isLight);
+    _updateLabel(isLight);
     _updateCharts(isLight);
     if (typeof buildHistoryChart === "function" && window.historyChart) buildHistoryChart("total");
   };
 
   if (saved === "light") _updateIcon(true);
+  _updateLabel(saved === "light");
 })();

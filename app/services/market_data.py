@@ -48,8 +48,7 @@ def refresh_all_prices(symbols=None):
     else:
         symbols = list(set(standard + symbols))
 
-    # Filter out non-yfinance symbols
-    yf_symbols = [s for s in symbols if not s.startswith("CG:")]
+    yf_symbols = [s for s in symbols if not s.startswith("CG:") and not s.startswith("PRIV:")]
 
     if yf_symbols:
         _fetch_yfinance_batch(yf_symbols)
@@ -62,17 +61,29 @@ def refresh_all_prices(symbols=None):
 
 
 def _fetch_yfinance_batch(symbols):
-    """Batch-fetch prices via yfinance and update price_cache."""
+    """Batch-fetch prices via yfinance download and update price_cache."""
     import yfinance as yf
+    if not symbols:
+        return
     try:
-        tickers = yf.Tickers(" ".join(symbols))
+        df = yf.download(symbols, period="2d", group_by="ticker", progress=False, threads=True)
+        if df is None or df.empty:
+            return
+        is_single = len(symbols) == 1
         for sym in symbols:
             try:
-                info = tickers.tickers[sym].fast_info
-                price = info.get("lastPrice") or info.get("regularMarketPrice")
-                prev = info.get("regularMarketPreviousClose") or info.get("previousClose")
+                if is_single:
+                    sdf = df
+                else:
+                    if sym not in df.columns.get_level_values(0):
+                        continue
+                    sdf = df[sym]
+                if sdf.empty or len(sdf) < 1:
+                    continue
+                price = float(sdf["Close"].dropna().iloc[-1])
+                prev = float(sdf["Close"].dropna().iloc[-2]) if len(sdf.dropna()) >= 2 else None
                 if price and price > 0:
-                    change_pct = ((price - prev) / prev * 100) if prev else 0
+                    change_pct = ((price - prev) / prev * 100) if prev and prev > 0 else 0
                     _upsert_price(sym, price, change_pct, prev, _commit=False)
             except Exception:
                 continue

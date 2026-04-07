@@ -321,7 +321,7 @@ function _buildAccountTable(holdings, acctName) {
       html += '<td style="padding:6px;text-align:right;">' + plDH + '</td>';
       html += '<td style="padding:6px;text-align:right;">' + plPH + '</td>';
       html += '<td style="padding:6px;color:var(--text-muted);font-size:0.82rem;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + noteVal + '">' + (h.notes || "") + '</td>';
-      html += '<td style="padding:4px;text-align:center;" title="Synced via Plaid"><span style="font-size:0.7rem;color:var(--text-muted);">&#128274;</span></td>';
+      html += '<td style="padding:4px;text-align:center;" title="Synced via Plaid"><svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:none;stroke:var(--text-muted);stroke-width:2;vertical-align:middle;"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg></td>';
       html += '</tr>';
     } else {
       html += '<tr data-hid="' + h.id + '" data-computed="' + computedTotal.toFixed(2) + '">';

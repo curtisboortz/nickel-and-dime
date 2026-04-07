@@ -27,7 +27,6 @@ function aiInit() {
   if (_aiLoaded) return;
   _aiLoaded = true;
   _aiLoadConversations();
-  _aiLoadUsage();
   _aiAutoResize();
 }
 
@@ -92,15 +91,11 @@ function _aiStream(message) {
   })
     .then(function (response) {
       if (response.status === 403) throw new Error("pro");
-      if (response.status === 429) throw new Error("ratelimit");
       if (response.status === 503) throw new Error("nokey");
       if (!response.ok) throw new Error("fail");
 
       var convId = response.headers.get("X-Conversation-Id");
       if (convId) _aiConversationId = parseInt(convId, 10);
-
-      var remaining = response.headers.get("X-AI-Remaining");
-      if (remaining !== null) _aiUpdateUsageDisplay(parseInt(remaining, 10));
 
       var reader = response.body.getReader();
       var decoder = new TextDecoder();
@@ -159,8 +154,6 @@ function _aiStream(message) {
       var errorMsg = "Something went wrong. Please try again.";
       if (e.message === "pro")
         errorMsg = "AI Advisor requires a Pro subscription.";
-      else if (e.message === "ratelimit")
-        errorMsg = "Daily AI limit reached. Your quota resets at midnight.";
       else if (e.message === "nokey")
         errorMsg = "AI is not yet configured on the server.";
 
@@ -299,24 +292,6 @@ function aiNewChat() {
 
   var select = document.getElementById("ai-history-select");
   if (select) select.value = "";
-}
-
-/* ── Usage Display ── */
-
-function _aiLoadUsage() {
-  fetch("/api/ai/usage")
-    .then(function (r) { return r.json(); })
-    .then(function (d) {
-      _aiUpdateUsageDisplay(d.remaining);
-    })
-    .catch(function () {});
-}
-
-function _aiUpdateUsageDisplay(remaining) {
-  var label = document.getElementById("ai-usage-label");
-  if (label) {
-    label.textContent = remaining + " queries left today";
-  }
 }
 
 /* ── Tab activation hook ── */

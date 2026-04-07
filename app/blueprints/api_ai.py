@@ -2,7 +2,7 @@
 
 import json
 import logging
-from datetime import date, datetime, timezone
+from datetime import datetime, timezone
 
 from flask import (
     Blueprint, Response, current_app, jsonify,
@@ -12,7 +12,7 @@ from flask_login import login_required, current_user
 from openai import OpenAI
 
 from ..extensions import db, csrf
-from ..models.ai import AIConversation, AIMessage, AIUsage
+from ..models.ai import AIConversation, AIMessage
 from ..services.ai_context_service import build_system_messages
 from ..services.ai_tools import TOOL_DEFINITIONS, execute_tool
 from ..utils.auth import requires_pro
@@ -20,34 +20,6 @@ from ..utils.auth import requires_pro
 log = logging.getLogger("nd")
 
 api_ai_bp = Blueprint("api_ai", __name__)
-
-
-def _check_rate_limit(user_id):
-    """Return (allowed: bool, remaining: int, limit: int)."""
-    limit = current_app.config.get("AI_DAILY_LIMIT", 25)
-    today = date.today()
-    usage = (
-        AIUsage.query
-        .filter_by(user_id=user_id, date=today)
-        .first()
-    )
-    count = usage.query_count if usage else 0
-    return count < limit, limit - count, limit
-
-
-def _increment_usage(user_id):
-    today = date.today()
-    usage = (
-        AIUsage.query
-        .filter_by(user_id=user_id, date=today)
-        .first()
-    )
-    if usage:
-        usage.query_count += 1
-    else:
-        usage = AIUsage(user_id=user_id, date=today, query_count=1)
-        db.session.add(usage)
-    db.session.commit()
 
 
 # ── Chat endpoint (SSE streaming) ──────────────────────────────
@@ -61,13 +33,6 @@ def ai_chat():
     api_key = current_app.config.get("OPENAI_API_KEY", "")
     if not api_key:
         return jsonify({"error": "AI not configured"}), 503
-
-    allowed, remaining, limit = _check_rate_limit(current_user.id)
-    if not allowed:
-        return jsonify({
-            "error": f"Daily AI limit reached ({limit} queries). Resets at midnight.",
-            "rate_limited": True,
-        }), 429
 
     data = flask_request.get_json(silent=True) or {}
     user_message = (data.get("message") or "").strip()
@@ -89,8 +54,6 @@ def ai_chat():
     db.session.commit()
 
     openai_messages = _build_openai_messages(conversation)
-
-    _increment_usage(current_user.id)
 
     user_id = current_user.id
 
@@ -190,17 +153,13 @@ def ai_chat():
 
         yield "data: [DONE]\n\n"
 
-    headers = {
-        "X-Conversation-Id": str(conversation.id),
-        "X-AI-Remaining": str(max(0, remaining - 1)),
-    }
     resp = Response(
         generate(),
         mimetype="text/event-stream",
-        headers=headers,
     )
     resp.headers["Cache-Control"] = "no-cache"
     resp.headers["X-Accel-Buffering"] = "no"
+    resp.headers["X-Conversation-Id"] = str(conversation.id)
     return resp
 
 
@@ -321,14 +280,3 @@ def delete_conversation(conv_id):
     return jsonify({"ok": True})
 
 
-@api_ai_bp.route("/ai/usage", methods=["GET"])
-@login_required
-@requires_pro
-def ai_usage():
-    """Return current daily usage stats."""
-    allowed, remaining, limit = _check_rate_limit(current_user.id)
-    return jsonify({
-        "remaining": remaining,
-        "limit": limit,
-        "date": date.today().isoformat(),
-    })

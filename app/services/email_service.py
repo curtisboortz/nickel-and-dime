@@ -21,7 +21,7 @@ def _send_via_resend(api_key, from_addr, to, subject, html_body, text_body=None)
     import re as _re
     match = _re.search(r'<([^>]+)>', from_addr)
     clean_email = match.group(1) if match else from_addr
-    clean_from = f"NickelAndDime <{clean_email}>"
+    clean_from = f"Nickel&Dime <{clean_email}>"
 
     payload = {
         "from": clean_from,

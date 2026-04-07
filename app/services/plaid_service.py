@@ -275,7 +275,11 @@ def sync_investments(user_id: int, plaid_item: PlaidItem) -> dict:
         ticker = ticker.upper()
         is_private = ticker.startswith("PRIV:")
         seen_tickers.add((ticker, account_name))
-        bucket = detect_bucket(ticker, sec_name) if not is_private else "Alternatives"
+        if is_private:
+            detected = detect_bucket("", sec_name)
+            bucket = detected if detected != "Equities" else "Alternatives"
+        else:
+            bucket = detect_bucket(ticker, sec_name)
 
         existing = Holding.query.filter_by(
             user_id=user_id, ticker=ticker, account=account_name,

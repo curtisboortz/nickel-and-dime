@@ -501,19 +501,27 @@ def get_allocation_targets():
             else:
                 effective_parents[nc] = parent
 
-    rolled_targets = {}
+    explicit_targets = {}
     child_targets = {}
     for k, v in active.items():
         nk = normalize_bucket(k)
         tgt = v.get("target", 0) if isinstance(v, dict) else 0
         parent = effective_parents.get(nk)
         if parent:
-            rolled_targets[parent] = rolled_targets.get(parent, 0) + tgt
             child_targets.setdefault(parent, {})[nk] = tgt
         else:
-            rolled_targets[nk] = rolled_targets.get(nk, 0) + tgt
-            if nk not in child_targets:
-                child_targets.setdefault(nk, {})
+            explicit_targets[nk] = tgt
+            child_targets.setdefault(nk, {})
+
+    rolled_targets = {}
+    for bucket, tgt in explicit_targets.items():
+        if tgt > 0:
+            rolled_targets[bucket] = tgt
+        else:
+            rolled_targets[bucket] = sum(child_targets.get(bucket, {}).values())
+    for parent in child_targets:
+        if parent not in rolled_targets:
+            rolled_targets[parent] = sum(child_targets[parent].values())
 
     rows = []
     all_buckets = sorted(set(list(breakdown.keys()) + list(rolled_targets.keys())))
@@ -522,9 +530,11 @@ def get_allocation_targets():
         pct = (value / total * 100) if total > 0 else 0
         target_pct = rolled_targets.get(bucket, 0)
         drift = round(pct - target_pct, 1)
+        has_explicit = bucket in explicit_targets and explicit_targets[bucket] > 0
         row = {
             "bucket": bucket, "value": round(value, 2),
             "pct": round(pct, 1), "target": target_pct, "drift": drift,
+            "explicit_target": has_explicit,
         }
         val_children = children.get(bucket, {})
         tgt_children = child_targets.get(bucket, {})

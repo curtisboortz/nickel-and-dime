@@ -132,27 +132,48 @@ def get_template(template_id):
     return TEMPLATE_MAP.get(template_id)
 
 
-def compare_portfolio(template_id, breakdown, total):
+def compare_portfolio(template_id, breakdown, total, children=None):
     """Compare user's rolled-up allocation against a template.
+
+    *children* is the child-detail dict from ``rollup_breakdown``
+    (parent -> {child: dollar_value}).  When a template references a
+    child category (e.g. Gold, International) we pull the child value
+    out and subtract it from the parent so nothing is double-counted.
 
     Returns per-bucket rows with user_pct, template_pct, and delta,
     plus an overall similarity score (0-100).
     """
+    from ..utils.buckets import BUCKET_PARENTS
+
     tpl = TEMPLATE_MAP.get(template_id)
     if not tpl:
         return None
 
+    children = children or {}
     allocs = tpl["allocations"]
+
+    effective = dict(breakdown)
+    for bucket in allocs:
+        parent = BUCKET_PARENTS.get(bucket)
+        if not parent:
+            continue
+        child_val = children.get(parent, {}).get(bucket, 0)
+        if child_val:
+            effective[bucket] = effective.get(bucket, 0) + child_val
+            effective[parent] = effective.get(parent, 0) - child_val
+
     all_buckets = sorted(
-        set(list(breakdown.keys()) + list(allocs.keys()))
+        set(list(effective.keys()) + list(allocs.keys()))
     )
 
     rows = []
     sum_abs_delta = 0.0
     for bucket in all_buckets:
-        user_val = breakdown.get(bucket, 0)
+        user_val = effective.get(bucket, 0)
         user_pct = round(user_val / total * 100, 1) if total > 0 else 0
         tpl_pct = allocs.get(bucket, 0)
+        if user_pct == 0 and tpl_pct == 0:
+            continue
         delta = round(user_pct - tpl_pct, 1)
         sum_abs_delta += abs(delta)
         rows.append({

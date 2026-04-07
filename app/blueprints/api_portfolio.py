@@ -1010,11 +1010,11 @@ def compare_template(template_id):
         if settings and hasattr(settings, "bucket_rollup")
         else None
     )
-    breakdown, _ = rollup_breakdown(
+    breakdown, children = rollup_breakdown(
         pv.get("breakdown", {}), overrides=overrides
     )
     result = compare_portfolio(
-        template_id, breakdown, pv["total"]
+        template_id, breakdown, pv["total"], children=children
     )
     if not result:
         return jsonify({"error": "Template not found"}), 404

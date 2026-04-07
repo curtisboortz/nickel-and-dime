@@ -249,11 +249,7 @@ function loadAllocationTableEditable() {
         html += '<td style="padding:8px 6px;font-weight:' + (hasChildren ? '600' : '400') + ';">' + _esc(r.bucket) + '</td>';
         html += '<td style="padding:8px 6px;font-family:var(--mono);">$' + r.value.toLocaleString(undefined, {maximumFractionDigits:0}) + '</td>';
         html += '<td style="padding:8px 6px;font-family:var(--mono);">' + r.pct.toFixed(1) + '%</td>';
-        if (hasChildren) {
-          html += '<td style="padding:8px 6px;font-family:var(--mono);color:var(--text-muted);font-size:0.8rem;" title="Set targets on sub-categories below">' + r.target + '% (sum)</td>';
-        } else {
-          html += '<td style="padding:8px 6px;"><input type="number" class="target-input num" data-bucket="' + r.bucket + '" value="' + r.target + '" style="width:60px;text-align:right;" min="0" max="100">%</td>';
-        }
+        html += '<td style="padding:8px 6px;"><input type="number" class="target-input num" data-bucket="' + r.bucket + '" data-level="parent" value="' + r.target + '" style="width:60px;text-align:right;" min="0" max="100">%</td>';
         html += '<td style="padding:8px 6px;">';
         if (r.value === 0 && r.target === 0) {
           html += '<button type="button" onclick="_deleteAllocTarget(\'' + _esc(r.bucket).replace(/'/g, "\\'") + '\')" title="Remove row" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:0.9rem;" onmouseover="this.style.color=\'var(--danger)\'" onmouseout="this.style.color=\'var(--text-muted)\'">&times;</button>';
@@ -266,15 +262,60 @@ function loadAllocationTableEditable() {
             html += '<td style="padding:4px 6px 4px 24px;font-size:0.8rem;color:var(--text-muted);">' + _esc(c.bucket) + '</td>';
             html += '<td style="padding:4px 6px;font-family:var(--mono);font-size:0.8rem;color:var(--text-muted);">$' + c.value.toLocaleString(undefined, {maximumFractionDigits:0}) + '</td>';
             html += '<td style="padding:4px 6px;font-family:var(--mono);font-size:0.8rem;color:var(--text-muted);">' + c.pct.toFixed(1) + '%</td>';
-            html += '<td style="padding:4px 6px;"><input type="number" class="target-input num" data-bucket="' + c.bucket + '" value="' + (c.target || 0) + '" style="width:60px;text-align:right;font-size:0.8rem;" min="0" max="100">%</td>';
+            html += '<td style="padding:4px 6px;"><input type="number" class="target-input num" data-bucket="' + c.bucket + '" data-level="child" value="' + (c.target || 0) + '" style="width:60px;text-align:right;font-size:0.8rem;" min="0" max="100">%</td>';
             html += '<td></td>';
             html += '</tr>';
           });
         }
       });
-      html += '<tr><td colspan="5" style="padding:10px 6px;text-align:right;"><button type="button" onclick="saveAllocationTargets()" style="padding:6px 16px;font-size:0.8rem;">Save Targets</button></td></tr>';
+      html += '<tr id="alloc-total-row"><td colspan="3" style="padding:10px 6px;text-align:right;font-weight:600;">Total</td>';
+      html += '<td style="padding:10px 6px;font-family:var(--mono);font-weight:600;" id="alloc-total-cell">0%</td><td></td></tr>';
+      html += '<tr id="alloc-remainder-row" style="display:none;"><td colspan="5" style="padding:4px 6px;text-align:center;font-size:0.78rem;color:var(--accent-primary);" id="alloc-remainder-msg"></td></tr>';
+      html += '<tr><td colspan="5" style="padding:10px 6px;text-align:right;"><button type="button" id="save-targets-btn" onclick="saveAllocationTargets()" style="padding:6px 16px;font-size:0.8rem;">Save Targets</button> <button type="button" class="secondary" onclick="cancelEditTargets()" style="padding:6px 16px;font-size:0.8rem;margin-left:6px;">Cancel</button></td></tr>';
       tbody.innerHTML = html;
+      _attachTargetListeners();
+      _updateAllocTotal();
     });
+}
+function _attachTargetListeners() {
+  document.querySelectorAll('.target-input[data-level="parent"]').forEach(function(inp) {
+    inp.addEventListener("input", _updateAllocTotal);
+  });
+}
+function _updateAllocTotal() {
+  var inputs = document.querySelectorAll('.target-input[data-level="parent"]');
+  var sum = 0;
+  inputs.forEach(function(i) {
+    var v = parseFloat(i.value);
+    if (!isNaN(v)) sum += v;
+  });
+  sum = Math.round(sum * 10) / 10;
+  var cell = document.getElementById("alloc-total-cell");
+  var msg = document.getElementById("alloc-remainder-msg");
+  var msgRow = document.getElementById("alloc-remainder-row");
+  var btn = document.getElementById("save-targets-btn");
+  if (cell) {
+    cell.textContent = sum + "%";
+    cell.style.color = sum > 100 ? "var(--danger)" : sum === 100 ? "var(--success, #22c55e)" : "var(--text-primary)";
+  }
+  if (msg && msgRow) {
+    if (sum < 100) {
+      var rem = Math.round((100 - sum) * 10) / 10;
+      msg.textContent = "Remaining " + rem + "% will be allocated to Cash on save";
+      msg.style.color = "var(--accent-primary)";
+      msgRow.style.display = "";
+    } else if (sum > 100) {
+      msg.textContent = "Total exceeds 100% — reduce targets before saving";
+      msg.style.color = "var(--danger)";
+      msgRow.style.display = "";
+    } else {
+      msgRow.style.display = "none";
+    }
+  }
+  if (btn) {
+    btn.disabled = sum > 100;
+    btn.style.opacity = sum > 100 ? "0.5" : "1";
+  }
 }
 function _deleteAllocTarget(bucket) {
   if (!confirm("Remove \"" + bucket + "\" from allocation targets?")) return;
@@ -288,15 +329,42 @@ function _deleteAllocTarget(bucket) {
   });
 }
 function saveAllocationTargets() {
-  var inputs = document.querySelectorAll(".target-input");
-  if (inputs.length === 0) return;
+  var parentInputs = document.querySelectorAll('.target-input[data-level="parent"]');
+  var childInputs = document.querySelectorAll('.target-input[data-level="child"]');
+  var parentSum = 0;
+  parentInputs.forEach(function(i) {
+    var v = parseFloat(i.value);
+    if (!isNaN(v)) parentSum += v;
+  });
+  parentSum = Math.round(parentSum * 10) / 10;
+  if (parentSum > 100) {
+    alert("Targets total " + parentSum + "% — must be 100% or less.");
+    return;
+  }
   var tactical = {};
-  inputs.forEach(function(i) {
+  parentInputs.forEach(function(i) {
     var val = parseFloat(i.value);
     if (!isNaN(val) && val > 0) {
       tactical[i.dataset.bucket] = { target: val, min: 0, max: 100 };
     }
   });
+  childInputs.forEach(function(i) {
+    var val = parseFloat(i.value);
+    if (!isNaN(val) && val > 0) {
+      tactical[i.dataset.bucket] = { target: val, min: 0, max: 100 };
+    }
+  });
+  if (parentSum < 100) {
+    var nonCashSum = 0;
+    parentInputs.forEach(function(i) {
+      if (i.dataset.bucket !== "Cash") {
+        var v = parseFloat(i.value);
+        if (!isNaN(v)) nonCashSum += v;
+      }
+    });
+    nonCashSum = Math.round(nonCashSum * 10) / 10;
+    tactical["Cash"] = { target: Math.round((100 - nonCashSum) * 10) / 10, min: 0, max: 100 };
+  }
   if (Object.keys(tactical).length === 0) {
     alert("No targets to save. Enter at least one target percentage.");
     return;

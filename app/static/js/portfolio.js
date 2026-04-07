@@ -1305,12 +1305,8 @@ function _renderTemplateRadar(d) {
 
   if (_templatesChart) _templatesChart.destroy();
 
-  var accentPri = getComputedStyle(
-    document.documentElement
-  ).getPropertyValue("--accent-primary").trim() || "#a78bfa";
-  var accentSec = getComputedStyle(
-    document.documentElement
-  ).getPropertyValue("--accent-secondary").trim() || "#38bdf8";
+  var userColor = "#f59e0b";
+  var tplColor = "#06b6d4";
 
   _templatesChart = new Chart(canvas, {
     type: "radar",
@@ -1320,18 +1316,19 @@ function _renderTemplateRadar(d) {
         {
           label: "Your Portfolio",
           data: userData,
-          borderColor: accentPri,
-          backgroundColor: accentPri + "33",
-          pointBackgroundColor: accentPri,
-          borderWidth: 2,
+          borderColor: userColor,
+          backgroundColor: userColor + "40",
+          pointBackgroundColor: userColor,
+          borderWidth: 2.5,
         },
         {
           label: d.template.name,
           data: tplData,
-          borderColor: accentSec,
-          backgroundColor: accentSec + "33",
-          pointBackgroundColor: accentSec,
+          borderColor: tplColor,
+          backgroundColor: tplColor + "30",
+          pointBackgroundColor: tplColor,
           borderWidth: 2,
+          borderDash: [6, 3],
         },
       ],
     },

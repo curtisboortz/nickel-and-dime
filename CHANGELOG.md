@@ -4,6 +4,22 @@ All notable changes to Nickel&Dime are documented here.
 
 ---
 
+## [2.7.0] — 2026-04-07 — Editable Allocation Targets, Template Fix & Integration Cleanup
+
+### Added
+- **Editable parent allocation targets** — parent categories (Equities, Real Assets, Alternatives) are now directly editable in the allocation table instead of showing a read-only "(sum)"; explicit parent targets take precedence over child sub-allocation sums
+- **Live 100% total enforcement** — edit mode shows a running total of parent targets with color-coded feedback (green at 100%, red if over); remainder under 100% auto-fills to Cash on save; save is blocked if total exceeds 100%
+- **Cancel button in edit mode** — added alongside Save Targets for easier exit
+
+### Fixed
+- **Portfolio template comparison values** — child categories like Gold and International now show correct user percentages instead of 0%; previously `rollup_breakdown` merged them into parents (Real Assets, Equities) and the template comparison couldn't find them
+- **Template radar chart colors** — changed from two similar cool-tone purples to distinct amber (your portfolio) vs cyan (template) with dashed border on the template line for clearer overlap visibility
+- **AI crypto context** — crypto holdings now include dollar values, cost basis, and source in the AI context so the assistant can reason about crypto allocations
+- **Coinbase sync collision** — upsert now scopes to `source="coinbase"` to prevent overwriting Plaid-sourced rows when both integrations are connected
+- **Settings UX labels** — Plaid subtitle clarified to "Link stock & ETF brokerages (Fidelity, Schwab, Vanguard, etc.)"; Coinbase subtitle updated to recommend it for crypto; added guidance hint under Plaid suggesting Coinbase integration for crypto while noting Plaid works too
+
+---
+
 ## [2.6.1] — 2026-04-07 — Intraday Snapshots & Historical Backfill
 
 ### Added

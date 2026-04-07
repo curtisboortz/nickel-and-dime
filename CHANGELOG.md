@@ -4,6 +4,25 @@ All notable changes to Nickel&Dime are documented here.
 
 ---
 
+## [2.5.0] — 2026-04-07 — Allocation Chart Redesign, Plaid Hardening & Data Fixes
+
+### Added
+- **Portfolio allocation donut redesign** — replaced messy dual-ring Chart.js donut with a clean single-ring design; center label shows total portfolio value; custom HTML legend with hierarchical parent/child categories showing dollar amounts and percentages sorted by size; professional high-contrast color palette
+- **Editable class/bucket on Plaid holdings** — bucket dropdown is now editable on synced holdings (other fields remain locked); backend allows bucket-only updates for Plaid-sourced holdings while protecting all financial data
+- **Auto-backfill institution branding** — `_backfill_branding_if_needed` runs during each Plaid sync to populate `institution_name`, `logo_base64`, and `primary_color` on PlaidItems created before branding support; `_fetch_institution_branding` now also returns institution name
+- **400 error handler** — API routes now return JSON for CSRF/bad-request failures instead of raw HTML; Plaid Link flow shows actual error message with refresh suggestion
+
+### Fixed
+- **Plaid cost_basis was total, not per-share** — Plaid returns total cost basis for the position; now divided by quantity during sync so P&L percentages are accurate (was showing +258,000% on fractional shares)
+- **Synthetic ticker too long** — `PRIV:INCOME_REAL_ESTATE_F` (25 chars) exceeded the `ticker` column's `String(20)` limit, causing Fundrise INSERT to fail; slug now truncated to 14 chars (19 total with prefix)
+- **DB session poisoning on sync failure** — a failed INSERT would roll back the transaction but subsequent syncs in the same scheduler cycle would crash with "session already rolled back"; added `db.session.rollback()` in scheduler error handler
+- **Migration chain broken** — d005 referenced `down_revision = "d004"` but actual revision ID was `"d004_plaid_support"`; fixed to match; also made d005 and d006 idempotent (check `information_schema` before ADD COLUMN / CREATE TABLE) so they survive partial-apply states
+- **Investment/transaction sync isolation** — wrapped each phase in its own try/except so a transaction-sync failure doesn't prevent investment data from being saved
+- **Script loading order** — `_skeletonRows` inlined into `<head>` so it exists before body inline scripts; `applyLiveDataToDOM` reference deferred with `typeof` check so it doesn't crash before `budget.js` loads
+- **`/api/plaid/accounts` 500** — PlaidItem query wrapped in try/except with session rollback; endpoint now also returns branding data (`logo_base64`, `primary_color`)
+
+---
+
 ## [2.4.1] — 2026-04-06 — Holdings Loading Fix & Read-Only Plaid
 
 ### Fixed

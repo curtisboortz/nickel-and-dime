@@ -720,13 +720,18 @@ function saveAllHoldings() {
     if (hid) row.id = parseInt(hid);
     holdings.push(row);
   });
+  var btn = document.querySelector("button[onclick*='saveAllHoldings']");
+  if (btn) { btn.disabled = true; btn.textContent = "Saving..."; }
   fetch("/api/holdings", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ holdings: holdings })
   }).then(function(r) { return r.json(); }).then(function() {
+    if (btn) { btn.textContent = "Saved!"; btn.style.background = "var(--success)"; setTimeout(function() { btn.textContent = "Save Holdings"; btn.style.background = ""; btn.disabled = false; }, 2000); }
     _holdingsLoaded = false;
     loadHoldings();
+  }).catch(function() {
+    if (btn) { btn.textContent = "Save Failed"; btn.style.background = "var(--danger)"; setTimeout(function() { btn.textContent = "Save Holdings"; btn.style.background = ""; btn.disabled = false; }, 2000); }
   });
 }
 

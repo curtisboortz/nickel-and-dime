@@ -518,10 +518,12 @@ def portfolio_history():
             pass
         return v
 
-    snapshots = (PortfolioSnapshot.query
-                 .filter_by(user_id=current_user.id)
-                 .order_by(PortfolioSnapshot.date)
-                 .all())
+    start_date = current_user.created_at.date() if current_user.created_at else None
+    query = PortfolioSnapshot.query.filter_by(user_id=current_user.id)
+    if start_date:
+        query = query.filter(PortfolioSnapshot.date >= start_date)
+    snapshots = query.order_by(PortfolioSnapshot.date).all()
+
     history = []
     for s in snapshots:
         total = _safe(s.total)

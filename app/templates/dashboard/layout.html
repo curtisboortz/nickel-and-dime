@@ -27,14 +27,14 @@ function _skeletonRows(r,c){var h="";for(var i=0;i<(r||5);i++){h+="<tr>";for(var
   <div class="sidebar-nav">
     {% set tabs = [
       ("summary",   "Summary",   '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>'),
-      ("balances",  "Balances",  '<rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/>'),
       ("holdings",  "Holdings",  '<rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a4 4 0 00-8 0v2"/>'),
+      ("balances",  "Balances",  '<rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/>'),
       ("budget",    "Budget",    '<line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>'),
-      ("import",    "Import",    '<path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>'),
       ("history",   "Portfolio", '<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>'),
       ("economics", "Economics", '<path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/>'),
       ("technical", "Technical", '<line x1="7" y1="2" x2="7" y2="8"/><rect x="5" y="8" width="4" height="7"/><line x1="7" y1="15" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="6"/><rect x="15" y="6" width="4" height="10"/><line x1="17" y1="16" x2="17" y2="22"/>'),
       ("ai",        "AI Advisor",'<path d="M12 2a2 2 0 012 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 017 7h1a1 1 0 110 2h-1.07A7 7 0 0113 22h-2a7 7 0 01-6.93-6H3a1 1 0 110-2h1a7 7 0 017-7h1V5.73A2 2 0 0112 2z"/><circle cx="9" cy="14" r="1"/><circle cx="15" cy="14" r="1"/>'),
+      ("import",    "Import",    '<path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>'),
     ] %}
     {% for tab_id, tab_label, tab_icon in tabs %}
     <a class="nav-item{% if active_tab == tab_id %} active{% endif %}" data-tab="{{ tab_id }}" href="#">

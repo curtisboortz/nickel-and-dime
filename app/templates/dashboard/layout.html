@@ -3,6 +3,9 @@
 {% block title %}Dashboard | Nickel&amp;Dime{% endblock %}
 
 {% block head_extra %}
+<script>
+function _skeletonRows(r,c){var h="";for(var i=0;i<(r||5);i++){h+="<tr>";for(var j=0;j<(c||4);j++){var w=j===0?"60%":(30+Math.random()*40)+"%";h+='<td style="padding:10px"><div class="skeleton" style="height:14px;width:'+w+'"></div></td>';}h+="</tr>";}return'<table style="width:100%">'+h+"</table>";}
+</script>
 <!-- Plaid Link SDK -->
 {% if is_pro %}
 <script src="https://cdn.plaid.com/link/v2/stable/link-initialize.js"></script>

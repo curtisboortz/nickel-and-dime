@@ -310,7 +310,7 @@ function convertDisplayCurrency(rate, symbol) {
     var intervalSec = parseInt((document.getElementById("auto-interval") && document.getElementById("auto-interval").value) || 60);
     if (enabled !== false && intervalSec >= 15) startPeriodicLivePoll(intervalSec);
   }
-  fetch("/api/live-data").then(function(r) { return r.json(); }).then(applyLiveDataToDOM).catch(function() {});
+  fetch("/api/live-data").then(function(r) { return r.json(); }).then(function(d) { if (typeof applyLiveDataToDOM === "function") applyLiveDataToDOM(d); }).catch(function() {});
   fetch("/api/bg-refresh", { method:"POST" }).then(function() {
     var polls = 0;
     var maxPolls = 6;

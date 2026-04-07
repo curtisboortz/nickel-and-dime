@@ -633,7 +633,7 @@ function _renderMetals(metals) {
     var glColor = e.gl >= 0 ? "var(--success)" : "var(--danger)";
     var glSign = e.gl >= 0 ? "" : "-";
     var noteText = (m.note || m.description || "").replace(/"/g, "&quot;");
-    var rowTitle = noteText ? ' title="' + noteText + '" style="cursor:help;"' : '';
+    var rowTitle = noteText ? ' title="' + noteText + '"' : '';
     html += '<tr' + rowTitle + '>';
     var noteHint = noteText ? '<span style="display:block;font-size:0.72rem;color:var(--text-muted);font-weight:400;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:help;" title="' + noteText + '" onclick="if(this.style.whiteSpace===\'normal\'){this.style.whiteSpace=\'nowrap\';this.style.maxWidth=\'120px\';}else{this.style.whiteSpace=\'normal\';this.style.maxWidth=\'320px\';}">' + noteText + '</span>' : '';
     html += '<td style="padding:8px 6px;text-transform:capitalize;font-weight:500;">' + (m.metal || "") + noteHint + '</td>';

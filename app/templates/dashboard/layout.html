@@ -1421,7 +1421,7 @@ function obFinish() {
         <svg viewBox="0 0 24 24" style="width:24px;height:24px;fill:none;stroke:var(--accent-primary);stroke-width:2;"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 10h20"/><path d="M6 16h4"/></svg>
         <div>
           <div style="font-weight:600;font-size:0.95rem;">Brokerage Connections</div>
-          <div class="hint" style="margin:0;">Link your accounts to auto-sync holdings &amp; transactions</div>
+          <div class="hint" style="margin:0;">Link stock &amp; ETF brokerages (Fidelity, Schwab, Vanguard, etc.)</div>
         </div>
       </div>
       <div id="plaid-accounts-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px;"></div>
@@ -1432,6 +1432,9 @@ function obFinish() {
       <p style="font-size:0.72rem;color:var(--text-muted);margin-top:10px;line-height:1.4;text-align:center;">
         Powered by Plaid. We only read your data &mdash; we never initiate trades or transfers.
       </p>
+      <p style="font-size:0.72rem;color:var(--accent-primary);margin-top:6px;line-height:1.4;text-align:center;">
+        For crypto, we recommend the Coinbase integration below &mdash; but linking Coinbase through Plaid works too.
+      </p>
     </div>
 
     <!-- Coinbase Integration -->
@@ -1440,7 +1443,7 @@ function obFinish() {
         <svg viewBox="0 0 24 24" style="width:24px;height:24px;fill:none;stroke:var(--accent-primary);stroke-width:2;"><circle cx="12" cy="12" r="10"/><path d="M15 9.5a4 4 0 10.02 5"/></svg>
         <div>
           <div style="font-weight:600;font-size:0.95rem;">Coinbase</div>
-          <div class="hint" style="margin:0;">Sync your crypto balances automatically</div>
+          <div class="hint" style="margin:0;">Sync crypto balances directly from Coinbase (recommended over Plaid for crypto)</div>
         </div>
         <span id="cb-status-badge" style="margin-left:auto;padding:3px 10px;border-radius:12px;font-size:0.7rem;font-weight:600;background:var(--bg-input);color:var(--text-muted);">Checking...</span>
       </div>

@@ -120,7 +120,7 @@ def sync_user_coinbase(user_id: int) -> dict:
         cb_symbols.add(sym)
 
         existing = CryptoHolding.query.filter_by(
-            user_id=user_id, symbol=sym,
+            user_id=user_id, symbol=sym, source="coinbase",
         ).first()
 
         cg_id = COINGECKO_MAP.get(sym, sym.lower())

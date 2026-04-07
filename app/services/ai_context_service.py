@@ -171,7 +171,12 @@ def _build_portfolio_context(user_id):
         lines.append("")
         lines.append("Crypto holdings:")
         for c in crypto:
-            lines.append(f"  {c.symbol} — {c.quantity:.4f}")
+            cg_key = f"CG:{c.coingecko_id}" if c.coingecko_id else f"CG:{c.symbol.lower()}"
+            pc = PriceCache.query.filter_by(symbol=cg_key).first()
+            price = pc.price if pc and pc.price else 0
+            val = c.quantity * price
+            cost_str = f", cost ${c.cost_basis:,.2f}" if c.cost_basis else ""
+            lines.append(f"  {c.symbol} — {c.quantity:.4f}, ${val:,.0f}{cost_str} (source: {c.source})")
 
     if settings and settings.targets:
         tactical = settings.targets.get("tactical", {})

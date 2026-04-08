@@ -112,15 +112,24 @@ function loadBalances() {
         html += '</tr></thead><tbody>';
         accts.forEach(function(a, idx) {
           var currentBucket = (a.allocations && a.allocations.asset_class) || "";
+          var isPlaid = (a.source || "manual") !== "manual";
           html += '<tr class="bal-row" data-acct-id="' + a.id + '">';
-          html += '<td style="width:28px;padding:10px 0;border-bottom:1px solid var(--border-subtle);position:relative;">';
-          html += '<button class="bal-kebab" onclick="_openBalMenu(event,' + a.id + ',\'' + (a.name || "").replace(/'/g, "\\'") + '\',' + idx + ',' + accts.length + ')" title="Options">&#8942;</button>';
-          html += '</td>';
-          html += '<td class="bal-name-cell" data-acct-id="' + a.id + '" style="padding:14px 10px;border-bottom:1px solid var(--border-subtle);font-size:0.92rem;font-weight:500;">' + (a.name || "Account") + '</td>';
-          html += '<td style="padding:10px 10px;border-bottom:1px solid var(--border-subtle);">' + _buildBalBucketSelect(currentBucket) + '</td>';
-          html += '<td style="text-align:right;padding:14px 10px;border-bottom:1px solid var(--border-subtle);font-family:var(--mono);font-size:0.92rem;font-weight:500;">';
-          html += '<input type="text" inputmode="decimal" class="bal-input" data-acct-id="' + a.id + '" value="' + (a.value || 0) + '" style="width:140px;text-align:right;padding:6px 10px;background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:6px;color:var(--text-primary);font-family:var(--mono);font-size:0.92rem;">';
-          html += '</td></tr>';
+          if (isPlaid) {
+            html += '<td style="width:28px;padding:10px 0;border-bottom:1px solid var(--border-subtle);text-align:center;" title="Synced via Plaid"><svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:none;stroke:var(--text-muted);stroke-width:2;vertical-align:middle;"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg></td>';
+            html += '<td class="bal-name-cell" data-acct-id="' + a.id + '" style="padding:14px 10px;border-bottom:1px solid var(--border-subtle);font-size:0.92rem;font-weight:500;">' + (a.name || "Account") + ' <span style="font-size:0.62rem;background:rgba(99,102,241,0.15);color:#a5b4fc;padding:2px 5px;border-radius:3px;margin-left:4px;">Synced</span></td>';
+            html += '<td style="padding:10px 10px;border-bottom:1px solid var(--border-subtle);font-size:0.82rem;color:var(--text-muted);">' + _bucketLabel(currentBucket) + '</td>';
+            html += '<td style="text-align:right;padding:14px 10px;border-bottom:1px solid var(--border-subtle);font-family:var(--mono);font-size:0.92rem;font-weight:500;color:var(--text-primary);">$' + (a.value || 0).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}) + '</td>';
+          } else {
+            html += '<td style="width:28px;padding:10px 0;border-bottom:1px solid var(--border-subtle);position:relative;">';
+            html += '<button class="bal-kebab" onclick="_openBalMenu(event,' + a.id + ',\'' + (a.name || "").replace(/'/g, "\\'") + '\',' + idx + ',' + accts.length + ')" title="Options">&#8942;</button>';
+            html += '</td>';
+            html += '<td class="bal-name-cell" data-acct-id="' + a.id + '" style="padding:14px 10px;border-bottom:1px solid var(--border-subtle);font-size:0.92rem;font-weight:500;">' + (a.name || "Account") + '</td>';
+            html += '<td style="padding:10px 10px;border-bottom:1px solid var(--border-subtle);">' + _buildBalBucketSelect(currentBucket) + '</td>';
+            html += '<td style="text-align:right;padding:14px 10px;border-bottom:1px solid var(--border-subtle);font-family:var(--mono);font-size:0.92rem;font-weight:500;">';
+            html += '<input type="text" inputmode="decimal" class="bal-input" data-acct-id="' + a.id + '" value="' + (a.value || 0) + '" style="width:140px;text-align:right;padding:6px 10px;background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:6px;color:var(--text-primary);font-family:var(--mono);font-size:0.92rem;">';
+            html += '</td>';
+          }
+          html += '</tr>';
         });
         html += '</tbody></table>';
       } else {

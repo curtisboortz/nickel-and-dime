@@ -14,7 +14,10 @@ from flask_login import login_required, current_user
 
 from ..extensions import db
 from ..utils.auth import requires_pro, is_pro
-from ..models.portfolio import Holding, CryptoHolding, PhysicalMetal, Account, BlendedAccount
+from ..models.portfolio import (
+    Holding, CryptoHolding, PhysicalMetal, Account, BlendedAccount,
+    InvestmentTransaction, TaxLot,
+)
 from ..models.market import PriceCache
 from ..models.settings import UserSettings
 from ..models.snapshot import PortfolioSnapshot
@@ -70,7 +73,7 @@ def _fetch_and_cache(symbol):
 @requires_pro
 def get_holdings():
     """Return holdings grouped by account with institution metadata."""
-    from ..models.plaid import PlaidItem
+    from ..models.plaid import PlaidItem, PlaidAccount
 
     holdings = Holding.query.filter_by(
         user_id=current_user.id
@@ -110,6 +113,20 @@ def get_holdings():
             db.session.rollback()
             plaid_map = {}
 
+    pa_ids = {
+        h.plaid_account_id for h in holdings
+        if hasattr(h, "plaid_account_id") and h.plaid_account_id
+    }
+    pa_map = {}
+    if pa_ids:
+        try:
+            pa_rows = PlaidAccount.query.filter(
+                PlaidAccount.id.in_(pa_ids)
+            ).all()
+            pa_map = {pa.id: pa for pa in pa_rows}
+        except Exception:
+            db.session.rollback()
+
     groups = {}
     holdings_flat = []
     grand_total = 0.0
@@ -142,12 +159,18 @@ def get_holdings():
             "source": h.source or "manual",
             "price": price, "prev_close": prev_close,
             "total": total,
+            "security_name": getattr(h, "security_name", None),
+            "security_type": getattr(h, "security_type", None),
+            "isin": getattr(h, "isin", None),
+            "cusip": getattr(h, "cusip", None),
         }
         holdings_flat.append(h_dict)
 
-        gkey = (h.account or "", h.plaid_item_id)
+        pa_id = getattr(h, "plaid_account_id", None)
+        gkey = (h.account or "", h.plaid_item_id, pa_id)
         if gkey not in groups:
             pi = plaid_map.get(h.plaid_item_id)
+            pa = pa_map.get(pa_id) if pa_id else None
             groups[gkey] = {
                 "account_name": h.account or "Unassigned",
                 "institution_name": (
@@ -168,6 +191,13 @@ def get_holdings():
                 ),
                 "source": h.source or "manual",
                 "plaid_item_id": h.plaid_item_id,
+                "plaid_account_id": pa_id,
+                "account_type": pa.type if pa else None,
+                "account_subtype": pa.subtype if pa else None,
+                "account_mask": pa.mask if pa else None,
+                "official_name": pa.official_name if pa else None,
+                "balance_current": pa.balance_current if pa else None,
+                "balance_available": pa.balance_available if pa else None,
                 "holdings": [],
                 "subtotal": 0.0,
             }
@@ -331,6 +361,77 @@ def delete_holding(holding_id):
     return jsonify({"success": True})
 
 
+@api_portfolio_bp.route("/investment-transactions")
+@login_required
+@requires_pro
+def get_investment_transactions():
+    """Return paginated investment transactions, optionally filtered by account."""
+    from ..models.plaid import PlaidAccount
+
+    account_id = flask_request.args.get("account_id", type=int)
+    page = flask_request.args.get("page", 1, type=int)
+    per_page = flask_request.args.get("per_page", 50, type=int)
+    per_page = min(per_page, 200)
+
+    q = InvestmentTransaction.query.filter_by(user_id=current_user.id)
+    if account_id:
+        q = q.filter_by(plaid_account_id=account_id)
+
+    q = q.order_by(InvestmentTransaction.date.desc())
+    total = q.count()
+    txns = q.offset((page - 1) * per_page).limit(per_page).all()
+
+    return jsonify({
+        "transactions": [
+            {
+                "id": t.id,
+                "date": t.date.isoformat() if t.date else None,
+                "type": t.type,
+                "subtype": t.subtype,
+                "ticker": t.ticker,
+                "security_name": t.security_name,
+                "quantity": t.quantity,
+                "amount": t.amount,
+                "price": t.price,
+                "fees": t.fees,
+                "description": t.description,
+                "plaid_account_id": t.plaid_account_id,
+            }
+            for t in txns
+        ],
+        "total": total,
+        "page": page,
+        "per_page": per_page,
+    })
+
+
+@api_portfolio_bp.route("/tax-lots")
+@login_required
+@requires_pro
+def get_tax_lots():
+    """Return tax lots for a holding or all holdings."""
+    holding_id = flask_request.args.get("holding_id", type=int)
+    q = TaxLot.query.filter_by(user_id=current_user.id)
+    if holding_id:
+        q = q.filter_by(holding_id=holding_id)
+    lots = q.order_by(TaxLot.date_acquired.asc()).all()
+
+    return jsonify({
+        "lots": [
+            {
+                "id": lot.id,
+                "holding_id": lot.holding_id,
+                "date_acquired": lot.date_acquired.isoformat() if lot.date_acquired else None,
+                "quantity": lot.quantity,
+                "cost_per_share": lot.cost_per_share,
+                "sold_quantity": lot.sold_quantity,
+                "remaining": round(lot.quantity - (lot.sold_quantity or 0), 6),
+            }
+            for lot in lots
+        ],
+    })
+
+
 @api_portfolio_bp.route("/crypto", methods=["POST"])
 @login_required
 @requires_pro
@@ -419,7 +520,11 @@ def get_balances():
         alloc = dict(a.allocations or {})
         if "asset_class" in alloc:
             alloc["asset_class"] = _normalize_bucket(alloc["asset_class"])
-        out.append({"id": a.id, "name": a.name, "value": a.value, "allocations": alloc})
+        out.append({
+            "id": a.id, "name": a.name, "value": a.value,
+            "allocations": alloc,
+            "source": getattr(a, "source", "manual") or "manual",
+        })
     return jsonify({"accounts": out})
 
 
@@ -446,6 +551,8 @@ def save_balances():
     for item in updates:
         acct = BlendedAccount.query.filter_by(id=item.get("id"), user_id=current_user.id).first()
         if not acct:
+            continue
+        if getattr(acct, "source", "manual") not in ("manual", "", None):
             continue
         if "value" in item:
             acct.value = float(item["value"])
@@ -495,9 +602,11 @@ def reorder_balances():
 @login_required
 
 def delete_balance(acct_id):
-    """Delete a blended account."""
+    """Delete a blended account. Plaid-synced accounts cannot be deleted here."""
     acct = BlendedAccount.query.filter_by(id=acct_id, user_id=current_user.id).first()
     if acct:
+        if getattr(acct, "source", "manual") not in ("manual", "", None):
+            return jsonify({"error": "Plaid-synced accounts are managed by sync."}), 400
         db.session.delete(acct)
         db.session.commit()
     return jsonify({"success": True})

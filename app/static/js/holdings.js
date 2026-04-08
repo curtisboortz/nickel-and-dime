@@ -150,8 +150,19 @@ function _renderAccountWidgets(wrap, accounts, grandTotal) {
     var safeKey = key.replace(/[^a-zA-Z0-9]/g, "_");
     var collapsed = collapseState[key] || false;
 
-    var title = g.institution_name ? (g.institution_name + " \u2013 " + g.account_name) : g.account_name;
-    var sourceBadge = g.source === "plaid" ? '<span style="font-size:0.65rem;background:rgba(99,102,241,0.15);color:#a5b4fc;padding:2px 6px;border-radius:4px;margin-left:8px;">Plaid</span>' : '';
+    var titleParts = [];
+    if (g.institution_name) titleParts.push(g.institution_name);
+    if (g.official_name) titleParts.push(g.official_name);
+    else titleParts.push(g.account_name);
+    var title = titleParts.join(" \u2013 ");
+    if (g.account_mask) title += " (****" + g.account_mask + ")";
+
+    var sourceBadge = g.source === "plaid" ? '<span style="font-size:0.65rem;background:rgba(99,102,241,0.15);color:#a5b4fc;padding:2px 6px;border-radius:4px;margin-left:8px;">Synced</span>' : '';
+    var typeBadge = "";
+    if (g.account_subtype) {
+      var subLabel = g.account_subtype.replace(/_/g, " ").replace(/\b\w/g, function(c) { return c.toUpperCase(); });
+      typeBadge = '<span style="font-size:0.62rem;background:rgba(56,189,248,0.12);color:#7dd3fc;padding:2px 6px;border-radius:4px;margin-left:6px;">' + subLabel + '</span>';
+    }
     var countBadge = '<span style="font-size:0.72rem;color:var(--text-muted);margin-left:8px;">' + g.holdings.length + ' holding' + (g.holdings.length !== 1 ? 's' : '') + '</span>';
 
     var acctDayPL = 0;
@@ -168,7 +179,10 @@ function _renderAccountWidgets(wrap, accounts, grandTotal) {
     html += '<span id="acct-arrow-' + safeKey + '" style="font-size:0.7rem;color:var(--text-muted);width:12px;">' + (collapsed ? "\u25B6" : "\u25BC") + '</span>';
     html += _buildAccountLogo(g);
     html += '<div style="flex:1;min-width:0;">';
-    html += '<span style="font-weight:600;font-size:0.92rem;">' + title + '</span>' + sourceBadge + countBadge;
+    html += '<div><span style="font-weight:600;font-size:0.92rem;">' + title + '</span>' + sourceBadge + typeBadge + countBadge + '</div>';
+    if (g.balance_current != null && g.source === "plaid") {
+      html += '<div style="font-size:0.72rem;color:var(--text-muted);margin-top:2px;">Reported Balance: ' + fmtMoney(g.balance_current) + '</div>';
+    }
     html += '</div>';
     html += '<div style="display:flex;align-items:center;gap:14px;">';
     html += acctDayHtml;
@@ -178,6 +192,9 @@ function _renderAccountWidgets(wrap, accounts, grandTotal) {
 
     html += '<div id="acct-body-' + safeKey + '"' + (collapsed ? ' style="display:none;"' : '') + '>';
     html += _buildAccountTable(g.holdings, g.account_name);
+    if (g.plaid_account_id) {
+      html += _buildActivitySection(g.plaid_account_id, safeKey);
+    }
     html += '</div>';
     html += '</div>';
 
@@ -309,8 +326,14 @@ function _buildAccountTable(holdings, acctName) {
     var rCell = 'style="padding:6px;text-align:right;font-family:var(--mono);white-space:nowrap;"';
 
     if (isLinked) {
+      var secBadge = "";
+      if (h.security_type) {
+        var secLabel = {"etf":"ETF","mutual fund":"MF","equity":"EQ","fixed income":"FI","derivative":"DRV","cash":"CASH","cryptocurrency":"CRYPTO"}[h.security_type.toLowerCase()] || h.security_type.toUpperCase().substring(0,4);
+        secBadge = '<span style="font-size:0.58rem;background:rgba(251,191,36,0.12);color:#fbbf24;padding:1px 4px;border-radius:3px;margin-left:4px;vertical-align:middle;font-weight:600;">' + secLabel + '</span>';
+      }
+      var secTitle = (h.security_name || "") + (h.cusip ? " | CUSIP: " + h.cusip : "") + (h.isin ? " | ISIN: " + h.isin : "");
       html += '<tr data-hid="' + h.id + '" data-source="plaid">';
-      html += '<td style="padding:6px;font-weight:600;">' + (h.ticker || "") + '<input type="hidden" data-field="ticker" value="' + (h.ticker || "") + '"><input type="hidden" data-field="account" value="' + (h.account || acctName || "") + '"></td>';
+      html += '<td style="padding:6px;font-weight:600;" title="' + secTitle.replace(/"/g, "&quot;") + '">' + (h.ticker || "") + secBadge + '<input type="hidden" data-field="ticker" value="' + (h.ticker || "") + '"><input type="hidden" data-field="account" value="' + (h.account || acctName || "") + '"></td>';
       html += '<td style="padding:4px 4px;">' + _buildBucketSelect(h.bucket || "", false) + '</td>';
       html += '<td ' + rCell + '>' + qtyStr + '</td>';
       html += '<td ' + rCell + '>' + (h.cost_basis ? fmtMoney(h.cost_basis) : "") + '</td>';
@@ -320,7 +343,8 @@ function _buildAccountTable(holdings, acctName) {
       html += '<td style="padding:6px;text-align:right;">' + dayPH + '</td>';
       html += '<td style="padding:6px;text-align:right;">' + plDH + '</td>';
       html += '<td style="padding:6px;text-align:right;">' + plPH + '</td>';
-      html += '<td style="padding:6px;color:var(--text-muted);font-size:0.82rem;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + noteVal + '">' + (h.notes || "") + '</td>';
+      var notesDisplay = h.security_name || h.notes || "";
+      html += '<td style="padding:6px;color:var(--text-muted);font-size:0.82rem;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + (notesDisplay).replace(/"/g, "&quot;") + '">' + notesDisplay + '</td>';
       html += '<td style="padding:4px;text-align:center;" title="Synced via Plaid"><svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:none;stroke:var(--text-muted);stroke-width:2;vertical-align:middle;"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg></td>';
       html += '</tr>';
     } else {
@@ -771,6 +795,90 @@ function saveMetalPurchase() {
     toggleMetalForm();
     _loadPhysicalMetals();
   });
+}
+
+function _buildActivitySection(plaidAccountId, safeKey) {
+  var id = "activity-" + safeKey;
+  var html = '<div style="border-top:1px solid var(--border-subtle);">';
+  html += '<div onclick="_toggleActivity(\'' + id + '\',' + plaidAccountId + ')" style="display:flex;align-items:center;gap:8px;padding:8px 16px;cursor:pointer;user-select:none;font-size:0.78rem;color:var(--text-muted);">';
+  html += '<span id="' + id + '-arrow" style="font-size:0.65rem;">&#9654;</span>';
+  html += '<span>Recent Activity</span>';
+  html += '</div>';
+  html += '<div id="' + id + '" style="display:none;padding:0 16px 12px;"></div>';
+  html += '</div>';
+  return html;
+}
+
+var _activityLoaded = {};
+function _toggleActivity(id, plaidAccountId) {
+  var el = document.getElementById(id);
+  var arrow = document.getElementById(id + "-arrow");
+  if (!el) return;
+  if (el.style.display === "none") {
+    el.style.display = "";
+    if (arrow) arrow.innerHTML = "&#9660;";
+    if (!_activityLoaded[id]) {
+      _activityLoaded[id] = true;
+      _loadActivity(el, plaidAccountId);
+    }
+  } else {
+    el.style.display = "none";
+    if (arrow) arrow.innerHTML = "&#9654;";
+  }
+}
+
+function _loadActivity(container, plaidAccountId) {
+  container.innerHTML = '<span style="color:var(--text-muted);font-size:0.8rem;">Loading...</span>';
+  fetch("/api/investment-transactions?account_id=" + plaidAccountId + "&per_page=25")
+    .then(function(r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+    .then(function(d) {
+      var txns = d.transactions || [];
+      if (txns.length === 0) {
+        container.innerHTML = '<span style="color:var(--text-muted);font-size:0.8rem;">No recent activity.</span>';
+        return;
+      }
+      var html = '<table style="width:100%;border-collapse:collapse;font-size:0.78rem;">';
+      html += '<thead><tr style="border-bottom:1px solid var(--border-subtle);color:var(--text-muted);">';
+      html += '<th style="padding:4px 6px;text-align:left;">Date</th>';
+      html += '<th style="padding:4px 6px;text-align:left;">Type</th>';
+      html += '<th style="padding:4px 6px;text-align:left;">Security</th>';
+      html += '<th style="padding:4px 6px;text-align:right;">Qty</th>';
+      html += '<th style="padding:4px 6px;text-align:right;">Price</th>';
+      html += '<th style="padding:4px 6px;text-align:right;">Amount</th>';
+      html += '</tr></thead><tbody>';
+
+      txns.forEach(function(t) {
+        var typeColor = "var(--text-muted)";
+        var typeIcon = "";
+        var tl = (t.type || "").toLowerCase();
+        if (tl === "buy") { typeColor = "var(--success)"; typeIcon = "&#9650; "; }
+        else if (tl === "sell") { typeColor = "var(--danger)"; typeIcon = "&#9660; "; }
+        else if (tl === "dividend" || tl === "cash") { typeColor = "#fbbf24"; typeIcon = "&#9733; "; }
+        else if (tl === "fee") { typeColor = "var(--danger)"; typeIcon = "&#8722; "; }
+
+        var label = t.subtype ? t.subtype.replace(/_/g, " ") : t.type;
+        label = label.replace(/\b\w/g, function(c) { return c.toUpperCase(); });
+
+        html += '<tr style="border-bottom:1px solid var(--border-subtle);">';
+        html += '<td style="padding:4px 6px;white-space:nowrap;">' + (t.date || "") + '</td>';
+        html += '<td style="padding:4px 6px;color:' + typeColor + ';font-weight:500;white-space:nowrap;">' + typeIcon + label + '</td>';
+        html += '<td style="padding:4px 6px;" title="' + (t.security_name || "").replace(/"/g, "&quot;") + '">' + (t.ticker || t.security_name || t.description || "") + '</td>';
+        html += '<td style="padding:4px 6px;text-align:right;font-family:var(--mono);">' + (t.quantity ? Math.abs(t.quantity).toLocaleString(undefined, {maximumFractionDigits:4}) : "") + '</td>';
+        html += '<td style="padding:4px 6px;text-align:right;font-family:var(--mono);color:var(--text-muted);">' + (t.price ? "$" + t.price.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}) : "") + '</td>';
+        var amtColor = (t.amount || 0) >= 0 ? "var(--success)" : "var(--danger)";
+        html += '<td style="padding:4px 6px;text-align:right;font-family:var(--mono);color:' + amtColor + ';">' + (t.amount != null ? "$" + Math.abs(t.amount).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}) : "") + '</td>';
+        html += '</tr>';
+      });
+
+      html += '</tbody></table>';
+      if (d.total > 25) {
+        html += '<div style="text-align:center;padding:6px;font-size:0.72rem;color:var(--text-muted);">Showing 25 of ' + d.total + ' transactions</div>';
+      }
+      container.innerHTML = html;
+    })
+    .catch(function(e) {
+      container.innerHTML = '<span style="color:var(--danger);font-size:0.8rem;">Failed to load activity.</span>';
+    });
 }
 
 function showDivForm() {

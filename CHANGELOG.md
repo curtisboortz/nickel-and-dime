@@ -4,6 +4,18 @@ All notable changes to Nickel&Dime are documented here.
 
 ---
 
+## [2.7.1] — 2026-04-08 — Chart Reliability, Timezone Fix & Economics Cleanup
+
+### Fixed
+- **Portfolio history chart not showing today** — root cause was a race condition between parallel `/api/live-data` and `/api/portfolio-history` fetches; `PORTFOLIO_TOTAL` was only set by the live-data callback, so if history resolved first the today-point check silently failed; extracted `ensureTodayInHistory()` called from both callbacks so whichever fires second succeeds
+- **Server timezone mismatch** — backend now accepts a `tz` query parameter from the frontend (auto-detected via `Intl.DateTimeFormat`) so "today" is calculated in the user's local timezone instead of server UTC; frontend also independently verifies the last history entry matches the local date
+- **Pulse chart line mode empty on 3M+** — line chart used raw date strings for x-axis data points while candlestick converted to timestamps; when ETF proxy data returned dates with timezone offsets, Chart.js time adapter failed silently; both chart types now use `new Date(p.date).getTime()`
+- **Pulse chart auto-fallback** — if a chart type renders with no visible data points, automatically switches to the other type (line to candlestick or vice versa) so users never see an empty chart when data exists
+- **Economics chart x-axis clutter** — FRED data included full ISO timestamps (`1966-01-01T00:00:00`) as axis labels; added `fredDateLabel()` helper to strip the time portion across all line charts, bar charts, and custom multi-series charts (inflation, revenue/spending, breakevens, HY spread, Sahm, WUI, CAPE, Buffett)
+- **Backend resilience** — wrapped `compute_portfolio_value` in try/except within `portfolio_history` endpoint so snapshot data is always returned even if live computation fails
+
+---
+
 ## [2.7.0] — 2026-04-07 — Editable Allocation Targets, Template Fix & Integration Cleanup
 
 ### Added

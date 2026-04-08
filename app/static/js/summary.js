@@ -477,7 +477,14 @@ function buildDonut() {
   _lastDonutHash = newHash;
 
   var centerVal = document.getElementById("donut-center-value");
-  if (centerVal) centerVal.textContent = "$" + total.toLocaleString(undefined, {maximumFractionDigits: 0});
+  if (centerVal) {
+    if (typeof ndCountUp === "function" && centerVal.dataset.ndCurrent) {
+      ndCountUp(centerVal, total, { prefix: "$", decimals: 0, duration: 500, tickClass: false });
+    } else {
+      centerVal.textContent = "$" + total.toLocaleString(undefined, {maximumFractionDigits: 0});
+      centerVal.dataset.ndCurrent = total;
+    }
+  }
 
   if (!dataChanged && _donutChart) {
     _buildDonutLegend(parentData, detailData, total);
@@ -486,7 +493,20 @@ function buildDonut() {
 
   var ctx = document.getElementById("allocation-donut");
   if (!ctx || typeof Chart === "undefined") return;
-  if (_donutChart) { try { _donutChart.destroy(); } catch(e) {} }
+
+  if (_donutChart) {
+    _donutChart.data.labels = labels;
+    _donutChart.data.datasets[0].data = values;
+    _donutChart.data.datasets[0].backgroundColor = colors;
+    _donutChart.options.plugins.tooltip.callbacks.label = function(c) {
+      var pct = total > 0 ? ((c.raw / total) * 100).toFixed(1) : "0";
+      return "$" + c.raw.toLocaleString(undefined, {maximumFractionDigits: 0}) + "  ·  " + pct + "%";
+    };
+    _donutChart.update("none");
+    _buildDonutLegend(parentData, detailData, total);
+    NDDiag.track("donut", "ok", labels.length + " parent (update)");
+    return;
+  }
 
   _donutChart = new Chart(ctx, {
     type: "doughnut",

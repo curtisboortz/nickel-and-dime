@@ -778,7 +778,7 @@ html.light .skeleton { background:linear-gradient(90deg, rgba(0,0,0,0.04) 25%, r
 .mob-item.active { color:var(--accent-primary); }
 @media (max-width:768px) {
   .sidebar { display:none; }
-  .main-content { margin-left:0; padding:16px 16px 80px; }
+  .main-content { margin-left:0; padding:calc(16px + env(safe-area-inset-top, 0px)) 16px 80px; }
   .mobile-nav { display:block; }
   .hero-row { flex-direction:column; }
   .hero-value { font-size:2rem; }

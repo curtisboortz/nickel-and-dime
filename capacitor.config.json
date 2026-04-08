@@ -1,0 +1,18 @@
+{
+  "appId": "io.nickelanddime.app",
+  "appName": "Nickel and Dime",
+  "webDir": "app/static",
+  "server": {
+    "url": "https://nickelanddime.io",
+    "cleartext": false
+  },
+  "ios": {
+    "contentInset": "automatic",
+    "backgroundColor": "#09090b",
+    "preferredContentMode": "mobile"
+  },
+  "android": {
+    "allowMixedContent": false,
+    "backgroundColor": "#09090b"
+  }
+}

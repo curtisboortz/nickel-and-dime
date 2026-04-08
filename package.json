@@ -1,0 +1,31 @@
+{
+  "name": "finance-tool",
+  "version": "1.0.0",
+  "description": "A full-stack personal finance platform built with Python/Flask and PostgreSQL. Track multi-asset portfolios with live market data, allocation drift analysis, economic indicators, budgeting, and technical analysis — all behind a subscription-gated SaaS model.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/curtisboortz/nickel-and-dime.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/curtisboortz/nickel-and-dime/issues"
+  },
+  "homepage": "https://github.com/curtisboortz/nickel-and-dime#readme",
+  "dependencies": {
+    "@capacitor/android": "^8.3.0",
+    "@capacitor/cli": "^8.3.0",
+    "@capacitor/core": "^8.3.0",
+    "@capacitor/ios": "^8.3.0"
+  }
+}

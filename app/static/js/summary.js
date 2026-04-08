@@ -434,8 +434,8 @@ function _buildDonutLegend(parentData, detailData, total) {
     }
     html += '<span style="width:10px;height:10px;border-radius:50%;background:' + color + ';flex-shrink:0;"></span>';
     html += '<span style="flex:1;font-weight:600;color:var(--text-primary);font-size:0.82rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + pk + '</span>';
-    html += '<span style="font-family:var(--mono);color:var(--text-muted);font-size:0.72rem;white-space:nowrap;">' + pct + '%</span>';
-    html += '<span style="font-family:var(--mono);color:var(--text-primary);font-size:0.78rem;white-space:nowrap;">$' + val.toLocaleString(undefined, {maximumFractionDigits: 0}) + '</span>';
+    html += '<span style="font-family:var(--mono);color:var(--text-muted);font-size:0.72rem;white-space:nowrap;min-width:38px;text-align:right;">' + pct + '%</span>';
+    html += '<span style="font-family:var(--mono);color:var(--text-primary);font-size:0.78rem;white-space:nowrap;min-width:60px;text-align:right;">$' + val.toLocaleString(undefined, {maximumFractionDigits: 0}) + '</span>';
     html += '</div>';
 
     if (hasChildren) {
@@ -447,8 +447,8 @@ function _buildDonutLegend(parentData, detailData, total) {
         html += '<div style="display:flex;align-items:center;gap:8px;padding:2px 0 2px 26px;">';
         html += '<span style="width:6px;height:6px;border-radius:50%;background:' + color + ';opacity:0.45;flex-shrink:0;"></span>';
         html += '<span style="flex:1;color:var(--text-muted);font-size:0.72rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + ck + '</span>';
-        html += '<span style="font-family:var(--mono);color:var(--text-muted);font-size:0.68rem;white-space:nowrap;">' + cpct + '%</span>';
-        html += '<span style="font-family:var(--mono);color:var(--text-muted);font-size:0.7rem;white-space:nowrap;">$' + cv.toLocaleString(undefined, {maximumFractionDigits: 0}) + '</span>';
+        html += '<span style="font-family:var(--mono);color:var(--text-muted);font-size:0.68rem;white-space:nowrap;min-width:38px;text-align:right;">' + cpct + '%</span>';
+        html += '<span style="font-family:var(--mono);color:var(--text-muted);font-size:0.7rem;white-space:nowrap;min-width:60px;text-align:right;">$' + cv.toLocaleString(undefined, {maximumFractionDigits: 0}) + '</span>';
         html += '</div>';
       });
       html += '</div>';

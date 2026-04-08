@@ -13,6 +13,22 @@ function buildHistoryChart(metric) {
   if (window.historyChart) window.historyChart.destroy();
   if (!ctx) { NDDiag.track("history-chart", "warn", "no canvas"); return; }
 
+  var _todayStr = new Date().toLocaleDateString("en-CA");
+  var _liveTotal = window.PORTFOLIO_TOTAL;
+  if (PRICE_HISTORY_DATA.length > 0 && _liveTotal && _liveTotal > 0) {
+    var _last = PRICE_HISTORY_DATA[PRICE_HISTORY_DATA.length - 1];
+    if (_last.date === _todayStr) {
+      _last.close = _liveTotal; _last.total = _liveTotal;
+      _last.high = Math.max(_last.high || _liveTotal, _liveTotal);
+      _last.low = Math.min(_last.low || _liveTotal, _liveTotal);
+    } else if (_last.date < _todayStr) {
+      PRICE_HISTORY_DATA.push({
+        date: _todayStr, total: _liveTotal, open: _liveTotal,
+        high: _liveTotal, low: _liveTotal, close: _liveTotal, gold: null, silver: null
+      });
+    }
+  }
+
   var labels = PRICE_HISTORY_DATA.map(function(r) { return r.date; });
 
   if (_histChartType === "candlestick" && PRICE_HISTORY_DATA.length >= 2) {

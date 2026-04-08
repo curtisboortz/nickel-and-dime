@@ -42,12 +42,22 @@ def _get_price(symbol):
     return entry.price if entry else None
 
 
+def _yf_symbol(symbol):
+    """Convert Plaid-style ticker to yfinance format (e.g. BRK.B -> BRK-B)."""
+    if not symbol or symbol.startswith("PRIV:") or symbol.startswith("CASH:"):
+        return None
+    return symbol.replace(".", "-")
+
+
 def _fetch_and_cache(symbol):
     """One-off yfinance fetch for a ticker not yet in the price cache."""
+    yf_sym = _yf_symbol(symbol)
+    if not yf_sym:
+        return None
     try:
         import yfinance as yf
         from datetime import datetime, timezone
-        tk = yf.Ticker(symbol)
+        tk = yf.Ticker(yf_sym)
         info = tk.fast_info
         price = getattr(info, "last_price", None)
         prev = getattr(info, "previous_close", None)

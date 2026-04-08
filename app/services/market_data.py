@@ -40,15 +40,15 @@ def refresh_all_prices(symbols=None):
                     custom_syms.append(_normalize_ticker(p.strip()))
             else:
                 custom_syms.append(_normalize_ticker(tk))
-        symbols = list(set(
-            standard
-            + [t[0] for t in user_tickers if t[0]]
-            + custom_syms
-        ))
+        raw_user = [t[0] for t in user_tickers if t[0]]
+        symbols = list(set(standard + raw_user + custom_syms))
     else:
         symbols = list(set(standard + symbols))
 
-    yf_symbols = [s for s in symbols if not s.startswith("CG:") and not s.startswith("PRIV:")]
+    yf_symbols = [s for s in symbols
+                  if not s.startswith("CG:")
+                  and not s.startswith("PRIV:")
+                  and not s.startswith("CASH:")]
 
     if yf_symbols:
         _fetch_yfinance_batch(yf_symbols)
@@ -60,24 +60,38 @@ def refresh_all_prices(symbols=None):
     _apply_dxy_preference()
 
 
+def _yf_symbol(sym):
+    """Convert a Plaid/internal ticker to yfinance format (BRK.B -> BRK-B)."""
+    return sym.replace(".", "-") if sym else sym
+
+
 def _fetch_yfinance_batch(symbols):
     """Batch-fetch prices via yfinance download and update price_cache."""
     import yfinance as yf
     if not symbols:
         return
+
+    yf_to_db = {}
+    yf_syms = []
+    for s in symbols:
+        yf_s = _yf_symbol(s)
+        yf_to_db[yf_s] = s
+        yf_syms.append(yf_s)
+
     try:
-        df = yf.download(symbols, period="2d", group_by="ticker", progress=False, threads=True)
+        df = yf.download(yf_syms, period="2d", group_by="ticker", progress=False, threads=True)
         if df is None or df.empty:
             return
-        is_single = len(symbols) == 1
-        for sym in symbols:
+        is_single = len(yf_syms) == 1
+        for yf_s in yf_syms:
+            db_sym = yf_to_db[yf_s]
             try:
                 if is_single:
                     sdf = df
                 else:
-                    if sym not in df.columns.get_level_values(0):
+                    if yf_s not in df.columns.get_level_values(0):
                         continue
-                    sdf = df[sym]
+                    sdf = df[yf_s]
                 if sdf.empty or len(sdf) < 1:
                     continue
                 import math
@@ -91,7 +105,7 @@ def _fetch_yfinance_batch(symbols):
                 if prev is not None and (math.isnan(prev) or prev <= 0):
                     prev = None
                 change_pct = ((price - prev) / prev * 100) if prev and prev > 0 else 0
-                _upsert_price(sym, price, change_pct, prev, _commit=False)
+                _upsert_price(db_sym, price, change_pct, prev, _commit=False)
             except Exception:
                 continue
         db.session.commit()

@@ -74,7 +74,7 @@ function buildHistoryChart(metric) {
             var dStr = dt.toLocaleDateString(undefined, {month:"short", day:"numeric", year:"numeric"});
             var f = function(v) { return "$" + v.toLocaleString(undefined, {maximumFractionDigits:0}); };
             var chg = d.c - d.o;
-            var color = chg >= 0 ? "var(--accent-green,#34d399)" : "var(--danger,#f87171)";
+            var color = chg >= 0 ? _t.success : _t.danger;
             el.innerHTML = '<span style="color:' + _t.textBright + '">' + dStr + '</span>'
               + '&ensp;O: ' + f(d.o) + '&ensp;H: ' + f(d.h) + '&ensp;L: ' + f(d.l)
               + '&ensp;<span style="color:' + color + '">C: ' + f(d.c) + '</span>';
@@ -82,8 +82,8 @@ function buildHistoryChart(metric) {
           } }
         },
         scales: {
-          x: { type: "time", time:{ unit:"day", tooltipFormat:"MMM d, yyyy" }, ticks:{ maxTicksLimit:8, color:_t.text, font:{size:10} }, grid:{ color:_t.gridLight } },
-          y: { ticks:{ color:_t.text, font:{size:10}, callback: function(v) { return "$" + (v/1000).toFixed(0) + "K"; } }, grid:{ color:_t.gridLight } }
+          x: Object.assign(ndScaleOpts(_t, "x"), { type: "time", time:{ unit:"day", tooltipFormat:"MMM d, yyyy" }, ticks:{ maxTicksLimit:8, color:_t.text, font:{size:10.5, weight:"500"}, padding:6 } }),
+          y: Object.assign(ndScaleOpts(_t, "y"), { ticks:{ color:_t.text, font:{size:10.5, weight:"500"}, padding:6, callback: function(v) { return "$" + (v/1000).toFixed(0) + "K"; } } })
         }
       }
     });
@@ -97,15 +97,16 @@ function buildHistoryChart(metric) {
     var dataMax = vals.length ? Math.max.apply(null, vals) : 0;
     var padding = dataMin === dataMax ? Math.max(dataMax * 0.02, 500) : Math.max((dataMax - dataMin) * 0.15, dataMax * 0.005);
     var _t = ndChartTheme();
+    var _gradFill = ndGradient(ctx.getContext("2d"), _t.accent, ctx.parentElement ? ctx.parentElement.offsetHeight : 260);
     window.historyChart = new Chart(ctx, {
       type: "line",
       data: {
-        datasets: [{ label: "Portfolio Value", data: pointData, borderColor: _t.accent, backgroundColor: "rgba(212,160,23,0.12)", fill: true, tension: 0.35, pointRadius: PRICE_HISTORY_DATA.length < 30 ? 4 : 0, pointHoverRadius: 6, pointHoverBackgroundColor: _t.accent, pointBackgroundColor: _t.accent, borderWidth: 2.5 }]
+        datasets: [{ label: "Portfolio Value", data: pointData, borderColor: _t.accent, backgroundColor: _gradFill, fill: true, tension: 0.38, pointRadius: PRICE_HISTORY_DATA.length < 30 ? 3 : 0, pointHoverRadius: 5, pointHoverBackgroundColor: _t.accent, pointBackgroundColor: _t.accent, borderWidth: 2.2 }]
       },
       options: {
         responsive: true, maintainAspectRatio: false,
-      interaction: { intersect: false, mode: "nearest", axis: "x" },
-      plugins: {
+        interaction: { intersect: false, mode: "nearest", axis: "x" },
+        plugins: {
           legend: { display: false },
           tooltip: { enabled: false, external: function(context) {
             var el = document.getElementById("hist-hover-info");
@@ -118,20 +119,18 @@ function buildHistoryChart(metric) {
             var dStr = dp.raw.x;
             try { dStr = new Date(dp.raw.x).toLocaleDateString(undefined, {month:"short", day:"numeric", year:"numeric"}); } catch(e){}
             if (r && r.open) {
-              var chg = (r.close || val) - r.open;
-              var color = chg >= 0 ? "var(--accent-green,#34d399)" : "var(--danger,#f87171)";
               el.innerHTML = '<span style="color:' + _t.textBright + '">' + dStr + '</span>'
                 + '&ensp;' + fmt(val)
-                + '&ensp;<span style="color:' + _t.textMuted + '">(' + fmt(r.low) + ' – ' + fmt(r.high) + ')</span>';
+                + '&ensp;<span style="color:' + _t.textMuted + '">(' + fmt(r.low) + ' \u2013 ' + fmt(r.high) + ')</span>';
             } else {
               el.innerHTML = '<span style="color:' + _t.textBright + '">' + dStr + '</span>&ensp;' + fmt(val);
             }
             el.style.opacity = "1";
           } }
-      },
-      scales: {
-          x: { type: "time", time: { unit: PRICE_HISTORY_DATA.length > 90 ? "week" : "day", tooltipFormat: "yyyy-MM-dd" }, ticks:{ maxTicksLimit:8, color:_t.text, font:{size:10} }, grid:{ color:_t.gridLight } },
-          y: { min: Math.floor((dataMin - padding) / 1000) * 1000, max: Math.ceil((dataMax + padding) / 1000) * 1000, ticks:{ color:_t.text, font:{size:10}, callback: function(v) { return "$" + (v/1000).toFixed(0) + "K"; } }, grid:{ color:_t.gridLight } }
+        },
+        scales: {
+          x: Object.assign(ndScaleOpts(_t, "x"), { type: "time", time: { unit: PRICE_HISTORY_DATA.length > 90 ? "week" : "day", tooltipFormat: "yyyy-MM-dd" }, ticks:{ maxTicksLimit:8, color:_t.text, font:{size:10.5, weight:"500"}, padding:6 } }),
+          y: Object.assign(ndScaleOpts(_t, "y"), { min: Math.floor((dataMin - padding) / 1000) * 1000, max: Math.ceil((dataMax + padding) / 1000) * 1000, ticks:{ color:_t.text, font:{size:10.5, weight:"500"}, padding:6, callback: function(v) { return "$" + (v/1000).toFixed(0) + "K"; } } })
         }
       }
     });

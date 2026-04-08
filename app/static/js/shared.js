@@ -258,26 +258,27 @@ function ndIsLight() {
 function ndChartTheme() {
   var light = ndIsLight();
   return {
-    text:        light ? "#4b5068" : "#94a3b8",
-    textMuted:   light ? "#7c8194" : "#64748b",
-    textBright:  light ? "#1a1d2e" : "#f1f5f9",
-    grid:        light ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.06)",
-    gridLight:   light ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.03)",
-    border:      light ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.08)",
-    tooltipBg:   light ? "rgba(255,255,255,0.96)" : "rgba(9,9,11,0.95)",
-    tooltipText: light ? "#1a1d2e" : "#f1f5f9",
-    tooltipBody: light ? "#4b5068" : "#cbd5e1",
-    tooltipBorder: light ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.08)",
+    text:        light ? "#6e7490" : "#94a3b8",
+    textMuted:   light ? "#9098b0" : "#64748b",
+    textBright:  light ? "#1b1e2f" : "#f1f5f9",
+    grid:        light ? "rgba(0,0,0,0.05)" : "rgba(255,255,255,0.05)",
+    gridLight:   light ? "rgba(0,0,0,0.025)" : "rgba(255,255,255,0.025)",
+    border:      light ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.08)",
+    tooltipBg:   light ? "#ffffff" : "rgba(15,15,20,0.96)",
+    tooltipText: light ? "#1b1e2f" : "#f1f5f9",
+    tooltipBody: light ? "#414665" : "#cbd5e1",
+    tooltipBorder: light ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.06)",
     cardBg:      light ? "#ffffff" : "#161619",
-    accent:      "#d4a017",
-    accentLight: "#f5c842",
-    success:     "#34d399",
-    danger:      "#f87171",
-    warning:     "#fbbf24",
+    accent:      light ? "#b8860b" : "#d4a017",
+    accentLight: light ? "#d4a017" : "#f5c842",
+    success:     light ? "#16a34a" : "#34d399",
+    danger:      light ? "#dc2626" : "#f87171",
+    warning:     light ? "#d97706" : "#fbbf24",
     candleUp:    light ? "#16a34a" : "#34d399",
     candleDown:  light ? "#dc2626" : "#f87171",
-    candleFlat:  light ? "#7c8194" : "#94a3b8",
-    donutBorder: light ? "rgba(255,255,255,0.9)" : "rgba(9,9,11,0.8)",
+    candleFlat:  light ? "#6e7490" : "#94a3b8",
+    donutBorder: light ? "#ffffff" : "rgba(9,9,11,0.85)",
+    light: light,
   };
 }
 
@@ -289,34 +290,41 @@ function ndTooltipOpts(theme) {
     bodyColor: theme.tooltipBody,
     borderColor: theme.tooltipBorder,
     borderWidth: 1,
-    padding: 10,
-    cornerRadius: 8,
+    padding: 12,
+    cornerRadius: 10,
     displayColors: true,
-    boxPadding: 4,
+    boxPadding: 5,
+    titleFont: { size: 12, weight: "600" },
+    bodyFont: { size: 11.5 },
+    caretSize: 6,
+    caretPadding: 8,
   };
 }
 
-function ndScaleOpts(theme) {
+function ndScaleOpts(theme, axis) {
   theme = theme || ndChartTheme();
+  var isX = axis === "x";
   return {
-    ticks: { color: theme.text, font: { size: 11 } },
-    grid:  { color: theme.grid, drawBorder: false },
+    ticks: { color: theme.text, font: { size: 10.5, weight: "500" }, padding: 6 },
+    grid: {
+      color: isX ? theme.gridLight : theme.grid,
+      drawBorder: false,
+      lineWidth: 1,
+      borderDash: isX ? [] : [3, 3],
+    },
+    border: { display: false },
   };
 }
 
-function ndGradient(ctx, color, height) {
+function ndGradient(ctx, hex, height) {
   height = height || 300;
-  var g = ctx.createLinearGradient(0, 0, 0, height);
-  g.addColorStop(0, color.replace(")", ",0.25)").replace("rgb(", "rgba(").replace("#", ""));
-  if (color.startsWith("#")) {
-    var r = parseInt(color.slice(1,3),16), gr = parseInt(color.slice(3,5),16), b = parseInt(color.slice(5,7),16);
-    g.addColorStop(0, "rgba("+r+","+gr+","+b+",0.18)");
-    g.addColorStop(1, "rgba("+r+","+gr+","+b+",0.01)");
-  } else {
-    g.addColorStop(0, color);
-    g.addColorStop(1, "transparent");
-  }
-  return g;
+  var r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+  var light = ndIsLight();
+  var grad = ctx.createLinearGradient(0, 0, 0, height);
+  grad.addColorStop(0, "rgba("+r+","+g+","+b+","+(light ? 0.12 : 0.22)+")");
+  grad.addColorStop(0.6, "rgba("+r+","+g+","+b+","+(light ? 0.03 : 0.06)+")");
+  grad.addColorStop(1, "rgba("+r+","+g+","+b+",0)");
+  return grad;
 }
 
 /* Fix candlestick wick-through-body artifact: redraw opaque bodies over wicks.

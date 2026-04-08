@@ -70,7 +70,9 @@ function updateProjectionChart() {
     if (!ctx || typeof Chart === "undefined") return;
     var _t = (typeof ndChartTheme === "function") ? ndChartTheme() : null;
     var _tc = _t ? _t.text : "#64748b";
-    var _gc = _t ? _t.gridLight : "rgba(255,255,255,0.03)";
+    var _accentHex = _t ? _t.accent : "#d4a017";
+    var _projGrad = (typeof ndGradient === "function") ? ndGradient(ctx.getContext("2d"), _accentHex, ctx.parentElement ? ctx.parentElement.offsetHeight : 260) : "rgba(212,160,23,0.08)";
+    var _contribGrad = (typeof ndGradient === "function") ? ndGradient(ctx.getContext("2d"), "#6366f1", ctx.parentElement ? ctx.parentElement.offsetHeight : 260) : "rgba(99,102,241,0.08)";
     projectionChart = new Chart(ctx, {
       type: "line",
       data: {
@@ -78,22 +80,24 @@ function updateProjectionChart() {
         datasets: [{
           label: "Total Value",
           data: data.values,
-          borderColor: "rgba(212,160,23,0.9)",
-          backgroundColor: "rgba(212,160,23,0.08)",
+          borderColor: _accentHex,
+          backgroundColor: _projGrad,
           fill: true,
-          tension: 0.2,
+          tension: 0.3,
           pointRadius: 0,
-          pointHoverRadius: 4
+          pointHoverRadius: 4,
+          borderWidth: 2
         }, {
           label: "Contributions",
           data: data.contribs,
           borderColor: "rgba(99,102,241,0.7)",
-          backgroundColor: "rgba(99,102,241,0.15)",
+          backgroundColor: _contribGrad,
           fill: true,
           tension: 0,
           pointRadius: 0,
           pointHoverRadius: 4,
-          borderDash: [4, 3]
+          borderDash: [4, 3],
+          borderWidth: 1.5
         }]
       },
       options: {
@@ -103,10 +107,9 @@ function updateProjectionChart() {
         plugins: {
           legend: {
             display: true, position: "top",
-            labels: { color: _tc, font: { size: 10 }, usePointStyle: true, pointStyle: "line", padding: 16 }
+            labels: { color: _tc, font: { size: 10.5, weight: "500" }, usePointStyle: true, pointStyle: "line", padding: 18 }
           },
-          tooltip: Object.assign(_t ? ndTooltipOpts(_t) : { backgroundColor: "rgba(9,9,11,0.95)", titleColor: "#f1f5f9", bodyColor: "#cbd5e1", borderColor: "rgba(255,255,255,0.08)", borderWidth: 1 }, {
-            padding: 12, cornerRadius: 8,
+          tooltip: Object.assign(_t ? ndTooltipOpts(_t) : { backgroundColor: "rgba(9,9,11,0.95)", titleColor: "#f1f5f9", bodyColor: "#cbd5e1", borderColor: "rgba(255,255,255,0.06)", borderWidth: 1, cornerRadius: 10, padding: 12 }, {
             callbacks: {
               label: function(c) {
                 var fmt = "$" + c.raw.toLocaleString(undefined, { maximumFractionDigits: 0 });
@@ -121,8 +124,8 @@ function updateProjectionChart() {
           })
         },
         scales: {
-          x: { ticks: { color: _tc, font: { size: 10 }, maxTicksLimit: 12 }, grid: { display: false } },
-          y: { ticks: { color: _tc, font: { size: 10 }, callback: function(v) { return v >= 1000000 ? "$" + (v/1000000).toFixed(1) + "M" : "$" + (v/1000).toFixed(0) + "K"; } }, grid: { color: _gc } }
+          x: Object.assign(_t ? ndScaleOpts(_t, "x") : {}, { ticks: { color: _tc, font: { size: 10.5, weight: "500" }, maxTicksLimit: 12, padding: 4 }, grid: { display: false }, border: { display: false } }),
+          y: Object.assign(_t ? ndScaleOpts(_t, "y") : {}, { ticks: { color: _tc, font: { size: 10.5, weight: "500" }, padding: 4, callback: function(v) { return v >= 1000000 ? "$" + (v/1000000).toFixed(1) + "M" : "$" + (v/1000).toFixed(0) + "K"; } } })
         }
       }
     });
@@ -544,21 +547,25 @@ function buildDivChart() {
   var divData = labels.map(function(m) { return months[m].div; });
   var feeData = labels.map(function(m) { return -months[m].fee; });
   if (_divChart) { _divChart.destroy(); _divChart = null; }
+  var _dt = (typeof ndChartTheme === "function") ? ndChartTheme() : null;
   _divChart = new Chart(ctx, {
     type: "bar",
     data: {
       labels: labels,
       datasets: [
-        { label: "Dividends", data: divData, backgroundColor: "rgba(52,211,153,0.7)" },
-        { label: "Fees", data: feeData, backgroundColor: "rgba(248,113,113,0.7)" }
+        { label: "Dividends", data: divData, backgroundColor: _dt ? _dt.success : "rgba(52,211,153,0.7)", borderRadius: 4, borderSkipped: false },
+        { label: "Fees", data: feeData, backgroundColor: _dt ? _dt.danger : "rgba(248,113,113,0.7)", borderRadius: 4, borderSkipped: false }
       ]
     },
     options: {
       responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { labels: { color: "#94a3b8", font: { size: 10 } } } },
+      plugins: {
+        legend: { labels: { color: _dt ? _dt.text : "#94a3b8", font: { size: 10.5, weight: "500" } } },
+        tooltip: _dt ? ndTooltipOpts(_dt) : {}
+      },
       scales: {
-        x: { ticks: { color: "#64748b", font: { size: 10 } }, grid: { display: false } },
-        y: { ticks: { color: "#64748b", font: { size: 10 } }, grid: { color: "rgba(255,255,255,0.03)" } }
+        x: { ticks: { color: _dt ? _dt.text : "#64748b", font: { size: 10.5, weight: "500" }, padding: 4 }, grid: { display: false }, border: { display: false } },
+        y: { ticks: { color: _dt ? _dt.text : "#64748b", font: { size: 10.5, weight: "500" }, padding: 4 }, grid: { color: _dt ? _dt.grid : "rgba(255,255,255,0.03)", borderDash: [3, 3] }, border: { display: false } }
       }
     }
   });
@@ -766,33 +773,26 @@ function _runMcWithParams(params) {
   var ctx = document.getElementById("mc-chart");
   if (!ctx || typeof Chart === "undefined") return;
   if (window._mcChart) window._mcChart.destroy();
+  var _mct = (typeof ndChartTheme === "function") ? ndChartTheme() : null;
   window._mcChart = new Chart(ctx, {
     type: "line",
     data: {
       labels: labels,
       datasets: [
-        { label: "90th %ile", data: p90, borderColor: "rgba(212,160,23,0.3)", backgroundColor: "rgba(212,160,23,0.05)", fill: "+1", borderWidth: 1, pointRadius: 0, pointHoverRadius: 4, pointHoverBackgroundColor: "rgba(212,160,23,0.6)", tension: 0.3 },
-        { label: "75th %ile", data: p75, borderColor: "rgba(212,160,23,0.5)", backgroundColor: "rgba(212,160,23,0.08)", fill: "+1", borderWidth: 1, pointRadius: 0, pointHoverRadius: 4, pointHoverBackgroundColor: "rgba(212,160,23,0.8)", tension: 0.3 },
-        { label: "Median", data: p50, borderColor: "var(--accent-primary)", borderWidth: 2.5, pointRadius: 0, pointHoverRadius: 5, pointHoverBackgroundColor: "#d4a017", tension: 0.3, fill: false },
-        { label: "25th %ile", data: p25, borderColor: "rgba(212,160,23,0.5)", backgroundColor: "rgba(212,160,23,0.08)", fill: "+1", borderWidth: 1, pointRadius: 0, pointHoverRadius: 4, pointHoverBackgroundColor: "rgba(212,160,23,0.8)", tension: 0.3 },
-        { label: "10th %ile", data: p10, borderColor: "rgba(212,160,23,0.3)", backgroundColor: "transparent", borderWidth: 1, pointRadius: 0, pointHoverRadius: 4, pointHoverBackgroundColor: "rgba(212,160,23,0.6)", tension: 0.3 }
+        { label: "90th %ile", data: p90, borderColor: "rgba(212,160,23,0.3)", backgroundColor: "rgba(212,160,23,0.04)", fill: "+1", borderWidth: 1, pointRadius: 0, pointHoverRadius: 4, tension: 0.35 },
+        { label: "75th %ile", data: p75, borderColor: "rgba(212,160,23,0.5)", backgroundColor: "rgba(212,160,23,0.06)", fill: "+1", borderWidth: 1, pointRadius: 0, pointHoverRadius: 4, tension: 0.35 },
+        { label: "Median", data: p50, borderColor: _mct ? _mct.accent : "#d4a017", borderWidth: 2.2, pointRadius: 0, pointHoverRadius: 5, tension: 0.35, fill: false },
+        { label: "25th %ile", data: p25, borderColor: "rgba(212,160,23,0.5)", backgroundColor: "rgba(212,160,23,0.06)", fill: "+1", borderWidth: 1, pointRadius: 0, pointHoverRadius: 4, tension: 0.35 },
+        { label: "10th %ile", data: p10, borderColor: "rgba(212,160,23,0.3)", backgroundColor: "transparent", borderWidth: 1, pointRadius: 0, pointHoverRadius: 4, tension: 0.35 }
       ]
     },
     options: {
       responsive: true, maintainAspectRatio: false,
       interaction: { mode: "index", intersect: false },
       plugins: {
-        legend: { labels: { color: "#94a3b8", font: { size: 10 } } },
-        tooltip: {
-          yAlign: "bottom", caretPadding: 8,
+        legend: { labels: { color: _mct ? _mct.text : "#94a3b8", font: { size: 10.5, weight: "500" } } },
+        tooltip: Object.assign(_mct ? ndTooltipOpts(_mct) : { backgroundColor: "rgba(15,23,42,0.95)", titleColor: "#e2e8f0", bodyColor: "#cbd5e1", borderColor: "rgba(212,160,23,0.4)", borderWidth: 1, cornerRadius: 10, padding: 12 }, {
           mode: "index", intersect: false,
-          backgroundColor: "rgba(15,23,42,0.95)",
-          titleColor: "#e2e8f0",
-          bodyColor: "#cbd5e1",
-          borderColor: "rgba(212,160,23,0.4)",
-          borderWidth: 1,
-          padding: 12,
-          bodyFont: { family: "'JetBrains Mono', monospace", size: 12 },
           callbacks: {
             title: function(items) { return items[0].label; },
             label: function(ctx) {
@@ -803,11 +803,11 @@ function _runMcWithParams(params) {
               return " " + ctx.dataset.label + ":  " + formatted;
             }
           }
-        }
+        })
       },
       scales: {
-        x: { ticks: { color: "#64748b", font: { size: 10 }, maxTicksLimit: 12 }, grid: { display: false } },
-        y: { ticks: { color: "#64748b", font: { size: 10 }, callback: function(v) { return "$" + (v >= 1000000 ? (v/1000000).toFixed(1) + "M" : (v/1000).toFixed(0) + "K"); } }, grid: { color: "rgba(255,255,255,0.03)" } }
+        x: Object.assign(_mct ? ndScaleOpts(_mct, "x") : {}, { ticks: { color: _mct ? _mct.text : "#64748b", font: { size: 10.5, weight: "500" }, maxTicksLimit: 12, padding: 4 }, grid: { display: false }, border: { display: false } }),
+        y: Object.assign(_mct ? ndScaleOpts(_mct, "y") : {}, { ticks: { color: _mct ? _mct.text : "#64748b", font: { size: 10.5, weight: "500" }, padding: 4, callback: function(v) { return "$" + (v >= 1000000 ? (v/1000000).toFixed(1) + "M" : (v/1000).toFixed(0) + "K"); } } })
       }
     }
   });
@@ -840,6 +840,7 @@ function buildDrawdownChart() {
   var ctx = document.getElementById("drawdown-chart");
   if (!ctx || typeof Chart === "undefined") return;
   if (window._ddChart) window._ddChart.destroy();
+  var _ddt = (typeof ndChartTheme === "function") ? ndChartTheme() : null;
   window._ddChart = new Chart(ctx, {
     type: "line",
     data: {
@@ -847,17 +848,17 @@ function buildDrawdownChart() {
       datasets: [{
         label: "Drawdown %",
         data: drawdowns,
-        borderColor: "rgba(248,113,113,0.8)",
-        backgroundColor: "rgba(248,113,113,0.15)",
-        fill: true, borderWidth: 1.5, pointRadius: 0, tension: 0.3
+        borderColor: _ddt ? _ddt.danger : "rgba(248,113,113,0.8)",
+        backgroundColor: "rgba(248,113,113,0.10)",
+        fill: true, borderWidth: 1.5, pointRadius: 0, tension: 0.35
       }]
     },
     options: {
       responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false }, tooltip: { yAlign: "bottom", caretPadding: 8 }},
+      plugins: { legend: { display: false }, tooltip: _ddt ? ndTooltipOpts(_ddt) : { yAlign: "bottom", caretPadding: 8 } },
       scales: {
-        x: { ticks: { color: "#64748b", font: { size: 9 }, maxTicksLimit: 10 }, grid: { display: false } },
-        y: { max: 0, ticks: { color: "#64748b", font: { size: 10 }, callback: function(v) { return v.toFixed(1) + "%"; } }, grid: { color: "rgba(255,255,255,0.03)" } }
+        x: { ticks: { color: _ddt ? _ddt.text : "#64748b", font: { size: 10.5, weight: "500" }, maxTicksLimit: 10, padding: 4 }, grid: { display: false }, border: { display: false } },
+        y: { max: 0, ticks: { color: _ddt ? _ddt.text : "#64748b", font: { size: 10.5, weight: "500" }, padding: 4, callback: function(v) { return v.toFixed(1) + "%"; } }, grid: { color: _ddt ? _ddt.grid : "rgba(255,255,255,0.03)", borderDash: [3, 3] }, border: { display: false } }
       }
     }
   });
@@ -913,24 +914,25 @@ function buildPerfAttribution() {
   var ctx = document.getElementById("perf-attr-chart");
   if (!ctx || typeof Chart === "undefined") return;
   if (_perfAttrChart) { _perfAttrChart.destroy(); _perfAttrChart = null; }
+  var _pat = (typeof ndChartTheme === "function") ? ndChartTheme() : null;
   _perfAttrChart = new Chart(ctx, {
     type: "bar",
     data: {
       labels: labels,
-      datasets: [{ label: "Value ($)", data: values, backgroundColor: colors }]
+      datasets: [{ label: "Value ($)", data: values, backgroundColor: colors, borderRadius: 4, borderSkipped: false }]
     },
     options: {
       indexAxis: "y", responsive: true, maintainAspectRatio: false,
       plugins: { legend: { display: false },
-        tooltip: { callbacks: { label: function(c) {
+        tooltip: Object.assign(_pat ? ndTooltipOpts(_pat) : {}, { callbacks: { label: function(c) {
           var ret = bReturns[labels[c.dataIndex]];
           var retStr = ret != null ? " | Return: " + (ret >= 0 ? "+" : "") + ret.toFixed(1) + "%" : "";
           return "$" + c.raw.toLocaleString() + " (" + pcts[c.dataIndex] + "%)" + retStr;
-        } } }
+        } } })
       },
       scales: {
-        x: { ticks: { color: "#64748b", font: { size: 10 }, callback: function(v) { return v >= 1000000 ? "$" + (v/1000000).toFixed(1) + "M" : "$" + (v/1000).toFixed(0) + "K"; } }, grid: { color: "rgba(255,255,255,0.03)" } },
-        y: { ticks: { color: "#94a3b8", font: { size: 11 } }, grid: { display: false } }
+        x: { ticks: { color: _pat ? _pat.text : "#64748b", font: { size: 10.5, weight: "500" }, padding: 4, callback: function(v) { return v >= 1000000 ? "$" + (v/1000000).toFixed(1) + "M" : "$" + (v/1000).toFixed(0) + "K"; } }, grid: { color: _pat ? _pat.grid : "rgba(255,255,255,0.03)", borderDash: [3, 3] }, border: { display: false } },
+        y: { ticks: { color: _pat ? _pat.text : "#94a3b8", font: { size: 10.5, weight: "500" }, padding: 4 }, grid: { display: false }, border: { display: false } }
       }
     }
   });

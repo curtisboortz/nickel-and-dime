@@ -4,8 +4,8 @@
 function _fredTooltip() {
   var t = (typeof ndChartTheme === "function") ? ndChartTheme() : null;
   return t
-    ? Object.assign(ndTooltipOpts(t), { yAlign: "bottom", caretPadding: 8, borderColor: "rgba(99,102,241,0.4)" })
-    : { yAlign: "bottom", caretPadding: 8, backgroundColor: "rgba(30,30,30,0.95)", titleColor: "#e2e8f0", bodyColor: "#e2e8f0", borderColor: "rgba(99,102,241,0.4)", borderWidth: 1 };
+    ? Object.assign(ndTooltipOpts(t), { yAlign: "bottom", caretPadding: 8 })
+    : { yAlign: "bottom", caretPadding: 8, backgroundColor: "rgba(30,30,30,0.95)", titleColor: "#e2e8f0", bodyColor: "#e2e8f0", borderColor: "rgba(99,102,241,0.4)", borderWidth: 1, cornerRadius: 10, padding: 12 };
 }
 function _fredScale() {
   var t = (typeof ndChartTheme === "function") ? ndChartTheme() : null;
@@ -28,10 +28,12 @@ function fredLineChart(canvasId, points, label, yFmt) {
     return;
   }
   var yCallback = yFmt === "billions" ? function(v) { return (v/1e3).toFixed(1) + "T"; } : yFmt === "pct" ? function(v) { return v != null ? Number(v).toFixed(1) + "%" : ""; } : function(v) { return v != null ? Number(v).toLocaleString() : ""; };
+  var _ft = (typeof ndChartTheme === "function") ? ndChartTheme() : null;
+  var _sc = _fredScale();
   fredCharts[canvasId] = new Chart(ctx, {
     type: "line",
-    data: { labels: labels, datasets: [{ label: label, data: values, borderColor: "rgba(212,160,23,0.9)", backgroundColor: "rgba(212,160,23,0.1)", fill: true, tension: 0.2, pointRadius: 0, pointHitRadius: 20 }] },
-    options: { responsive: true, maintainAspectRatio: false, interaction: { mode: "index", intersect: false }, plugins: { legend: { display: false }, tooltip: fredTooltipOpts }, scales: { x: { ticks: { color: "#64748b", maxTicksLimit: 8 }, grid: { display: false } }, y: { ticks: { color: "#64748b", callback: yCallback }, grid: { color: "rgba(255,255,255,0.03)" } } } }
+    data: { labels: labels, datasets: [{ label: label, data: values, borderColor: _ft ? _ft.accent : "rgba(212,160,23,0.9)", backgroundColor: "rgba(212,160,23,0.08)", fill: true, tension: 0.3, pointRadius: 0, pointHitRadius: 20, borderWidth: 2 }] },
+    options: { responsive: true, maintainAspectRatio: false, interaction: { mode: "index", intersect: false }, plugins: { legend: { display: false }, tooltip: _fredTooltip() }, scales: { x: { ticks: { color: _sc.text, maxTicksLimit: 8, font: { size: 10.5, weight: "500" }, padding: 4 }, grid: { display: false }, border: { display: false } }, y: { ticks: { color: _sc.text, callback: yCallback, font: { size: 10.5, weight: "500" }, padding: 4 }, grid: { color: _sc.grid, borderDash: [3, 3] }, border: { display: false } } } }
   });
 }
 function fredBarChart(canvasId, points, label, colorFn) {
@@ -47,10 +49,12 @@ function fredBarChart(canvasId, points, label, colorFn) {
     fredCharts[canvasId].update();
     return;
   }
+  var _ft2 = (typeof ndChartTheme === "function") ? ndChartTheme() : null;
+  var _sc2 = _fredScale();
   fredCharts[canvasId] = new Chart(ctx, {
     type: "bar",
-    data: { labels: labels, datasets: [{ label: label, data: values, backgroundColor: colors }] },
-    options: { responsive: true, maintainAspectRatio: false, interaction: { mode: "index", intersect: false }, plugins: { legend: { display: false }, tooltip: fredTooltipOpts }, scales: { x: { ticks: { color: "#64748b", maxTicksLimit: 8 }, grid: { display: false } }, y: { ticks: { color: "#64748b" }, grid: { color: "rgba(255,255,255,0.03)" } } } }
+    data: { labels: labels, datasets: [{ label: label, data: values, backgroundColor: colors, borderRadius: 4, borderSkipped: false }] },
+    options: { responsive: true, maintainAspectRatio: false, interaction: { mode: "index", intersect: false }, plugins: { legend: { display: false }, tooltip: _fredTooltip() }, scales: { x: { ticks: { color: _sc2.text, maxTicksLimit: 8, font: { size: 10.5, weight: "500" }, padding: 4 }, grid: { display: false }, border: { display: false } }, y: { ticks: { color: _sc2.text, font: { size: 10.5, weight: "500" }, padding: 4 }, grid: { color: _sc2.grid, borderDash: [3, 3] }, border: { display: false } } } }
   });
 }
 function renderFredDebt(data) {
@@ -307,6 +311,7 @@ function _fwRender(idx) {
     return "rgba(239,68,68,0.7)";
   });
 
+  var _fwt = (typeof ndChartTheme === "function") ? ndChartTheme() : null;
   _fwChart = new Chart(ctx, {
     type: "bar",
     data: {
@@ -314,7 +319,8 @@ function _fwRender(idx) {
       datasets: [{
         data: data,
         backgroundColor: colors,
-        borderRadius: 4,
+        borderRadius: 6,
+        borderSkipped: false,
         maxBarThickness: 80
       }]
     },
@@ -322,38 +328,38 @@ function _fwRender(idx) {
       responsive: true, maintainAspectRatio: false,
       plugins: {
         legend: { display: false },
-        tooltip: {
-          backgroundColor: "rgba(30,30,30,0.95)",
-          titleColor: "#e2e8f0", bodyColor: "#e2e8f0",
+        tooltip: Object.assign(_fredTooltip(), {
           callbacks: {
             label: function(ctx) { return ctx.parsed.y.toFixed(1) + "%"; }
           }
-        },
+        }),
         datalabels: false
       },
       scales: {
         x: {
-          ticks: { color: "#94a3b8", font: { size: 11 } },
-          grid: { display: false },
-          title: { display: true, text: "Target Rate (in bps)", color: "#64748b", font: { size: 11 } }
+          ticks: { color: _fwt ? _fwt.text : "#94a3b8", font: { size: 10.5, weight: "500" }, padding: 4 },
+          grid: { display: false }, border: { display: false },
+          title: { display: true, text: "Target Rate (bps)", color: _fwt ? _fwt.textMuted : "#64748b", font: { size: 10.5 } }
         },
         y: {
           min: 0, max: 110,
-          ticks: { color: "#64748b", callback: function(v) { return v <= 100 ? v + "%" : ""; }, stepSize: 20 },
-          grid: { color: "rgba(148,163,184,0.08)" },
-          title: { display: true, text: "Probability", color: "#64748b", font: { size: 11 } }
+          ticks: { color: _fwt ? _fwt.text : "#64748b", callback: function(v) { return v <= 100 ? v + "%" : ""; }, stepSize: 20, font: { size: 10.5, weight: "500" }, padding: 4 },
+          grid: { color: _fwt ? _fwt.grid : "rgba(148,163,184,0.08)", borderDash: [3, 3] },
+          border: { display: false },
+          title: { display: true, text: "Probability", color: _fwt ? _fwt.textMuted : "#64748b", font: { size: 10.5 } }
         }
       }
     },
     plugins: [{
       afterDatasetsDraw: function(chart) {
         var _ctx = chart.ctx;
+        var _labelColor = _fwt ? _fwt.textBright : "#e2e8f0";
         chart.data.datasets[0].data.forEach(function(val, i) {
           if (val < 1) return;
           var meta = chart.getDatasetMeta(0).data[i];
           _ctx.save();
-          _ctx.fillStyle = "#e2e8f0";
-          _ctx.font = "bold 11px sans-serif";
+          _ctx.fillStyle = _labelColor;
+          _ctx.font = "bold 10.5px sans-serif";
           _ctx.textAlign = "center";
           _ctx.fillText(val.toFixed(1) + "%", meta.x, meta.y - 6);
           _ctx.restore();

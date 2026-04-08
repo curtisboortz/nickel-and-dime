@@ -516,29 +516,27 @@ function buildDonut() {
       datasets: [{
         data: values,
         backgroundColor: colors,
-        borderWidth: 2,
+        borderWidth: 2.5,
         borderColor: _t.donutBorder,
-        hoverBorderWidth: 3,
-        hoverBorderColor: _t.textBright,
-        hoverOffset: 6
+        hoverBorderWidth: 0,
+        hoverOffset: 8,
+        spacing: 1,
       }]
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      cutout: "68%",
-      layout: { padding: 4 },
+      cutout: "70%",
+      layout: { padding: 6 },
+      animation: { animateRotate: true, animateScale: false, duration: 600, easing: "easeOutQuart" },
       plugins: {
         legend: { display: false },
         tooltip: Object.assign(ndTooltipOpts(_t), {
-          padding: 14, cornerRadius: 10,
-          titleFont: { size: 13, weight: "600" },
-          bodyFont: { size: 12 },
           callbacks: {
             title: function(items) { return items[0].label; },
             label: function(c) {
               var pct = total > 0 ? ((c.raw / total) * 100).toFixed(1) : "0";
-              return "$" + c.raw.toLocaleString(undefined, {maximumFractionDigits: 0}) + "  ·  " + pct + "%";
+              return " $" + c.raw.toLocaleString(undefined, {maximumFractionDigits: 0}) + "  \u00b7  " + pct + "%";
             }
           }
         })

@@ -17,8 +17,8 @@
   function _updateCharts(isLight) {
     if (typeof Chart === "undefined") return;
     var t = (typeof ndChartTheme === "function") ? ndChartTheme() : null;
-    var txtColor = t ? t.text : (isLight ? "#4b5068" : "#94a3b8");
-    var gridColor = t ? t.grid : (isLight ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.06)");
+    var txtColor = t ? t.text : (isLight ? "#6e7490" : "#94a3b8");
+    var gridColor = t ? t.grid : (isLight ? "rgba(0,0,0,0.05)" : "rgba(255,255,255,0.05)");
     var tipOpts = t ? ndTooltipOpts(t) : null;
     Object.values(Chart.instances || {}).forEach(function(chart) {
       if (!chart || !chart.options) return;
@@ -26,6 +26,8 @@
         Object.values(chart.options.scales).forEach(function(axis) {
           if (axis.ticks) axis.ticks.color = txtColor;
           if (axis.grid) axis.grid.color = gridColor;
+          if (axis.pointLabels) axis.pointLabels.color = txtColor;
+          if (axis.angleLines) axis.angleLines.color = gridColor;
         });
       }
       if (chart.options.plugins && chart.options.plugins.legend && chart.options.plugins.legend.labels) {
@@ -40,7 +42,6 @@
       }
       if (t && chart.config.type === "doughnut" && chart.data.datasets[0]) {
         chart.data.datasets[0].borderColor = t.donutBorder;
-        chart.data.datasets[0].hoverBorderColor = t.textBright;
       }
       chart.update("none");
     });

@@ -60,6 +60,7 @@
     _updateCharts(isLight);
     if (typeof buildHistoryChart === "function" && window.historyChart) buildHistoryChart("total");
     if (typeof _fredTooltip === "function") window.fredTooltipOpts = _fredTooltip();
+    if (typeof redrawSentimentGauges === "function") redrawSentimentGauges();
   };
 
   if (saved === "light") _updateIcon(true);

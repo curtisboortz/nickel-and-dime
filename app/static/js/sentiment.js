@@ -1,6 +1,7 @@
 /* Nickel&Dime - Sentiment gauges and history charts */
 var _sentimentLoaded = false;
 var _sentimentRetries = 0;
+var _sentimentScores = {};
 function loadSentimentGauges() {
   if (_sentimentLoaded) return;
   NDDiag.track("sentiment", "loading", "attempt " + (_sentimentRetries + 1));
@@ -22,6 +23,7 @@ function loadSentimentGauges() {
         }
         filled++;
         var score = (k === "vix") ? info.score : info.value;
+        _sentimentScores[k] = score;
         drawGauge("gauge-" + k, score);
         var valEl = document.getElementById("gv-" + k);
         if (valEl) valEl.textContent = score;
@@ -74,11 +76,13 @@ function drawGauge(canvasId, value) {
   var endAngle = 2 * Math.PI;
   var lineW = 10;
 
+  var light = (typeof ndIsLight === "function") && ndIsLight();
+
   // Background track
   ctx.beginPath();
   ctx.arc(cx, cy, r, startAngle, endAngle);
   ctx.lineWidth = lineW;
-  ctx.strokeStyle = "rgba(255,255,255,0.06)";
+  ctx.strokeStyle = light ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.06)";
   ctx.lineCap = "round";
   ctx.stroke();
 
@@ -106,15 +110,21 @@ function drawGauge(canvasId, value) {
   ctx.moveTo(cx, cy);
   ctx.lineTo(nx, ny);
   ctx.lineWidth = 2.5;
-  ctx.strokeStyle = "rgba(255,255,255,0.85)";
+  ctx.strokeStyle = light ? "rgba(0,0,0,0.7)" : "rgba(255,255,255,0.85)";
   ctx.lineCap = "round";
   ctx.stroke();
 
   // Center dot
   ctx.beginPath();
   ctx.arc(cx, cy, 4, 0, 2 * Math.PI);
-  ctx.fillStyle = "rgba(255,255,255,0.9)";
+  ctx.fillStyle = light ? "rgba(0,0,0,0.75)" : "rgba(255,255,255,0.9)";
   ctx.fill();
+}
+
+function redrawSentimentGauges() {
+  Object.keys(_sentimentScores).forEach(function(k) {
+    drawGauge("gauge-" + k, _sentimentScores[k]);
+  });
 }
 
 /* ── Sentiment History (click-to-expand) ── */

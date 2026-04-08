@@ -244,7 +244,7 @@ body {
 }
 /* ── Market Pulse ── */
 .pulse-bar {
-  display:flex; gap:14px; margin-bottom:28px;
+  display:flex; gap:10px; margin-bottom:28px;
   overflow-x:auto; padding-bottom:4px;
   -webkit-overflow-scrolling:touch;
 }
@@ -341,7 +341,7 @@ th {
 }
 td {
   padding:12px 14px;
-  border-bottom:1px solid rgba(255,255,255,0.04);
+  border-bottom:1px solid rgba(255,255,255,0.03);
   font-size:0.88rem;
 }
 tbody tr { transition:background 0.15s ease; }
@@ -557,7 +557,7 @@ html.light .hero-change.pos { background:rgba(22,163,74,0.08); color:#15803d; }
 html.light .hero-change.neg { background:rgba(220,38,38,0.08); color:#dc2626; }
 
 /* ── Cards — shadow-forward instead of border-heavy ── */
-html.light .card, html.light [class*="card-"] {
+html.light .card {
   background:#ffffff !important;
   border:1px solid rgba(0,0,0,0.05);
   box-shadow:0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.02);

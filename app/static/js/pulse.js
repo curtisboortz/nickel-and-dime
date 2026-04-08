@@ -384,12 +384,13 @@ function addPulseCard() {
       var displayLabel = label || ticker;
       var cardId = "custom-" + d.id;
       var bar = document.getElementById("pulse-bar");
-      var addBtn = document.getElementById("pulse-add-btn");
+      var addBtn = bar.querySelector(".pulse-add");
       var div = document.createElement("div");
       div.className = "pulse-item";
       div.draggable = true;
       div.setAttribute("data-pulse-id", cardId);
       div.setAttribute("data-pulse-type", "stock");
+      div.style.cursor = "pointer";
       div.innerHTML =
         '<button class="pulse-remove" onclick="event.stopPropagation();removePulseCard(\'' + d.id + '\')" title="Remove">&times;</button>' +
         '<span class="pulse-label">' + displayLabel + '</span>' +
@@ -397,7 +398,16 @@ function addPulseCard() {
         '<canvas class="pulse-spark" id="spark-' + cardId + '" width="60" height="24"></canvas>';
       if (addBtn) bar.insertBefore(div, addBtn);
       else bar.appendChild(div);
+      var _pcmDrag = false;
+      div.addEventListener("dragstart", function() { _pcmDrag = true; });
+      div.addEventListener("click", function(e) {
+        if (e.target.closest(".pulse-remove")) return;
+        if (_pcmDrag) { _pcmDrag = false; return; }
+        openPulseChart(cardId, displayLabel, "stock");
+      });
+      if (window._setupPulseDrag) window._setupPulseDrag();
       setTimeout(loadAllSparklines, 300);
+      fetch("/api/bg-refresh", { method: "POST" });
     } else {
       alert(d.error || "Failed to add ticker.");
     }

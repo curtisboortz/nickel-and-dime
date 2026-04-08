@@ -1172,12 +1172,12 @@ var _metricExplainers = {
   },
   classes: {
     title: "Asset Classes",
-    body: "The number of distinct asset categories in your portfolio (e.g. Equities, Fixed Income, Crypto, Real Assets, Cash). " +
-      "More asset classes generally means better diversification, but quality matters more than quantity.\n\n" +
+    body: "The number of distinct asset categories in your portfolio. Nickel&Dime tracks five parent classes: " +
+      "Equities, Fixed Income, Real Assets (Gold, Silver, Real Estate, Art), Alternatives (Crypto), and Cash.\n\n" +
       "<strong>1 – 2</strong> — Very concentrated. A single downturn in one sector can hit your entire portfolio.\n" +
-      "<strong>3 – 4</strong> — Moderate breadth. You have some diversification but may still be exposed to correlated risks.\n" +
-      "<strong>5 – 6</strong> — Good breadth. Typical of a well-constructed portfolio with exposure across major asset types.\n" +
-      "<strong>7+</strong> — Excellent breadth. Wide exposure across asset types. Ensure you're not over-diversifying into tiny, negligible positions."
+      "<strong>3</strong> — Moderate breadth. Some diversification but still exposed to correlated risks.\n" +
+      "<strong>4</strong> — Good breadth. Most major asset types are represented.\n" +
+      "<strong>5</strong> — Full breadth. You have exposure across all tracked asset classes."
   }
 };
 

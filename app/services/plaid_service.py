@@ -282,8 +282,6 @@ def sync_investments(user_id: int, plaid_item: PlaidItem) -> dict:
             continue
 
         ticker = security.get("ticker_symbol") or ""
-        if ticker == "CUR:USD":
-            continue
 
         quantity = h.get("quantity", 0) or 0
         total_cost = h.get("cost_basis") or None
@@ -297,6 +295,35 @@ def sync_investments(user_id: int, plaid_item: PlaidItem) -> dict:
         sec_isin = security.get("isin") or None
         sec_cusip = security.get("cusip") or None
         pa_db_id = pa_id_map.get(raw_account_id)
+
+        if ticker == "CUR:USD":
+            cash_val = inst_value or quantity or 0
+            if cash_val <= 0:
+                continue
+            seen_tickers.add(("CASH:USD", account_name))
+            existing = Holding.query.filter_by(
+                user_id=user_id, ticker="CASH:USD", account=account_name,
+                plaid_item_id=plaid_item.id,
+            ).first()
+            if existing:
+                existing.shares = cash_val
+                existing.value_override = cash_val
+                existing.institution_value = cash_val
+                existing.plaid_account_id = pa_db_id
+            else:
+                db.session.add(Holding(
+                    user_id=user_id, ticker="CASH:USD", shares=cash_val,
+                    cost_basis=None, account=account_name,
+                    bucket="Cash", source="plaid",
+                    plaid_item_id=plaid_item.id,
+                    plaid_account_id=pa_db_id,
+                    value_override=cash_val,
+                    institution_value=cash_val,
+                    security_name="Cash",
+                    security_type="cash",
+                ))
+            synced += 1
+            continue
 
         if not ticker:
             slug = sec_name[:14].upper().replace(" ", "_").rstrip("_") or "PRIV"
@@ -344,6 +371,7 @@ def sync_investments(user_id: int, plaid_item: PlaidItem) -> dict:
             existing.bucket = bucket
             if is_private and inst_value:
                 existing.value_override = inst_value
+            existing.institution_value = inst_value
             existing.plaid_account_id = pa_db_id
             existing.security_name = sec_name or existing.security_name
             existing.security_type = sec_type or existing.security_type
@@ -357,6 +385,7 @@ def sync_investments(user_id: int, plaid_item: PlaidItem) -> dict:
                 plaid_item_id=plaid_item.id,
                 plaid_account_id=pa_db_id,
                 value_override=inst_value if is_private else None,
+                institution_value=inst_value,
                 notes=sec_name if is_private else "",
                 security_name=sec_name,
                 security_type=sec_type,

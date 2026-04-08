@@ -140,12 +140,15 @@ def get_holdings():
         prev_close = entry.prev_close if entry else None
         qty = h.shares or 0
         vo = h.value_override
+        inst_val = getattr(h, "institution_value", None)
         if vo:
             total = vo
         elif price and qty:
             total = price * qty
+            if total == 0 and inst_val:
+                total = inst_val
         else:
-            total = 0
+            total = inst_val or 0
         grand_total += total
 
         h_dict = {
@@ -154,6 +157,7 @@ def get_holdings():
             "bucket": _normalize_bucket(h.bucket),
             "account": h.account,
             "value_override": h.value_override,
+            "institution_value": inst_val,
             "notes": h.notes,
             "cost_basis": h.cost_basis,
             "source": h.source or "manual",

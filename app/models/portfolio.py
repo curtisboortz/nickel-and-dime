@@ -41,6 +41,7 @@ class Holding(db.Model):
     account = db.Column(db.String(120), default="")
     bucket = db.Column(db.String(50), default="Equities")
     value_override = db.Column(db.Float, nullable=True)
+    institution_value = db.Column(db.Float, nullable=True)
     source = db.Column(db.String(50), default="manual")
     plaid_item_id = db.Column(db.Integer, db.ForeignKey("plaid_items.id"), nullable=True)
     plaid_account_id = db.Column(db.Integer, db.ForeignKey("plaid_accounts.id"), nullable=True)

@@ -47,8 +47,10 @@ def compute_portfolio_value(user_id):
             price_row = price_map.get(h.ticker)
             price = price_row.price if price_row else 0
             value = h.shares * price
+            if value == 0 and h.institution_value:
+                value = h.institution_value
         else:
-            value = 0
+            value = h.institution_value or 0
         total += value
         bucket = _normalize_bucket(h.bucket) or "Equities"
         breakdown.setdefault(bucket, 0)

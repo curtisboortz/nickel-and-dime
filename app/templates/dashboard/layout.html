@@ -23,7 +23,7 @@ function _skeletonRows(r,c){var h="";for(var i=0;i<(r||5);i++){h+="<tr>";for(var
 
 <!-- Sidebar Navigation -->
 <nav class="sidebar">
-  <div class="sidebar-logo"><img src="/icon-192.png" alt="Nickel&amp;Dime"></div>
+  <div class="sidebar-logo"><img src="{{ url_for('static', filename='img/logo.svg') }}" alt="Nickel&amp;Dime"></div>
   <div class="sidebar-nav">
     {% set tabs = [
       ("summary",   "Summary",   '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>'),
@@ -1410,7 +1410,6 @@ function obFinish() {
 <!-- Referral Prompt Modal (shown once after 7 days) -->
 <div id="referral-prompt-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:1001;align-items:center;justify-content:center;" onclick="if(event.target===this)dismissReferralPrompt()">
   <div style="background:var(--bg-card);border:1px solid var(--border-accent);border-radius:var(--radius);padding:32px;max-width:420px;width:90%;text-align:center;">
-    <div style="font-size:2rem;margin-bottom:12px;">🎁</div>
     <h3 style="color:var(--text-primary);font-size:1.15rem;margin:0 0 8px;">Enjoying Nickel &amp; Dime?</h3>
     <p style="color:var(--text-muted);font-size:0.9rem;line-height:1.55;margin-bottom:20px;">
       Share your referral code with a friend. When they subscribe, you <strong style="color:var(--accent-primary);">both get a free month</strong> of Pro.

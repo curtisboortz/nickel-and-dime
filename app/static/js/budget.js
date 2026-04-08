@@ -216,16 +216,6 @@ function _flashUpdatedPulseCards() {
     }
     window._prevPulseValues[pid] = cur;
   });
-  var nw = document.getElementById("net-worth-counter");
-  if (nw) {
-    var cur = nw.textContent;
-    if (window._prevPulseValues._nw && window._prevPulseValues._nw !== cur) {
-      nw.classList.remove("price-flash");
-      void nw.offsetWidth;
-      nw.classList.add("price-flash");
-    }
-    window._prevPulseValues._nw = cur;
-  }
 }
 
 /* Theme is managed by theme.js -- toggleTheme() is defined there */

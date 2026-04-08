@@ -1725,6 +1725,25 @@ document.addEventListener("keydown", function(e) {
 <script src="{{ url_for('static', filename='js/ai.js') }}?v={{ v }}"></script>
 {% endif %}
 <script>
+function ensureTodayInHistory() {
+  var hist = window.PRICE_HISTORY_DATA;
+  var total = window.PORTFOLIO_TOTAL;
+  if (!hist || !hist.length || !total || total <= 0) return;
+  var todayStr = new Date().toLocaleDateString("en-CA");
+  var last = hist[hist.length - 1];
+  if (last.date === todayStr) {
+    last.close = total;
+    last.total = total;
+    last.high = Math.max(last.high || total, total);
+    last.low = Math.min(last.low || total, total);
+  } else if (last.date < todayStr) {
+    hist.push({
+      date: todayStr, total: total, open: total,
+      high: total, low: total, close: total, gold: null, silver: null
+    });
+  }
+  if (typeof buildHistoryChart === "function") buildHistoryChart("total");
+}
 (function() {
   if (typeof NDDiag !== "undefined") NDDiag.track("live-data", "loading");
   Promise.all([
@@ -1753,6 +1772,7 @@ document.addEventListener("keydown", function(e) {
         }, 15000);
       }).catch(function(){});
     }
+    ensureTodayInHistory();
   }).catch(function(e) { if (typeof NDDiag !== "undefined") NDDiag.track("live-data", "error", e.message || String(e)); });
 
   if (typeof NDDiag !== "undefined") NDDiag.track("portfolio-history", "loading");
@@ -1760,16 +1780,8 @@ document.addEventListener("keydown", function(e) {
   fetch("/api/portfolio-history?tz=" + encodeURIComponent(_userTz)).then(function(r) { return r.json(); }).then(function(d) {
     if (d && d.history) {
       window.PRICE_HISTORY_DATA = d.history;
-      var todayStr = new Date().toLocaleDateString("en-CA");
-      var lastEntry = d.history[d.history.length - 1];
-      if (lastEntry && lastEntry.date !== todayStr && window.PORTFOLIO_TOTAL) {
-        d.history.push({
-          date: todayStr, total: window.PORTFOLIO_TOTAL, open: window.PORTFOLIO_TOTAL,
-          high: window.PORTFOLIO_TOTAL, low: window.PORTFOLIO_TOTAL,
-          close: window.PORTFOLIO_TOTAL, gold: null, silver: null
-        });
-      }
       if (typeof buildHistoryChart === "function") buildHistoryChart("total");
+      ensureTodayInHistory();
       if (typeof NDDiag !== "undefined") NDDiag.track("portfolio-history", "ok", d.history.length + " data points");
     } else {
       if (typeof NDDiag !== "undefined") NDDiag.track("portfolio-history", "warn", "No history data");

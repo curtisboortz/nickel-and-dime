@@ -658,8 +658,11 @@ def portfolio_history():
             "gold": _safe(s.gold_price), "silver": _safe(s.silver_price),
         })
         last_snap_date = s.date
-    pv = compute_portfolio_value(current_user.id)
-    live_total = pv.get("total", 0)
+    try:
+        pv = compute_portfolio_value(current_user.id)
+        live_total = pv.get("total", 0) if pv else 0
+    except Exception:
+        live_total = 0
     if live_total and live_total > 0:
         if last_snap_date == today and all_entries:
             all_entries[-1]["close"] = live_total

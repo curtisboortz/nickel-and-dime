@@ -57,8 +57,9 @@ def register():
 
         db.session.commit()
 
-        from ..services.email_service import send_email_verification
+        from ..services.email_service import send_email_verification, send_welcome
         send_email_verification(user, verify_token)
+        send_welcome(user)
 
         login_user(user)
         flash(

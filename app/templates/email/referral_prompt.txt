@@ -1,0 +1,9 @@
+Hi {{ user.name or 'there' }},
+
+Enjoying Nickel & Dime? Know someone who tracks macro data and manages their own portfolio?
+
+YOU BOTH GET A FREE MONTH
+Share your referral code and when someone subscribes, you both get one month of Pro free.
+
+Get your referral code: https://nickelanddime.io/dashboard
+(Settings > Referral)

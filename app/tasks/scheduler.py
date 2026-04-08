@@ -79,6 +79,12 @@ def init_scheduler(app):
         id="backfill_snapshots", max_instances=1, replace_existing=True,
     )
 
+    _scheduler.add_job(
+        _run_in_context(app, _email_drip),
+        "cron", hour=10, minute=0, timezone="America/New_York",
+        id="email_drip", max_instances=1, replace_existing=True,
+    )
+
     # Run initial refreshes shortly after startup to let gunicorn boot fully
     from datetime import datetime, timedelta
     _scheduler.add_job(
@@ -203,3 +209,45 @@ def _backfill_all():
         log.info("Portfolio backfill completed")
     except Exception as e:
         log.error("Portfolio backfill error: %s", e)
+
+
+def _email_drip():
+    """Send lifecycle drip emails based on user signup age.
+
+    Day 0: Welcome (handled at registration, this is the fallback)
+    Day 7: Feature highlight
+    Day 14: Referral prompt
+    """
+    from datetime import datetime, timezone, timedelta
+    from ..extensions import db
+    from ..models.user import User
+    from ..services.email_service import send_feature_highlight, send_referral_prompt
+
+    now = datetime.now(timezone.utc)
+    sent = 0
+
+    try:
+        day7_start = now - timedelta(days=7, hours=2)
+        day7_end = now - timedelta(days=7)
+        day7_users = User.query.filter(
+            User.created_at.between(day7_start, day7_end),
+            User.email_verified.is_(True),
+        ).all()
+        for u in day7_users:
+            send_feature_highlight(u)
+            sent += 1
+
+        day14_start = now - timedelta(days=14, hours=2)
+        day14_end = now - timedelta(days=14)
+        day14_users = User.query.filter(
+            User.created_at.between(day14_start, day14_end),
+            User.email_verified.is_(True),
+        ).all()
+        for u in day14_users:
+            send_referral_prompt(u)
+            sent += 1
+
+        if sent:
+            log.info("Email drip: sent %d emails", sent)
+    except Exception as e:
+        log.error("Email drip error: %s", e)

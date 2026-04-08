@@ -1,0 +1,14 @@
+Hi {{ user.name or 'there' }},
+
+Your Nickel & Dime Pro subscription renews soon. Here's what you've been using:
+
+* Live holdings with real-time prices
+* FRED economic data series
+* Technical analysis charts
+* AI investment advisor
+* Portfolio export & templates
+
+No action needed — your plan renews automatically. Manage your subscription anytime:
+https://nickelanddime.io/billing/account
+
+Thank you for being a Pro member.

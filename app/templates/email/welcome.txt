@@ -1,0 +1,16 @@
+Welcome to Nickel & Dime, {{ user.name or 'there' }}!
+
+Here's how to get the most out of your first week:
+
+1. CUSTOMIZE YOUR PULSE
+   Add gold/silver ratios, crypto, yields, and any ticker to your market pulse bar.
+
+2. ADD YOUR HOLDINGS
+   Import from Fidelity, Schwab, or Vanguard via CSV, connect via Plaid, or add manually.
+
+3. EXPLORE THE ECONOMICS TAB
+   FRED data, yield curves, sentiment gauges, and the economic calendar.
+
+Open your dashboard: https://nickelanddime.io/dashboard
+
+Reply to this email anytime — it goes straight to a human.

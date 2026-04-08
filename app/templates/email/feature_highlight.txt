@@ -1,0 +1,16 @@
+Hi {{ user.name or 'there' }},
+
+You've been with Nickel & Dime for a week. Here are some features you might not have tried yet:
+
+AI INVESTMENT ADVISOR
+Ask "How would Ray Dalio view my portfolio?" or "What does the yield curve inversion mean for my holdings?" Your AI advisor uses your actual portfolio data.
+
+PORTFOLIO TEMPLATES
+Compare your allocation against the All-Weather Portfolio, 60/40, or Permanent Portfolio. See exactly where you differ.
+
+BUDGET & SAVINGS RATE
+Track monthly income, expenses by category, and your savings rate trend over time.
+
+Explore now: https://nickelanddime.io/dashboard
+
+Have feedback? Just reply to this email.

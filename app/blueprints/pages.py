@@ -184,12 +184,29 @@ def robots():
 
 @pages_bp.route("/sitemap.xml")
 def sitemap():
+    from ..models.blog import BlogPost
     xml = '<?xml version="1.0" encoding="UTF-8"?>\n'
     xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
-    for path in ["/", "/login", "/register", "/billing/pricing"]:
+    static_paths = ["/", "/login", "/register", "/billing/pricing", "/blog"]
+    for path in static_paths:
         xml += f"  <url><loc>https://nickelanddime.io{path}</loc></url>\n"
+    posts = BlogPost.query.filter_by(published=True).all()
+    for p in posts:
+        lastmod = (p.updated_at or p.created_at).strftime("%Y-%m-%d") if p.updated_at or p.created_at else ""
+        xml += f'  <url><loc>https://nickelanddime.io/blog/{p.slug}</loc>'
+        if lastmod:
+            xml += f"<lastmod>{lastmod}</lastmod>"
+        xml += "</url>\n"
     xml += "</urlset>\n"
     return Response(xml, mimetype="application/xml")
+
+
+@pages_bp.route("/lp/macro-investors")
+def lp_macro():
+    """Dedicated ad landing page for macro-focused investors."""
+    if current_user.is_authenticated:
+        return redirect(url_for("pages.dashboard_page"))
+    return render_template("lp_macro.html", now=datetime.now(timezone.utc))
 
 
 @pages_bp.route("/")

@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+
+{% block title %}Portfolio Tracker for Macro Investors | Nickel&amp;Dime{% endblock %}
+{% block meta_description %}Track your portfolio alongside live macro data — Fed policy, inflation, gold/silver ratios, yield curves, and sentiment gauges. One dashboard built for investors who read the Fed minutes.{% endblock %}
+
+{% block head_extra %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/landing.css') }}">
+<style>
+.lp-hero{text-align:center;padding:100px 24px 60px;max-width:720px;margin:0 auto}
+.lp-hero h1{font-size:2.6rem;font-weight:800;line-height:1.15;color:#f1f5f9;margin-bottom:20px}
+.lp-hero h1 .hero-grad{background:linear-gradient(135deg,#d4a017,#f5c842);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.lp-sub{font-size:1.15rem;color:#94a3b8;line-height:1.6;max-width:580px;margin:0 auto 36px}
+.lp-ctas{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
+.lp-cta{display:inline-flex;align-items:center;gap:8px;padding:14px 32px;border-radius:10px;font-weight:700;font-size:1rem;text-decoration:none;transition:all .2s}
+.lp-cta.primary{background:#d4a017;color:#0f0f12}.lp-cta.primary:hover{background:#f5c842}
+.lp-cta.secondary{border:1px solid rgba(255,255,255,0.15);color:#e2e8f0}.lp-cta.secondary:hover{border-color:rgba(255,255,255,0.3)}
+.lp-proof{text-align:center;padding:0 24px 48px;color:#64748b;font-size:0.9rem}
+.lp-features{max-width:900px;margin:0 auto;padding:0 24px 80px;display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:24px}
+.lp-feat{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:28px 24px}
+.lp-feat h3{color:#f1f5f9;font-size:1.05rem;margin-bottom:8px}
+.lp-feat p{color:#94a3b8;font-size:0.9rem;line-height:1.55}
+.lp-feat .feat-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:14px}
+.lp-feat .feat-icon svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8}
+.lp-final{text-align:center;padding:60px 24px 80px;max-width:600px;margin:0 auto}
+.lp-final h2{font-size:1.8rem;font-weight:800;color:#f1f5f9;margin-bottom:12px}
+.lp-final p{color:#94a3b8;margin-bottom:28px;font-size:1rem}
+.lp-quote{max-width:600px;margin:0 auto 60px;padding:24px 32px;border-left:3px solid #d4a017;background:rgba(212,160,23,0.05);border-radius:0 10px 10px 0}
+.lp-quote p{color:#cbd5e1;font-size:0.95rem;line-height:1.6;font-style:italic;margin:0}
+.lp-quote cite{color:#64748b;font-size:0.82rem;display:block;margin-top:8px;font-style:normal}
+</style>
+{% endblock %}
+
+{% block body_class %}landing-body{% endblock %}
+
+{% block body %}
+<nav class="landing-nav">
+  <a href="/" class="landing-brand">
+    <img src="/icon-192.png" alt="N&amp;D" onerror="this.style.display='none'">
+    Nickel&amp;Dime
+  </a>
+  <div class="landing-nav-links">
+    <a href="{{ url_for('auth.login') }}">Log In</a>
+    <a href="{{ url_for('auth.register') }}" class="landing-cta-sm">Start Free Trial</a>
+  </div>
+</nav>
+
+<section class="lp-hero">
+  <h1>Your portfolio meets<br><span class="hero-grad">the economy</span></h1>
+  <p class="lp-sub">
+    Nickel &amp; Dime is the only portfolio tracker that shows your investments alongside live macro data &mdash;
+    Fed policy, inflation trends, sentiment gauges, yield curves, and gold/silver ratios &mdash; all in one dashboard.
+  </p>
+  <div class="lp-ctas">
+    <a href="{{ url_for('auth.register') }}" class="lp-cta primary">
+      Start 14-Day Free Trial
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+    </a>
+  </div>
+</section>
+
+<p class="lp-proof">No credit card required &middot; Free tier always available &middot; $12/mo Pro</p>
+
+<div class="lp-quote">
+  <p>"I was tired of checking my brokerage, then FRED, then Twitter for gold prices, then a spreadsheet for my net worth. I wanted one screen."</p>
+  <cite>&mdash; Curtis, Founder</cite>
+</div>
+
+<div class="lp-features">
+  <div class="lp-feat">
+    <div class="feat-icon" style="background:rgba(212,160,23,0.12);color:#d4a017">
+      <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+    </div>
+    <h3>Live Macro Dashboard</h3>
+    <p>Gold, silver, BTC, yields, DXY, VIX, oil, copper, and equities &mdash; all updating every 5 minutes with interactive charts.</p>
+  </div>
+  <div class="lp-feat">
+    <div class="feat-icon" style="background:rgba(52,211,153,0.12);color:#34d399">
+      <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+    </div>
+    <h3>Portfolio + Macro Context</h3>
+    <p>See your holdings alongside Fed policy, inflation data, and sentiment gauges. Your portfolio in the context of the economy.</p>
+  </div>
+  <div class="lp-feat">
+    <div class="feat-icon" style="background:rgba(251,191,36,0.12);color:#fbbf24">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    </div>
+    <h3>Gold/Silver Ratio Tracking</h3>
+    <p>Custom pulse cards with ratio support. Track gold/silver, gold/oil, and other macro ratios that matter to you.</p>
+  </div>
+  <div class="lp-feat">
+    <div class="feat-icon" style="background:rgba(139,92,246,0.12);color:#8b5cf6">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+    </div>
+    <h3>Sentiment Gauges</h3>
+    <p>Fear &amp; Greed, crypto sentiment, CAPE ratio, Buffett Indicator, and Sahm Rule &mdash; visual gauges at a glance.</p>
+  </div>
+  <div class="lp-feat">
+    <div class="feat-icon" style="background:rgba(59,130,246,0.12);color:#3b82f6">
+      <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+    </div>
+    <h3>FRED Data + Econ Calendar</h3>
+    <p>Yield curves, CPI, unemployment, GDP, Fed Funds rate &mdash; plus upcoming events with actual vs. forecast data.</p>
+  </div>
+  <div class="lp-feat">
+    <div class="feat-icon" style="background:rgba(244,63,94,0.12);color:#f43f5e">
+      <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+    </div>
+    <h3>AI Investment Advisor</h3>
+    <p>Ask questions about your portfolio through the lens of Dalio, Graham, or Bogle. AI insights grounded in your actual data.</p>
+  </div>
+</div>
+
+<section class="lp-final">
+  <h2>Built for investors who do their own research</h2>
+  <p>If you read the Fed minutes, track commodity ratios, and want your portfolio in the context of the macro picture &mdash; this is your tool.</p>
+  <a href="{{ url_for('auth.register') }}" class="lp-cta primary">
+    Start Free &mdash; No Credit Card
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+  </a>
+</section>
+
+<footer class="landing-footer">
+  <div class="footer-brand">Nickel&amp;Dime</div>
+  <p>&copy; {{ now.year if now else 2026 }} Nickel&amp;Dime. All rights reserved.</p>
+  <p style="margin-top:10px;">
+    <a href="{{ url_for('pages.privacy') }}">Privacy</a> &middot;
+    <a href="{{ url_for('pages.terms') }}">Terms</a> &middot;
+    <a href="{{ url_for('pages.disclaimer') }}">Disclaimer</a> &middot;
+    <a href="mailto:support@nickelanddime.io">Contact</a>
+  </p>
+</footer>
+{% endblock %}

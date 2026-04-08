@@ -164,3 +164,43 @@ def send_trial_ending(user, days_left):
         user=user,
         days_left=days_left,
     )
+
+
+def send_welcome(user):
+    """Day-0 welcome email with onboarding tips."""
+    send_email(
+        to=user.email,
+        subject="Welcome to Nickel & Dime",
+        template="email/welcome",
+        user=user,
+    )
+
+
+def send_feature_highlight(user):
+    """Day-7 email highlighting features the user may have missed."""
+    send_email(
+        to=user.email,
+        subject="Features You Might Have Missed",
+        template="email/feature_highlight",
+        user=user,
+    )
+
+
+def send_referral_prompt(user):
+    """Day-14 email encouraging referral sharing."""
+    send_email(
+        to=user.email,
+        subject="Give a Month, Get a Month Free",
+        template="email/referral_prompt",
+        user=user,
+    )
+
+
+def send_renewal_reminder(user):
+    """Pre-renewal reminder for active subscribers."""
+    send_email(
+        to=user.email,
+        subject="Your Pro Subscription Renews Soon",
+        template="email/renewal_reminder",
+        user=user,
+    )

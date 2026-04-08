@@ -269,9 +269,20 @@ def _concentration_analysis(user_id, weights, total):
     }
 
 
+_PARENT_CATEGORIES = [
+    "Equities", "Fixed Income", "Real Assets",
+    "Alternatives", "Commodities", "Cash",
+]
+
+
 def _correlation_matrix(weights):
-    """Build a correlation matrix for the portfolio's buckets."""
-    buckets = sorted(weights.keys())
+    """Build a correlation matrix including all parent categories."""
+    held = set(weights.keys())
+    all_cats = list(held)
+    for c in _PARENT_CATEGORIES:
+        if c not in held:
+            all_cats.append(c)
+    buckets = sorted(all_cats)
     matrix = {}
     for a in buckets:
         row = {}

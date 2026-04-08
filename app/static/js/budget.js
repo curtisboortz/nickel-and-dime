@@ -200,6 +200,7 @@ function startPeriodicLivePoll(intervalSec) {
         if (d.buckets_detail) window.BUCKETS_DETAIL = d.buckets_detail;
         if (d.buckets_children) window.BUCKETS_CHILDREN = d.buckets_children;
         if (typeof buildDonut === "function") buildDonut();
+        if (typeof _summaryDataLoaded !== "undefined") _summaryDataLoaded = false;
       }
     }).catch(function() {});
   }, ms);

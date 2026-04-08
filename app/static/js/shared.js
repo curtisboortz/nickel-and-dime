@@ -231,7 +231,10 @@ var _ND_DEFAULT_COLORS = {
   "Real Estate": "#06b6d4",
   "Art": "#e879f9",
   "Managed Blend": "#4ade80",
-  "Retirement Blend": "#86efac"
+  "Retirement Blend": "#86efac",
+  "Commodities": "#fb923c",
+  "Private Equity": "#c084fc",
+  "Venture Capital": "#e879f9"
 };
 window.ND_CATEGORY_COLORS = {};
 var _ndColorFallback = ["#f87171","#fbbf24","#2dd4bf","#a3e635","#f472b6","#fb923c","#84cc16"];

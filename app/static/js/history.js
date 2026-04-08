@@ -1,4 +1,9 @@
 /* Nickel&Dime - Portfolio history chart */
+function _histDateTs(d) {
+  if (!d) return 0;
+  if (d.length === 10) return new Date(d + "T12:00:00").getTime();
+  return new Date(d).getTime();
+}
 var _histChartType = "line";
 function setHistoryChartType(type) {
   _histChartType = type;
@@ -35,7 +40,7 @@ function buildHistoryChart(metric) {
     // Candlestick mode using OHLC data with timestamps
     var ohlcData = PRICE_HISTORY_DATA.map(function(r) {
       return {
-        x: new Date(r.date).getTime(),
+        x: _histDateTs(r.date),
         o: r.open || r.total,
         h: r.high || r.total,
         l: r.low || r.total,
@@ -91,7 +96,7 @@ function buildHistoryChart(metric) {
     });
   } else {
     // Line mode using close/total values with proper time-based x-axis
-    var pointData = PRICE_HISTORY_DATA.map(function(r) { return { x: r.date, y: r.close || r.total }; });
+    var pointData = PRICE_HISTORY_DATA.map(function(r) { return { x: _histDateTs(r.date), y: r.close || r.total }; });
     var fmt = function(v) { return v != null ? "$" + v.toLocaleString(undefined, {maximumFractionDigits:0}) : "—"; };
     var validData = pointData.filter(function(p) { return p.y != null && isFinite(p.y); });
     var vals = validData.map(function(p) { return p.y; });

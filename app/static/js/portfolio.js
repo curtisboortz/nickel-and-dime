@@ -1172,12 +1172,13 @@ var _metricExplainers = {
   },
   classes: {
     title: "Asset Classes",
-    body: "The number of distinct asset categories in your portfolio. Nickel&Dime tracks five parent classes: " +
-      "Equities, Fixed Income, Real Assets (Gold, Silver, Real Estate, Art), Alternatives (Crypto), and Cash.\n\n" +
+    body: "The number of distinct parent asset categories in your portfolio. Nickel&Dime tracks six parent classes: " +
+      "Equities, Fixed Income, Real Assets (Gold, Silver, Real Estate, Art), Alternatives (Crypto, Private Equity, Venture Capital), " +
+      "Commodities (energy, agriculture — excluding precious metals), and Cash.\n\n" +
       "<strong>1 – 2</strong> — Very concentrated. A single downturn in one sector can hit your entire portfolio.\n" +
-      "<strong>3</strong> — Moderate breadth. Some diversification but still exposed to correlated risks.\n" +
-      "<strong>4</strong> — Good breadth. Most major asset types are represented.\n" +
-      "<strong>5</strong> — Full breadth. You have exposure across all tracked asset classes."
+      "<strong>3 – 4</strong> — Moderate breadth. Some diversification but still exposed to correlated risks.\n" +
+      "<strong>5</strong> — Good breadth. Most major asset types are represented.\n" +
+      "<strong>6</strong> — Full breadth. You have exposure across all tracked asset classes."
   }
 };
 

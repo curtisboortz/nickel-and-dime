@@ -4,6 +4,20 @@ All notable changes to Nickel&Dime are documented here.
 
 ---
 
+## [2.8.0] — 2026-04-08 — Commodities Category, Alt Children & Chart Date Fix
+
+### Added
+- **Commodities parent category** — added as the 6th parent asset class covering energy, agriculture, and other non-precious-metal commodities; precious metals (Gold, Silver) remain under Real Assets
+- **Private Equity & Venture Capital** — added as new child categories under Alternatives alongside Crypto
+- **Correlation & volatility data** — full pairwise correlations and annualized volatility estimates for Commodities, Private Equity, and Venture Capital across all existing asset classes
+- **Chart colors** — distinct palette entries for Commodities (warm orange), Private Equity, and Venture Capital
+
+### Fixed
+- **Portfolio history chart showing wrong date** — root cause was JavaScript's `new Date("2026-04-07")` parsing as midnight UTC, which in Pacific time displayed as April 6; date strings are now parsed with `T12:00:00` appended so they stay on the correct calendar day in any timezone
+- **Asset classes explainer** — updated to reflect 6 parent categories with accurate diversification guidance (1-2 concentrated, 3-4 moderate, 5 good, 6 full breadth)
+
+---
+
 ## [2.7.1] — 2026-04-08 — Chart Reliability, Timezone Fix & Economics Cleanup
 
 ### Fixed

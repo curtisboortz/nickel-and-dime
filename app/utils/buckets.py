@@ -1,9 +1,10 @@
 """Bucket name normalization and standard bucket list."""
 
 STANDARD_BUCKETS = [
-    "Alternatives", "Art", "Cash", "Crypto", "Equities", "Fixed Income",
-    "Gold", "International", "Managed Blend", "Real Assets", "Real Estate",
-    "Retirement Blend", "Silver",
+    "Alternatives", "Art", "Cash", "Commodities", "Crypto", "Equities",
+    "Fixed Income", "Gold", "International", "Managed Blend",
+    "Private Equity", "Real Assets", "Real Estate",
+    "Retirement Blend", "Silver", "Venture Capital",
 ]
 
 BUCKET_PARENTS = {
@@ -15,6 +16,8 @@ BUCKET_PARENTS = {
     "Gold": "Real Assets",
     "Silver": "Real Assets",
     "Crypto": "Alternatives",
+    "Private Equity": "Alternatives",
+    "Venture Capital": "Alternatives",
 }
 
 _BUCKET_ALIASES = {
@@ -29,7 +32,13 @@ _BUCKET_ALIASES = {
     "realestate": "Real Estate",
     "real estate": "Real Estate",
     "alternatives": "Alternatives",
-    "commodities": "Real Assets",
+    "commodities": "Commodities",
+    "privateequity": "Private Equity",
+    "private equity": "Private Equity",
+    "venturecapital": "Venture Capital",
+    "venture capital": "Venture Capital",
+    "vc": "Venture Capital",
+    "pe": "Private Equity",
 }
 
 

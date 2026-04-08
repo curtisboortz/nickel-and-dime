@@ -68,6 +68,9 @@ function updateProjectionChart() {
   } else {
     var ctx = document.getElementById("projection-chart");
     if (!ctx || typeof Chart === "undefined") return;
+    var _t = (typeof ndChartTheme === "function") ? ndChartTheme() : null;
+    var _tc = _t ? _t.text : "#64748b";
+    var _gc = _t ? _t.gridLight : "rgba(255,255,255,0.03)";
     projectionChart = new Chart(ctx, {
       type: "line",
       data: {
@@ -100,12 +103,9 @@ function updateProjectionChart() {
         plugins: {
           legend: {
             display: true, position: "top",
-            labels: { color: "#94a3b8", font: { size: 10 }, usePointStyle: true, pointStyle: "line", padding: 16 }
+            labels: { color: _tc, font: { size: 10 }, usePointStyle: true, pointStyle: "line", padding: 16 }
           },
-          tooltip: {
-            backgroundColor: "rgba(9,9,11,0.95)",
-            titleColor: "#f1f5f9", bodyColor: "#cbd5e1",
-            borderColor: "rgba(255,255,255,0.08)", borderWidth: 1,
+          tooltip: Object.assign(_t ? ndTooltipOpts(_t) : { backgroundColor: "rgba(9,9,11,0.95)", titleColor: "#f1f5f9", bodyColor: "#cbd5e1", borderColor: "rgba(255,255,255,0.08)", borderWidth: 1 }, {
             padding: 12, cornerRadius: 8,
             callbacks: {
               label: function(c) {
@@ -118,11 +118,11 @@ function updateProjectionChart() {
                 return c.dataset.label + ": " + fmt;
               }
             }
-          }
+          })
         },
         scales: {
-          x: { ticks: { color: "#64748b", font: { size: 10 }, maxTicksLimit: 12 }, grid: { display: false } },
-          y: { ticks: { color: "#64748b", font: { size: 10 }, callback: function(v) { return v >= 1000000 ? "$" + (v/1000000).toFixed(1) + "M" : "$" + (v/1000).toFixed(0) + "K"; } }, grid: { color: "rgba(255,255,255,0.03)" } }
+          x: { ticks: { color: _tc, font: { size: 10 }, maxTicksLimit: 12 }, grid: { display: false } },
+          y: { ticks: { color: _tc, font: { size: 10 }, callback: function(v) { return v >= 1000000 ? "$" + (v/1000000).toFixed(1) + "M" : "$" + (v/1000).toFixed(0) + "K"; } }, grid: { color: _gc } }
         }
       }
     });
@@ -1339,17 +1339,11 @@ function _renderTemplateRadar(d) {
       scales: {
         r: {
           beginAtZero: true,
-          ticks: {
-            display: false,
-          },
-          grid: {
-            color: "rgba(255,255,255,0.08)",
-          },
-          angleLines: {
-            color: "rgba(255,255,255,0.08)",
-          },
+          ticks: { display: false },
+          grid: { color: (typeof ndChartTheme === "function") ? ndChartTheme().grid : "rgba(255,255,255,0.08)" },
+          angleLines: { color: (typeof ndChartTheme === "function") ? ndChartTheme().grid : "rgba(255,255,255,0.08)" },
           pointLabels: {
-            color: "rgba(255,255,255,0.6)",
+            color: (typeof ndChartTheme === "function") ? ndChartTheme().text : "rgba(255,255,255,0.6)",
             font: { size: 11 },
           },
         },
@@ -1357,7 +1351,7 @@ function _renderTemplateRadar(d) {
       plugins: {
         legend: {
           labels: {
-            color: "rgba(255,255,255,0.7)",
+            color: (typeof ndChartTheme === "function") ? ndChartTheme().text : "rgba(255,255,255,0.7)",
             font: { size: 11 },
           },
         },

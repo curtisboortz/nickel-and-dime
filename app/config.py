@@ -26,8 +26,24 @@ class Config:
     MAIL_PASSWORD = os.environ.get("MAIL_PASSWORD", "")
     MAIL_DEFAULT_SENDER = os.environ.get("MAIL_DEFAULT_SENDER", "noreply@nickelanddime.io")
 
-    # Rate limiting
-    RATELIMIT_STORAGE_URI = os.environ.get("RATELIMIT_STORAGE_URI", "memory://")
+    # Redis
+    REDIS_URL = os.environ.get("REDIS_URL", "")
+
+    # Rate limiting (auto-uses Redis if REDIS_URL is set)
+    RATELIMIT_STORAGE_URI = os.environ.get(
+        "RATELIMIT_STORAGE_URI",
+        os.environ.get("REDIS_URL", "") or "memory://",
+    )
+
+    # Server-side sessions (Redis when available, cachelib fallback)
+    SESSION_TYPE = "redis" if os.environ.get("REDIS_URL") else "cachelib"
+    SESSION_PERMANENT = True
+    SESSION_KEY_PREFIX = "nd:session:"
+
+    # Flask-Caching
+    CACHE_TYPE = "RedisCache" if os.environ.get("REDIS_URL") else "SimpleCache"
+    CACHE_DEFAULT_TIMEOUT = 120
+    CACHE_KEY_PREFIX = "nd:cache:"
 
 
 class DevConfig(Config):
@@ -73,6 +89,8 @@ class TestConfig(Config):
     SQLALCHEMY_DATABASE_URI = "sqlite:///:memory:"
     WTF_CSRF_ENABLED = False
     RATELIMIT_ENABLED = False
+    SESSION_TYPE = "cachelib"
+    CACHE_TYPE = "SimpleCache"
 
 
 config_by_name = {

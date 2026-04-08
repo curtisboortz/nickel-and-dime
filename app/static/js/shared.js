@@ -250,6 +250,75 @@ function ndDefaultCategoryColor(label) {
   return _ND_DEFAULT_COLORS[label] || _ndColorFallback[Math.abs(_ndHashStr(label)) % _ndColorFallback.length];
 }
 
+/* ── Centralized Chart Theme ── */
+function ndIsLight() {
+  return document.documentElement.classList.contains("light");
+}
+
+function ndChartTheme() {
+  var light = ndIsLight();
+  return {
+    text:        light ? "#4b5068" : "#94a3b8",
+    textMuted:   light ? "#7c8194" : "#64748b",
+    textBright:  light ? "#1a1d2e" : "#f1f5f9",
+    grid:        light ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.06)",
+    gridLight:   light ? "rgba(0,0,0,0.03)" : "rgba(255,255,255,0.03)",
+    border:      light ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.08)",
+    tooltipBg:   light ? "rgba(255,255,255,0.96)" : "rgba(9,9,11,0.95)",
+    tooltipText: light ? "#1a1d2e" : "#f1f5f9",
+    tooltipBody: light ? "#4b5068" : "#cbd5e1",
+    tooltipBorder: light ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.08)",
+    cardBg:      light ? "#ffffff" : "#161619",
+    accent:      "#d4a017",
+    accentLight: "#f5c842",
+    success:     "#34d399",
+    danger:      "#f87171",
+    warning:     "#fbbf24",
+    candleUp:    light ? "#16a34a" : "#34d399",
+    candleDown:  light ? "#dc2626" : "#f87171",
+    candleFlat:  light ? "#7c8194" : "#94a3b8",
+    donutBorder: light ? "rgba(255,255,255,0.9)" : "rgba(9,9,11,0.8)",
+  };
+}
+
+function ndTooltipOpts(theme) {
+  theme = theme || ndChartTheme();
+  return {
+    backgroundColor: theme.tooltipBg,
+    titleColor: theme.tooltipText,
+    bodyColor: theme.tooltipBody,
+    borderColor: theme.tooltipBorder,
+    borderWidth: 1,
+    padding: 10,
+    cornerRadius: 8,
+    displayColors: true,
+    boxPadding: 4,
+  };
+}
+
+function ndScaleOpts(theme) {
+  theme = theme || ndChartTheme();
+  return {
+    ticks: { color: theme.text, font: { size: 11 } },
+    grid:  { color: theme.grid, drawBorder: false },
+  };
+}
+
+function ndGradient(ctx, color, height) {
+  height = height || 300;
+  var g = ctx.createLinearGradient(0, 0, 0, height);
+  g.addColorStop(0, color.replace(")", ",0.25)").replace("rgb(", "rgba(").replace("#", ""));
+  if (color.startsWith("#")) {
+    var r = parseInt(color.slice(1,3),16), gr = parseInt(color.slice(3,5),16), b = parseInt(color.slice(5,7),16);
+    g.addColorStop(0, "rgba("+r+","+gr+","+b+",0.18)");
+    g.addColorStop(1, "rgba("+r+","+gr+","+b+",0.01)");
+  } else {
+    g.addColorStop(0, color);
+    g.addColorStop(1, "transparent");
+  }
+  return g;
+}
+
 /* Fix candlestick wick-through-body artifact: redraw opaque bodies over wicks.
    CandlestickElement pixel props: x, open, high, low, close, width.
    In canvas coords lower y = higher price, so close < open means price went UP. */

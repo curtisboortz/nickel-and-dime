@@ -17,6 +17,11 @@ email-validator>=2.1.0
 # Rate limiting
 flask-limiter>=3.5.0
 
+# Redis & caching
+redis>=5.0.0
+Flask-Caching>=2.1.0
+Flask-Session>=0.8.0
+
 # Billing
 stripe>=8.0.0
 

@@ -12,7 +12,7 @@ from flask import (
 )
 from flask_login import login_required, current_user
 
-from ..extensions import db
+from ..extensions import db, cache
 from ..utils.auth import requires_pro, is_pro
 from ..models.portfolio import (
     Holding, CryptoHolding, PhysicalMetal, Account, BlendedAccount,
@@ -1231,6 +1231,11 @@ def portfolio_insights():
     """Return AI-generated portfolio insights."""
     from ..services.insights_service import generate_insights
 
+    ck = f"insights:{current_user.id}"
+    cached = cache.get(ck)
+    if cached is not None:
+        return jsonify(cached)
+
     settings = (
         db.session.query(UserSettings)
         .filter_by(user_id=current_user.id)
@@ -1241,9 +1246,9 @@ def portfolio_insights():
         if settings and hasattr(settings, "bucket_rollup")
         else None
     )
-    return jsonify(generate_insights(
-        current_user.id, overrides=overrides
-    ))
+    result = generate_insights(current_user.id, overrides=overrides)
+    cache.set(ck, result, timeout=120)
+    return jsonify(result)
 
 
 # ── AI Portfolio Advisor ────────────────────────────────────────

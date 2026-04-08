@@ -16,8 +16,10 @@
 
   function _updateCharts(isLight) {
     if (typeof Chart === "undefined") return;
-    var txtColor = isLight ? "#4a4a5a" : "#94a3b8";
-    var gridColor = isLight ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.06)";
+    var t = (typeof ndChartTheme === "function") ? ndChartTheme() : null;
+    var txtColor = t ? t.text : (isLight ? "#4b5068" : "#94a3b8");
+    var gridColor = t ? t.grid : (isLight ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.06)");
+    var tipOpts = t ? ndTooltipOpts(t) : null;
     Object.values(Chart.instances || {}).forEach(function(chart) {
       if (!chart || !chart.options) return;
       if (chart.options.scales) {
@@ -28,6 +30,17 @@
       }
       if (chart.options.plugins && chart.options.plugins.legend && chart.options.plugins.legend.labels) {
         chart.options.plugins.legend.labels.color = txtColor;
+      }
+      if (tipOpts && chart.options.plugins && chart.options.plugins.tooltip) {
+        var tip = chart.options.plugins.tooltip;
+        tip.backgroundColor = tipOpts.backgroundColor;
+        tip.titleColor = tipOpts.titleColor;
+        tip.bodyColor = tipOpts.bodyColor;
+        tip.borderColor = tipOpts.borderColor;
+      }
+      if (t && chart.config.type === "doughnut" && chart.data.datasets[0]) {
+        chart.data.datasets[0].borderColor = t.donutBorder;
+        chart.data.datasets[0].hoverBorderColor = t.textBright;
       }
       chart.update("none");
     });
@@ -45,6 +58,7 @@
     _updateLabel(isLight);
     _updateCharts(isLight);
     if (typeof buildHistoryChart === "function" && window.historyChart) buildHistoryChart("total");
+    if (typeof _fredTooltip === "function") window.fredTooltipOpts = _fredTooltip();
   };
 
   if (saved === "light") _updateIcon(true);

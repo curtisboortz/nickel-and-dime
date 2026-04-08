@@ -27,7 +27,7 @@
   --mono: 'JetBrains Mono', monospace;
 }
 .ins-metric-card:hover {
-  background: #252529 !important;
+  background: var(--bg-card-hover) !important;
   border-color: var(--accent-primary);
   box-shadow: 0 0 0 1px var(--accent-primary);
 }
@@ -506,16 +506,94 @@ button.success {
 ::-webkit-scrollbar-thumb:hover { background:rgba(255,255,255,0.15); }
 /* ── Light Theme ── */
 html.light {
-  --bg-primary:#f5f5f7; --bg-secondary:#eeeef0; --bg-card:#ffffff; --bg-card-hover:#fafafa;
-  --bg-input:#f0f0f2; --border-subtle:rgba(0,0,0,0.08); --border-accent:rgba(212,160,23,0.3);
-  --text-primary:#1a1a2e; --text-secondary:#4a4a5a; --text-muted:#7a7a8a;
+  --bg-primary: #f8f9fb;
+  --bg-secondary: #eef0f4;
+  --bg-card: #ffffff;
+  --bg-card-hover: #f5f6f8;
+  --bg-input: #f0f1f5;
+  --border-subtle: rgba(0,0,0,0.07);
+  --border-accent: rgba(180,130,10,0.25);
+  --text-primary: #1a1d2e;
+  --text-secondary: #4b5068;
+  --text-muted: #7c8194;
+  --accent-glow: rgba(212,160,23,0.10);
+  --success-glow: rgba(22,163,74,0.10);
+  --surface-raised: #f5f6f8;
 }
+/* Sidebar */
 html.light .sidebar { background:var(--bg-secondary); border-color:var(--border-subtle); }
 html.light .sidebar-logo { background:var(--bg-card); }
-html.light input, html.light select { background:var(--bg-input); color:var(--text-primary); border-color:var(--border-subtle); }
-html.light select option { background:var(--bg-input); color:var(--text-primary); }
+html.light .nav-item:hover { background:rgba(0,0,0,0.04); }
+html.light .nav-item .tooltip {
+  background:#fff; border-color:var(--border-subtle);
+  box-shadow:0 4px 12px rgba(0,0,0,0.10);
+}
+/* Hero */
 html.light .hero-value { -webkit-text-fill-color:var(--accent-primary); }
+html.light .hero-change.pos { background:rgba(22,163,74,0.08); }
+html.light .hero-change.neg { background:rgba(220,38,38,0.08); }
+/* Inputs & Buttons */
+html.light input, html.light select { background:var(--bg-input); color:var(--text-primary); border-color:var(--border-subtle); }
+html.light select option { background:#fff; color:var(--text-primary); }
+html.light .auth-input { background:var(--bg-input); }
+html.light button { box-shadow:0 1px 3px rgba(0,0,0,0.08); }
+html.light button.secondary { border-color:rgba(0,0,0,0.12); }
+html.light button.secondary:hover { background:rgba(0,0,0,0.04); }
+/* Cards */
+html.light .card { box-shadow:0 1px 3px rgba(0,0,0,0.04); }
+html.light .card:hover { border-color:var(--border-accent); box-shadow:0 2px 8px rgba(0,0,0,0.06); }
+/* Tables */
+html.light td { border-bottom-color:rgba(0,0,0,0.04); }
+html.light tbody tr:nth-child(even) { background:rgba(0,0,0,0.015); }
+html.light tbody tr:hover { background:rgba(180,130,10,0.04); }
+html.light th { background:var(--bg-card); }
+/* Pulse Cards */
+html.light .pulse-item { box-shadow:0 1px 2px rgba(0,0,0,0.04); }
+html.light .pulse-item:hover { border-color:var(--border-accent); }
+html.light .pulse-size-btn { background:var(--bg-input); border-color:var(--border-subtle); }
+/* Progress bars */
+html.light .mini-progress, html.light .progress-bar { background:rgba(0,0,0,0.06); }
+/* Mobile Nav */
 html.light .mobile-nav { background:var(--bg-secondary); }
+/* Modals */
+html.light .pcm-overlay { background:rgba(0,0,0,0.35); }
+html.light .pcm-box { box-shadow:0 20px 60px rgba(0,0,0,0.15); }
+html.light .cmd-overlay { background:rgba(0,0,0,0.25); }
+html.light .cmd-box { box-shadow:0 20px 60px rgba(0,0,0,0.15); }
+/* Menus */
+html.light .bal-menu { box-shadow:0 8px 24px rgba(0,0,0,0.10); }
+html.light .auto-popover { box-shadow:0 8px 24px rgba(0,0,0,0.10); }
+/* Toast */
+html.light .toast { box-shadow:0 4px 20px rgba(0,0,0,0.08); }
+/* Scrollbar */
+html.light ::-webkit-scrollbar-thumb { background:rgba(0,0,0,0.12); }
+html.light ::-webkit-scrollbar-thumb:hover { background:rgba(0,0,0,0.20); }
+/* Loading spinner */
+html.light .loading-spinner { border-color:rgba(0,0,0,0.10); border-top-color:var(--accent-primary); }
+html.light .pcm-spinner::after { border-color:rgba(0,0,0,0.10); border-top-color:var(--accent-primary); }
+/* Sentiment gauges */
+html.light .sentiment-gauge:hover { background:rgba(0,0,0,0.03); }
+html.light .sentiment-gauge.active { background:rgba(99,102,241,0.06); }
+html.light #sentiment-detail-close:hover { background:rgba(0,0,0,0.05); }
+html.light .range-btn-group { background:rgba(0,0,0,0.04); }
+html.light .range-btn:hover { background:rgba(0,0,0,0.06); }
+/* AI Chat */
+html.light .ai-msg-assistant { background:var(--bg-input); }
+html.light .ai-msg-assistant code { background:rgba(0,0,0,0.05); }
+/* Amortization */
+html.light .amort-stat { box-shadow:0 1px 2px rgba(0,0,0,0.04); }
+/* Spending */
+html.light .spend-row:hover { background:var(--bg-card-hover); }
+html.light .spend-bar-wrap { background:rgba(0,0,0,0.05); }
+/* Refresh button */
+html.light .refresh-btn { color:#fff; }
+/* Budget & misc inputs */
+html.light .income-bar { background:var(--bg-input); }
+html.light .tip-box { background:var(--bg-input); }
+html.light .invest-chat { background:var(--bg-input); }
+html.light .goal-card { background:var(--bg-input); }
+/* Soft page transition */
+html.light #nd-page-transition { background:var(--bg-primary); }
 /* ── Balance Row Actions ── */
 .bal-kebab {
   background:none; border:none; color:var(--text-muted); cursor:pointer;

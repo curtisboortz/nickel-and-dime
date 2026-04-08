@@ -2,6 +2,9 @@
 
 Runs shared data refresh jobs (prices, FRED, calendar, sentiment)
 and per-user portfolio snapshots on configurable intervals.
+
+When REDIS_URL is set, each job acquires a distributed lock so only
+one Gunicorn worker (or Railway replica) executes the task.
 """
 
 import logging
@@ -9,14 +12,16 @@ from apscheduler.schedulers.background import BackgroundScheduler
 
 log = logging.getLogger(__name__)
 _scheduler = None
+_redis_client = None
 
 
 def init_scheduler(app):
     """Create and start the background scheduler within the Flask app context."""
-    global _scheduler
+    global _scheduler, _redis_client
     if _scheduler is not None:
         return _scheduler
 
+    _redis_client = app.extensions.get("redis")
     _scheduler = BackgroundScheduler(daemon=True)
 
     _scheduler.add_job(
@@ -98,10 +103,19 @@ def init_scheduler(app):
 
 
 def _run_in_context(app, func):
-    """Wrap a function to run within the Flask app context."""
+    """Wrap a function to run within the Flask app context.
+
+    When Redis is available, acquires a distributed lock so duplicate
+    workers/replicas skip the same job.
+    """
     def wrapper():
         with app.app_context():
-            func()
+            from ..utils.redis_helpers import RedisLock
+            with RedisLock(_redis_client, func.__name__, timeout=300) as acquired:
+                if not acquired:
+                    log.debug("Skipping %s — another worker holds the lock", func.__name__)
+                    return
+                func()
     return wrapper
 
 
@@ -109,15 +123,32 @@ def _refresh_prices():
     from ..services.market_data import refresh_all_prices
     try:
         refresh_all_prices()
+        _clear_price_caches()
         log.info("Prices refreshed")
     except Exception as e:
         log.error("Price refresh error: %s", e)
+
+
+def _clear_price_caches():
+    """Invalidate Redis/in-memory caches after a data refresh."""
+    try:
+        from ..extensions import cache
+        for key in ("sentiment", "fedwatch"):
+            cache.delete(key)
+    except Exception:
+        pass
 
 
 def _refresh_fred():
     from ..services.fred_service import refresh_fred_data
     try:
         refresh_fred_data()
+        try:
+            from ..extensions import cache
+            for h in ("1y", "5y", "max"):
+                cache.delete(f"fred:{h}:all")
+        except Exception:
+            pass
     except Exception as e:
         log.error("FRED refresh error: %s", e)
 

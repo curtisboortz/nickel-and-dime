@@ -47,22 +47,15 @@ function buildHistoryChart(metric) {
         c: r.close || r.total,
       };
     });
+    var _t = ndChartTheme();
     window.historyChart = new Chart(ctx, {
       type: "candlestick",
       data: {
         datasets: [{
           label: "Portfolio Value",
           data: ohlcData,
-          backgroundColors: {
-            up: "rgba(52,211,153,1)",
-            down: "rgba(248,113,113,1)",
-            unchanged: "rgba(148,163,184,1)",
-          },
-          borderColors: {
-            up: "rgba(52,211,153,1)",
-            down: "rgba(248,113,113,1)",
-            unchanged: "rgba(148,163,184,1)",
-          },
+          backgroundColors: { up: _t.candleUp, down: _t.candleDown, unchanged: _t.candleFlat },
+          borderColors: { up: _t.candleUp, down: _t.candleDown, unchanged: _t.candleFlat },
         }]
       },
       options: {
@@ -82,15 +75,15 @@ function buildHistoryChart(metric) {
             var f = function(v) { return "$" + v.toLocaleString(undefined, {maximumFractionDigits:0}); };
             var chg = d.c - d.o;
             var color = chg >= 0 ? "var(--accent-green,#34d399)" : "var(--danger,#f87171)";
-            el.innerHTML = '<span style="color:#f1f5f9">' + dStr + '</span>'
+            el.innerHTML = '<span style="color:' + _t.textBright + '">' + dStr + '</span>'
               + '&ensp;O: ' + f(d.o) + '&ensp;H: ' + f(d.h) + '&ensp;L: ' + f(d.l)
               + '&ensp;<span style="color:' + color + '">C: ' + f(d.c) + '</span>';
             el.style.opacity = "1";
           } }
         },
         scales: {
-          x: { type: "time", time:{ unit:"day", tooltipFormat:"MMM d, yyyy" }, ticks:{ maxTicksLimit:8, color:"#64748b", font:{size:10} }, grid:{ color:"rgba(255,255,255,0.03)" } },
-          y: { ticks:{ color:"#64748b", font:{size:10}, callback: function(v) { return "$" + (v/1000).toFixed(0) + "K"; } }, grid:{ color:"rgba(255,255,255,0.03)" } }
+          x: { type: "time", time:{ unit:"day", tooltipFormat:"MMM d, yyyy" }, ticks:{ maxTicksLimit:8, color:_t.text, font:{size:10} }, grid:{ color:_t.gridLight } },
+          y: { ticks:{ color:_t.text, font:{size:10}, callback: function(v) { return "$" + (v/1000).toFixed(0) + "K"; } }, grid:{ color:_t.gridLight } }
         }
       }
     });
@@ -103,10 +96,11 @@ function buildHistoryChart(metric) {
     var dataMin = vals.length ? Math.min.apply(null, vals) : 0;
     var dataMax = vals.length ? Math.max.apply(null, vals) : 0;
     var padding = dataMin === dataMax ? Math.max(dataMax * 0.02, 500) : Math.max((dataMax - dataMin) * 0.15, dataMax * 0.005);
+    var _t = ndChartTheme();
     window.historyChart = new Chart(ctx, {
       type: "line",
       data: {
-        datasets: [{ label: "Portfolio Value", data: pointData, borderColor: "#d4a017", backgroundColor: "rgba(212,160,23,0.12)", fill: true, tension: 0.35, pointRadius: PRICE_HISTORY_DATA.length < 30 ? 4 : 0, pointHoverRadius: 6, pointHoverBackgroundColor: "#d4a017", pointBackgroundColor: "#d4a017", borderWidth: 2.5 }]
+        datasets: [{ label: "Portfolio Value", data: pointData, borderColor: _t.accent, backgroundColor: "rgba(212,160,23,0.12)", fill: true, tension: 0.35, pointRadius: PRICE_HISTORY_DATA.length < 30 ? 4 : 0, pointHoverRadius: 6, pointHoverBackgroundColor: _t.accent, pointBackgroundColor: _t.accent, borderWidth: 2.5 }]
       },
       options: {
         responsive: true, maintainAspectRatio: false,
@@ -126,18 +120,18 @@ function buildHistoryChart(metric) {
             if (r && r.open) {
               var chg = (r.close || val) - r.open;
               var color = chg >= 0 ? "var(--accent-green,#34d399)" : "var(--danger,#f87171)";
-              el.innerHTML = '<span style="color:#f1f5f9">' + dStr + '</span>'
+              el.innerHTML = '<span style="color:' + _t.textBright + '">' + dStr + '</span>'
                 + '&ensp;' + fmt(val)
-                + '&ensp;<span style="color:#64748b">(' + fmt(r.low) + ' – ' + fmt(r.high) + ')</span>';
+                + '&ensp;<span style="color:' + _t.textMuted + '">(' + fmt(r.low) + ' – ' + fmt(r.high) + ')</span>';
             } else {
-              el.innerHTML = '<span style="color:#f1f5f9">' + dStr + '</span>&ensp;' + fmt(val);
+              el.innerHTML = '<span style="color:' + _t.textBright + '">' + dStr + '</span>&ensp;' + fmt(val);
             }
             el.style.opacity = "1";
           } }
       },
       scales: {
-          x: { type: "time", time: { unit: PRICE_HISTORY_DATA.length > 90 ? "week" : "day", tooltipFormat: "yyyy-MM-dd" }, ticks:{ maxTicksLimit:8, color:"#64748b", font:{size:10} }, grid:{ color:"rgba(255,255,255,0.03)" } },
-          y: { min: Math.floor((dataMin - padding) / 1000) * 1000, max: Math.ceil((dataMax + padding) / 1000) * 1000, ticks:{ color:"#64748b", font:{size:10}, callback: function(v) { return "$" + (v/1000).toFixed(0) + "K"; } }, grid:{ color:"rgba(255,255,255,0.03)" } }
+          x: { type: "time", time: { unit: PRICE_HISTORY_DATA.length > 90 ? "week" : "day", tooltipFormat: "yyyy-MM-dd" }, ticks:{ maxTicksLimit:8, color:_t.text, font:{size:10} }, grid:{ color:_t.gridLight } },
+          y: { min: Math.floor((dataMin - padding) / 1000) * 1000, max: Math.ceil((dataMax + padding) / 1000) * 1000, ticks:{ color:_t.text, font:{size:10}, callback: function(v) { return "$" + (v/1000).toFixed(0) + "K"; } }, grid:{ color:_t.gridLight } }
         }
       }
     });

@@ -508,6 +508,7 @@ function buildDonut() {
     return;
   }
 
+  var _t = ndChartTheme();
   _donutChart = new Chart(ctx, {
     type: "doughnut",
     data: {
@@ -516,9 +517,9 @@ function buildDonut() {
         data: values,
         backgroundColor: colors,
         borderWidth: 2,
-        borderColor: "rgba(9,9,11,0.8)",
+        borderColor: _t.donutBorder,
         hoverBorderWidth: 3,
-        hoverBorderColor: "#fff",
+        hoverBorderColor: _t.textBright,
         hoverOffset: 6
       }]
     },
@@ -529,10 +530,7 @@ function buildDonut() {
       layout: { padding: 4 },
       plugins: {
         legend: { display: false },
-        tooltip: {
-          backgroundColor: "rgba(9,9,11,0.95)",
-          titleColor: "#f1f5f9", bodyColor: "#cbd5e1",
-          borderColor: "rgba(255,255,255,0.08)", borderWidth: 1,
+        tooltip: Object.assign(ndTooltipOpts(_t), {
           padding: 14, cornerRadius: 10,
           titleFont: { size: 13, weight: "600" },
           bodyFont: { size: 12 },
@@ -543,7 +541,7 @@ function buildDonut() {
               return "$" + c.raw.toLocaleString(undefined, {maximumFractionDigits: 0}) + "  ·  " + pct + "%";
             }
           }
-        }
+        })
       }
     }
   });

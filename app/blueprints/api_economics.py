@@ -7,7 +7,7 @@ from flask_login import login_required
 
 log = logging.getLogger(__name__)
 
-from ..extensions import db
+from ..extensions import db, cache
 from ..models.market import FredCache, EconCalendarCache, SentimentCache
 
 api_economics_bp = Blueprint("api_economics", __name__)
@@ -49,6 +49,12 @@ def fred_data():
         from ..services.fred_service import refresh_fred_data
         refresh_fred_data(os.environ.get("FRED_API_KEY", ""))
 
+    cache_key = f"fred:{horizon}:{series_ids_raw or 'all'}"
+    if not refresh:
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return jsonify(cached)
+
     all_cache = FredCache.query.all()
     series_pool = {}
     for c in all_cache:
@@ -74,6 +80,7 @@ def fred_data():
             data = data[-max_pts:]
         result[sid] = {"data": data}
 
+    cache.set(cache_key, result, timeout=600)
     return jsonify(result)
 
 
@@ -105,16 +112,13 @@ def economic_calendar():
 @login_required
 def fedwatch():
     """Compute FedWatch-style rate probabilities from Fed Funds Futures."""
-    import time as _time
-
-    now = _time.time()
-    if _fedwatch_cache["data"] and (now - _fedwatch_cache["ts"]) < _FEDWATCH_TTL:
-        return jsonify(_fedwatch_cache["data"])
+    cached = cache.get("fedwatch")
+    if cached is not None:
+        return jsonify(cached)
 
     result = _compute_fedwatch()
     if result and result.get("meetings"):
-        _fedwatch_cache["data"] = result
-        _fedwatch_cache["ts"] = now
+        cache.set("fedwatch", result, timeout=_FEDWATCH_TTL)
     return jsonify(result or {"meetings": [], "current_rate": None, "error": "Failed to fetch data"})
 
 
@@ -132,7 +136,15 @@ def sentiment():
         if refresh:
             from ..services.sentiment_service import refresh_sentiment
             refresh_sentiment()
-        return _build_sentiment_response()
+            cache.delete("sentiment")
+
+        cached = cache.get("sentiment")
+        if cached is not None and not refresh:
+            return jsonify(cached)
+
+        resp = _build_sentiment_response()
+        cache.set("sentiment", resp.get_json(), timeout=120)
+        return resp
     except Exception as e:
         import traceback
         traceback.print_exc()
@@ -609,9 +621,10 @@ def sentiment_history():
         rng = "1y"
     params = _SENT_RANGE_MAP[rng]
 
-    cached = _sent_hist_cache.get(rng)
-    if cached and cached.get("data") and (now - cached.get("ts", 0)) < _SENT_HIST_TTL:
-        return jsonify(cached["data"])
+    cache_key = f"sent_hist:{rng}"
+    cached_result = cache.get(cache_key)
+    if cached_result is not None:
+        return jsonify(cached_result)
 
     from concurrent.futures import ThreadPoolExecutor
     import urllib.request
@@ -819,6 +832,7 @@ def sentiment_history():
     result["yield_curve"] = f_yc.result(timeout=30)
 
     _sent_hist_cache[rng] = {"data": result, "ts": now}
+    cache.set(cache_key, result, timeout=_SENT_HIST_TTL)
     return jsonify(result)
 
 

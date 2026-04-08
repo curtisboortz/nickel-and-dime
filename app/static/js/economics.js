@@ -1,7 +1,17 @@
 /* Nickel&Dime - Economics tab: FRED charts, FedWatch, CAPE, Buffett, calendar */
 /* FRED_JS_START */
 /* ── FRED Economics ── */
-var fredTooltipOpts = { yAlign: "bottom", caretPadding: 8, backgroundColor: "rgba(30,30,30,0.95)", titleColor: "#e2e8f0", bodyColor: "#e2e8f0", borderColor: "rgba(99,102,241,0.4)", borderWidth: 1 };
+function _fredTooltip() {
+  var t = (typeof ndChartTheme === "function") ? ndChartTheme() : null;
+  return t
+    ? Object.assign(ndTooltipOpts(t), { yAlign: "bottom", caretPadding: 8, borderColor: "rgba(99,102,241,0.4)" })
+    : { yAlign: "bottom", caretPadding: 8, backgroundColor: "rgba(30,30,30,0.95)", titleColor: "#e2e8f0", bodyColor: "#e2e8f0", borderColor: "rgba(99,102,241,0.4)", borderWidth: 1 };
+}
+function _fredScale() {
+  var t = (typeof ndChartTheme === "function") ? ndChartTheme() : null;
+  return { text: t ? t.text : "#64748b", grid: t ? t.gridLight : "rgba(255,255,255,0.03)" };
+}
+var fredTooltipOpts = _fredTooltip();
 var fredCharts = {};
 function fredDateLabel(d) { return d ? d.replace(/T.*$/, "") : d; }
 function fredSeries(data, id) { var e = data[id]; return (e && e.data) ? e.data : []; }

@@ -53,7 +53,20 @@ def create_app(config_name=None):
 
 def _init_extensions(app):
     """Bind all Flask extensions to the app instance."""
-    from .extensions import db, migrate, login_manager, bcrypt, csrf, limiter, mail
+    from .extensions import (
+        db, migrate, login_manager, bcrypt, csrf, limiter, mail,
+        cache, sess,
+    )
+
+    redis_url = app.config.get("REDIS_URL")
+    if redis_url:
+        import redis as _redis
+        _redis_client = _redis.Redis.from_url(redis_url)
+        app.config["SESSION_REDIS"] = _redis_client
+        app.config["CACHE_REDIS_URL"] = redis_url
+        app.extensions["redis"] = _redis_client
+    else:
+        app.extensions.setdefault("redis", None)
 
     db.init_app(app)
     migrate.init_app(app, db)
@@ -62,6 +75,8 @@ def _init_extensions(app):
     csrf.init_app(app)
     limiter.init_app(app)
     mail.init_app(app)
+    cache.init_app(app)
+    sess.init_app(app)
 
     from .models.user import User
 

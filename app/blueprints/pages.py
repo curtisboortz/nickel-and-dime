@@ -130,8 +130,21 @@ def diagnostics():
             "stripe_key_set": bool(os.environ.get("STRIPE_SECRET_KEY")),
             "fred_key_set": bool(os.environ.get("FRED_API_KEY")),
             "cmc_key_set": bool(os.environ.get("CMC_API_KEY")),
+            "redis_url_set": bool(os.environ.get("REDIS_URL")),
+        },
+        "redis": {
+            "connected": _redis_healthy(),
+            "backend": "redis" if os.environ.get("REDIS_URL") else "in-memory",
         },
     })
+
+
+def _redis_healthy():
+    try:
+        from ..utils.redis_helpers import redis_health
+        return redis_health()
+    except Exception:
+        return False
 
 
 @pages_bp.route("/api/client-errors", methods=["POST"])

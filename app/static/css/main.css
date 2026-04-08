@@ -519,9 +519,13 @@ html.light {
   --accent-glow: rgba(212,160,23,0.10);
   --success-glow: rgba(22,163,74,0.10);
   --surface-raised: #f5f6f8;
+  color-scheme: light;
 }
+html.light body { background:#f8f9fb; color:#1a1d2e; }
+html.light .main-content { background:#f8f9fb; }
+html.light .card, html.light [class*="card"] { background:#ffffff; }
 /* Sidebar */
-html.light .sidebar { background:var(--bg-secondary); border-color:var(--border-subtle); }
+html.light .sidebar { background:#eef0f4; border-color:rgba(0,0,0,0.07); }
 html.light .sidebar-logo { background:var(--bg-card); }
 html.light .nav-item:hover { background:rgba(0,0,0,0.04); }
 html.light .nav-item .tooltip {

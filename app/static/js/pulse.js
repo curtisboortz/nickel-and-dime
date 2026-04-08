@@ -379,14 +379,35 @@ function addPulseCard() {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ ticker: ticker, label: label })
   }).then(function(r) { return r.json(); }).then(function(d) {
-    if (d.success) ndSoftReload();
-    else alert(d.error || "Failed to add ticker.");
+    if (d.success) {
+      hideAddPulseCard();
+      var displayLabel = label || ticker;
+      var cardId = "custom-" + d.id;
+      var bar = document.getElementById("pulse-bar");
+      var addBtn = document.getElementById("pulse-add-btn");
+      var div = document.createElement("div");
+      div.className = "pulse-item";
+      div.draggable = true;
+      div.setAttribute("data-pulse-id", cardId);
+      div.setAttribute("data-pulse-type", "stock");
+      div.innerHTML =
+        '<button class="pulse-remove" onclick="event.stopPropagation();removePulseCard(\'' + d.id + '\')" title="Remove">&times;</button>' +
+        '<span class="pulse-label">' + displayLabel + '</span>' +
+        '<span class="pulse-price" data-pulse-price="' + cardId + '">--</span>' +
+        '<canvas class="pulse-spark" id="spark-' + cardId + '" width="60" height="24"></canvas>';
+      if (addBtn) bar.insertBefore(div, addBtn);
+      else bar.appendChild(div);
+      setTimeout(loadAllSparklines, 300);
+    } else {
+      alert(d.error || "Failed to add ticker.");
+    }
   });
 }
 function removePulseCard(id) {
   if (!confirm("Remove this card from the pulse bar?")) return;
-  var el = document.querySelector('[data-pulse-id="' + id + '"]');
-  if (el) el.style.display = "none";
+  var el = document.querySelector('[data-pulse-id="' + id + '"]')
+    || document.querySelector('[data-pulse-id="custom-' + id + '"]');
+  if (el) { el.style.opacity = "0"; el.style.transition = "opacity 0.2s"; }
   fetch("/api/pulse-cards/" + encodeURIComponent(id), { method: "DELETE" })
     .then(function(r) { return r.json(); })
     .then(function(d) { if (d.success && el) el.remove(); });

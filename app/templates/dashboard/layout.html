@@ -986,7 +986,11 @@ function obFinish() {
     <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:end;">
       <div style="flex:1;min-width:200px;">
         <span class="label">Statements (CSV or PDF)</span>
-        <input type="file" id="stmt-file" accept=".csv,.pdf" multiple style="padding:7px 0;">
+        <input type="file" id="stmt-file" accept=".csv,.pdf" multiple style="display:none;" onchange="document.getElementById('stmt-file-label').textContent=this.files.length?Array.from(this.files).map(function(f){return f.name}).join(', '):'No file chosen'">
+        <div style="display:flex;align-items:center;gap:10px;margin-top:6px;">
+          <button type="button" onclick="document.getElementById('stmt-file').click()" class="secondary" style="padding:7px 14px;font-size:0.82rem;white-space:nowrap;">Choose Files</button>
+          <span id="stmt-file-label" style="color:var(--text-muted);font-size:0.82rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">No file chosen</span>
+        </div>
       </div>
       <button type="button" onclick="previewStatement()" style="padding:8px 14px;">Preview</button>
     </div>

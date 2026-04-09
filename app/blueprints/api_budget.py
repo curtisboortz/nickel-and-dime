@@ -62,6 +62,7 @@ BUDGET_TEMPLATES = {
 @login_required
 def budget_data():
     """Return the user's budget config and recent transactions."""
+    from ..models.settings import UserSettings
     config = BudgetConfig.query.filter_by(user_id=current_user.id).first()
     recent_txns = (Transaction.query
                    .filter_by(user_id=current_user.id)
@@ -69,8 +70,19 @@ def budget_data():
                    .limit(200)
                    .all())
 
-    categories = config.categories if config else []
+    categories = list(config.categories) if config else []
     monthly_income = config.monthly_income if config else 0
+
+    inv_budget = _compute_monthly_investment_budget(current_user.id)
+    if inv_budget > 0:
+        found = False
+        for cat in categories:
+            if cat.get("name", "").lower() == "investments":
+                cat["limit"] = inv_budget
+                found = True
+                break
+        if not found:
+            categories.append({"name": "Investments", "limit": inv_budget})
 
     budget_limits = {}
     budget_cats = []
@@ -105,6 +117,7 @@ def budget_data():
 
 def save_budget():
     """Save budget configuration (income, categories, rollover)."""
+    from ..models.settings import UserSettings
     data = flask_request.get_json(silent=True) or {}
     config = BudgetConfig.query.filter_by(user_id=current_user.id).first()
     if not config:
@@ -114,6 +127,10 @@ def save_budget():
         config.monthly_income = float(data["monthly_income"])
     if "categories" in data:
         config.categories = data["categories"]
+        for cat in data["categories"]:
+            if cat.get("name", "").lower() == "investments":
+                _sync_investment_budget_from_limit(current_user.id, float(cat.get("limit", 0)))
+                break
     if "rollover_enabled" in data:
         config.rollover_enabled = bool(data["rollover_enabled"])
     db.session.commit()
@@ -328,6 +345,37 @@ def delete_category_rule(rule_id):
 TRANSFER_CATEGORIES = {"Transfer"}
 
 
+def _compute_monthly_investment_budget(user_id):
+    """Derive the monthly investment budget from UserSettings contribution plan."""
+    from ..models.settings import UserSettings
+    settings = UserSettings.query.filter_by(user_id=user_id).first()
+    if not settings or not settings.contribution_amount:
+        return 0
+    amt = settings.contribution_amount
+    freq = settings.contribution_frequency or "biweekly"
+    if freq == "biweekly":
+        return round(amt * 26 / 12, 2)
+    elif freq == "weekly":
+        return round(amt * 52 / 12, 2)
+    return amt
+
+
+def _sync_investment_budget_from_limit(user_id, monthly_limit):
+    """Reverse-compute and save UserSettings.contribution_amount from a monthly limit."""
+    from ..models.settings import UserSettings
+    settings = UserSettings.query.filter_by(user_id=user_id).first()
+    if not settings:
+        settings = UserSettings(user_id=user_id)
+        db.session.add(settings)
+    freq = settings.contribution_frequency or "biweekly"
+    if freq == "biweekly":
+        settings.contribution_amount = round(monthly_limit * 12 / 26, 2)
+    elif freq == "weekly":
+        settings.contribution_amount = round(monthly_limit * 12 / 52, 2)
+    else:
+        settings.contribution_amount = monthly_limit
+
+
 @api_budget_bp.route("/spending-insights")
 @login_required
 def spending_insights():
@@ -417,14 +465,7 @@ def get_investments():
     settings = UserSettings.query.filter_by(user_id=current_user.id).first()
     contribution_plan = (settings.contribution_plan or {}) if settings else {}
     targets_data = (settings.targets or {}) if settings else {}
-    contribution_amount = (settings.contribution_amount or 0) if settings else 0
-    freq = (settings.contribution_frequency or "biweekly") if settings else "biweekly"
-    if freq == "biweekly":
-        monthly_budget = round(contribution_amount * 26 / 12, 2)
-    elif freq == "weekly":
-        monthly_budget = round(contribution_amount * 52 / 12, 2)
-    else:
-        monthly_budget = contribution_amount
+    monthly_budget = _compute_monthly_investment_budget(current_user.id)
 
     return jsonify({
         "month": month,

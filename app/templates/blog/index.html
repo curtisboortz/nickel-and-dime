@@ -9,13 +9,10 @@
 
 {% block body %}
 <div style="max-width:800px;margin:0 auto;padding:40px 20px;">
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:32px;">
-    <div>
-      <a href="/" style="color:var(--accent-primary);text-decoration:none;font-weight:600;">← Back to Dashboard</a>
-      <h1 style="font-size:1.8rem;margin:12px 0 4px;">Blog</h1>
-      <p style="color:var(--text-muted);font-size:0.9rem;">Macro investing, portfolio strategy, and personal finance insights.</p>
-    </div>
-    <a href="/blog/feed.xml" style="color:var(--text-muted);text-decoration:none;font-size:0.78rem;border:1px solid var(--border-subtle);padding:6px 12px;border-radius:var(--radius);">RSS</a>
+  <div style="margin-bottom:32px;">
+    <a href="/" style="color:var(--accent-primary);text-decoration:none;font-weight:600;">← Back to Home</a>
+    <h1 style="font-size:1.8rem;margin:12px 0 4px;">Blog</h1>
+    <p style="color:var(--text-muted);font-size:0.9rem;">Macro investing, portfolio strategy, and personal finance insights.</p>
   </div>
 
   {% if not posts %}

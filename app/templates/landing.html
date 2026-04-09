@@ -19,6 +19,7 @@
   <div class="landing-nav-links">
     <a href="#features">Features</a>
     <a href="#pricing">Pricing</a>
+    <a href="/blog">Blog</a>
     {% if current_user and current_user.is_authenticated %}
     <a href="{{ url_for('pages.dashboard_page') }}" class="landing-cta-sm">Dashboard</a>
     {% else %}
@@ -308,7 +309,7 @@
   <div class="footer-brand">Nickel&amp;Dime</div>
   <p>&copy; {{ now.year if now else 2026 }} Nickel&amp;Dime. All rights reserved.</p>
   <p style="margin-top:10px;">
-    <a href="{{ url_for('pages.privacy') }}">Privacy</a> &middot; <a href="{{ url_for('pages.terms') }}">Terms</a> &middot; <a href="{{ url_for('pages.disclaimer') }}">Disclaimer</a> &middot; <a href="mailto:support@nickelanddime.io">Contact</a>
+    <a href="/blog">Blog</a> &middot; <a href="{{ url_for('pages.privacy') }}">Privacy</a> &middot; <a href="{{ url_for('pages.terms') }}">Terms</a> &middot; <a href="{{ url_for('pages.disclaimer') }}">Disclaimer</a> &middot; <a href="mailto:support@nickelanddime.io">Contact</a>
   </p>
 </footer>
 {% endblock %}

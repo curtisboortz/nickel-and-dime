@@ -392,7 +392,7 @@ function saveBudget() {
       _initBudgetListeners();
     } else {
       if (btn) {
-        btn.textContent = "Error — try again";
+        btn.textContent = "Error. Try again.";
         btn.style.background = "var(--danger)";
         setTimeout(function() {
           btn.textContent = "Save Budget";
@@ -404,7 +404,7 @@ function saveBudget() {
   })
   .catch(function() {
     if (btn) {
-      btn.textContent = "Error — try again";
+      btn.textContent = "Error. Try again.";
       btn.style.background = "var(--danger)";
       setTimeout(function() {
         btn.textContent = "Save Budget";
@@ -562,7 +562,7 @@ function renderSpendingBreakdown() {
     html += '  <div class="spend-details">';
     html += '    <table><thead><tr><th>Date</th><th>Description / Note</th><th style="text-align:right">Amount</th></tr></thead><tbody>';
     incomeSorted.forEach(function(t) {
-      var desc = t.description || t.note || "—";
+      var desc = t.description || t.note || "N/A";
       var amt = Math.abs(parseFloat(t.amount));
       html += '<tr><td class="mono">' + t.date + '</td><td>' + desc + '</td><td class="mono" style="text-align:right;color:var(--success);">+$' + amt.toFixed(2) + '</td></tr>';
     });
@@ -643,7 +643,7 @@ function renderSpendingBreakdown() {
     html += '  <div class="spend-details">';
     html += '    <table><thead><tr><th>Date</th><th>Description / Note</th><th style="text-align:right">Amount</th></tr></thead><tbody>';
     txns.forEach(function(t) {
-      var desc = t.description || t.note || "—";
+      var desc = t.description || t.note || "N/A";
       html += '<tr><td class="mono">' + t.date + '</td><td>' + desc + '</td><td class="mono" style="text-align:right">$' + parseFloat(t.amount).toFixed(2) + '</td></tr>';
     });
     html += '    </tbody></table>';

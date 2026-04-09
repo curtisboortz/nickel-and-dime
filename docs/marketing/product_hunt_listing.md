@@ -1,10 +1,10 @@
 # Product Hunt Launch Copy
 
 ## Tagline
-Your portfolio meets the economy — macro data, AI insights, one dashboard
+Your portfolio meets the economy: macro data, AI insights, one dashboard
 
 ## Short Description
-Nickel & Dime is a portfolio tracker built for investors who follow the macro picture. See your holdings alongside live Fed policy data, inflation trends, gold/silver ratios, yield curves, and sentiment gauges — all in one dashboard. Auto-link your brokerages via Plaid, get AI-powered insights, and budget your income.
+Nickel & Dime is a portfolio tracker built for investors who follow the macro picture. See your holdings alongside live Fed policy data, inflation trends, gold/silver ratios, yield curves, and sentiment gauges, all in one dashboard. Auto-link your brokerages via Plaid, get AI-powered insights, and budget your income.
 
 ## First Comment (Maker Story)
 
@@ -15,24 +15,24 @@ I built this because I was tired of my daily workflow: check my brokerage app, t
 Nickel & Dime puts it all on one screen:
 
 **What's included:**
-- 📊 Live market pulse — gold, silver, BTC, yields, DXY, VIX, oil, copper, equities (updated every 5 min)
-- 📈 Full portfolio tracker — stocks, ETFs, crypto, physical metals with live prices
-- 🏛️ FRED economic data — yield curves, CPI, unemployment, GDP, Fed Funds rate
-- 🎯 Sentiment gauges — Fear & Greed, CAPE ratio, Buffett Indicator, Sahm Rule
-- 🤖 AI investment advisor — ask questions about your portfolio through Dalio, Graham, or Bogle frameworks
-- 💰 Budget manager — income, expenses, savings rate
+- 📊 Live market pulse: gold, silver, BTC, yields, DXY, VIX, oil, copper, equities (updated every 5 min)
+- 📈 Full portfolio tracker: stocks, ETFs, crypto, physical metals with live prices
+- 🏛️ FRED economic data: yield curves, CPI, unemployment, GDP, Fed Funds rate
+- 🎯 Sentiment gauges: Fear & Greed, CAPE ratio, Buffett Indicator, Sahm Rule
+- 🤖 AI investment advisor: ask questions about your portfolio through Dalio, Graham, or Bogle frameworks
+- 💰 Budget manager: income, expenses, savings rate
 - 📱 Mobile app (iOS & Android) via Capacitor
 
 **Pricing:** Free tier with full market data. Pro at $12/month for portfolio tracking, technical analysis, and AI.
 
-I'd love your feedback — this has been a one-person project for 6 months and I'm finally ready to share it.
+I'd love your feedback. This has been a one-person project for 6 months and I'm finally ready to share it.
 
 **Special offer: First 50 Product Hunt users get 3 months of Pro free.** Use code `PRODUCTHUNT` at checkout.
 
 ## Screenshots to Include
 1. Dashboard overview with pulse cards (gold, S&P, BTC, yields, DXY, VIX)
 2. Portfolio allocation donut chart + net worth trend
-3. Economics tab — FRED yield curve visualization
+3. Economics tab: FRED yield curve visualization
 4. Sentiment gauges (Fear & Greed, CAPE, Buffett Indicator)
 5. AI advisor conversation
 6. Mobile view (Capacitor app)

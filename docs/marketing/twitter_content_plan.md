@@ -1,12 +1,12 @@
-# Twitter/X Content Plan — @nickelanddime_io
+# Twitter/X Content Plan (@nickelanddime_io)
 
 ## Account Bio
-The macro investor's command center. Track your portfolio alongside live economic data — yield curves, sentiment gauges, gold/silver ratios. Built by @curtisboortz
+The macro investor's command center. Track your portfolio alongside live economic data: yield curves, sentiment gauges, gold/silver ratios. Built by @curtisboortz
 
 ## Pinned Tweet
 I built a portfolio tracker for investors who read the Fed minutes.
 
-Your holdings alongside live FRED data, yield curves, gold/silver ratios, sentiment gauges, and AI insights — one dashboard.
+Your holdings alongside live FRED data, yield curves, gold/silver ratios, sentiment gauges, and AI insights in one dashboard.
 
 Free tier available. Pro $12/mo.
 
@@ -34,7 +34,7 @@ What I'm watching today: [brief observation]
 
 ### Weekly Thread (Tuesdays)
 Format:
-"Weekly macro recap — what moved and why 🧵
+"Weekly macro recap: what moved and why 🧵
 
 1/ [S&P 500 movement + context]
 2/ [Gold/silver + ratio movement]
@@ -52,14 +52,14 @@ Share one chart from the economics tab with analysis:
 
 ### Quote-Tweet Strategy (daily, 2-3x)
 Engage with prominent macro accounts:
-- @LynAldenContact — monetary policy analysis
-- @BrentJohnson — dollar milkshake theory
-- @LukeGromen — gold and fiscal analysis
-- @RaoulGMI — macro cycles
-- @JeffSnider_AIP — eurodollar system
-- @jimbianco — rates and credit
+- @LynAldenContact: monetary policy analysis
+- @BrentJohnson: dollar milkshake theory
+- @LukeGromen: gold and fiscal analysis
+- @RaoulGMI: macro cycles
+- @JeffSnider_AIP: eurodollar system
+- @jimbianco: rates and credit
 
-Add your own data or take from the dashboard. Never just "great point" — always add value.
+Add your own data or take from the dashboard. Never just "great point"; always add value.
 
 ### Feature Highlights (weekends)
 "Did you know you can track gold/silver ratios as a pulse card on Nickel & Dime?
@@ -73,7 +73,7 @@ Here's what the ratio looks like over the past year, alongside your portfolio al
 ## Content Rules
 1. Never post promotional content more than 20% of the time
 2. Always lead with data or insight, product mention is secondary
-3. Use screenshots from the actual dashboard — they're the best marketing
+3. Use screenshots from the actual dashboard; they're the best marketing
 4. Engage authentically in replies
 5. Retweet macro content with commentary
 6. Target: 500 followers in first month, 2,000 by month 3

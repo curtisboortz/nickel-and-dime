@@ -13,21 +13,21 @@ POSTS = [
         "title": "The All-Weather Portfolio in 2026: Is Ray Dalio's Strategy Still Relevant?",
         "excerpt": "Ray Dalio's All-Weather Portfolio was designed to perform in any economic environment. With inflation cooling, rates elevated, and geopolitical risk rising, does it still hold up in 2026?",
         "meta_description": "Is Ray Dalio's All-Weather Portfolio still relevant in 2026? We break down the strategy, its performance through recent cycles, and how to benchmark your own allocation.",
-        "body": """<p>Ray Dalio's All-Weather Portfolio has been one of the most discussed investment frameworks of the last decade. Designed at Bridgewater Associates to perform across all economic environments — growth, recession, inflation, and deflation — it allocates roughly 30% to stocks, 40% to long-term bonds, 15% to intermediate bonds, 7.5% to gold, and 7.5% to commodities.</p>
+        "body": """<p>Ray Dalio's All-Weather Portfolio has been one of the most discussed investment frameworks of the last decade. Designed at Bridgewater Associates to perform across all economic environments (growth, recession, inflation, and deflation), it allocates roughly 30% to stocks, 40% to long-term bonds, 15% to intermediate bonds, 7.5% to gold, and 7.5% to commodities.</p>
 
 <p>But 2022-2025 tested this strategy harder than any period since its popularization. With bonds and stocks falling simultaneously, the 40% bond allocation dragged performance. Gold, however, surged past $3,000/oz, validating the commodity hedge thesis.</p>
 
 <h2>How the All-Weather Performed Through Recent Cycles</h2>
 
-<p>From 2022 to mid-2025, the traditional All-Weather returned roughly 2.8% annualized — significantly underperforming the S&P 500's 12%+ run. Critics pointed to the heavy bond allocation as a structural weakness in a rising-rate environment.</p>
+<p>From 2022 to mid-2025, the traditional All-Weather returned roughly 2.8% annualized, significantly underperforming the S&P 500's 12%+ run. Critics pointed to the heavy bond allocation as a structural weakness in a rising-rate environment.</p>
 
-<p>However, Dalio's original thesis wasn't about maximizing returns — it was about <strong>risk parity</strong>. Each asset class should contribute equally to portfolio risk. By that measure, the All-Weather did what it promised: it avoided catastrophic drawdowns. While the S&P 500 fell 25% in 2022, the All-Weather lost only 12%.</p>
+<p>However, Dalio's original thesis wasn't about maximizing returns; it was about <strong>risk parity</strong>. Each asset class should contribute equally to portfolio risk. By that measure, the All-Weather did what it promised: it avoided catastrophic drawdowns. While the S&P 500 fell 25% in 2022, the All-Weather lost only 12%.</p>
 
 <h2>The 2026 Question: Bonds vs. Commodities</h2>
 
 <p>With the Fed holding rates above 4%, long-term Treasuries remain under pressure. But there's a case for them: if a recession materializes, bonds rally hard. The All-Weather was designed to own them precisely for this scenario.</p>
 
-<p>Meanwhile, the gold and commodity allocation has been the star. Gold above $3,000 and silver outperforming in late 2025 have pushed the commodity sleeve to its best stretch since 2011. The gold-to-silver ratio, which Nickel & Dime tracks as a pulse card, sits at historically elevated levels — suggesting silver may have more catch-up potential.</p>
+<p>Meanwhile, the gold and commodity allocation has been the star. Gold above $3,000 and silver outperforming in late 2025 have pushed the commodity sleeve to its best stretch since 2011. The gold-to-silver ratio, which Nickel & Dime tracks as a pulse card, sits at historically elevated levels, suggesting silver may have more catch-up potential.</p>
 
 <h2>Should You Use the All-Weather in 2026?</h2>
 
@@ -39,13 +39,13 @@ POSTS = [
 <li>Am I holding bonds for the right reason (deflation/recession hedge)?</li>
 </ul>
 
-<p>Tools like Nickel & Dime's portfolio template comparison let you overlay your actual allocation against the All-Weather, 60/40, and Permanent Portfolio side by side — so you can see exactly where you diverge and decide if that's intentional.</p>
+<p>Tools like Nickel & Dime's portfolio template comparison let you overlay your actual allocation against the All-Weather, 60/40, and Permanent Portfolio side by side, so you can see exactly where you diverge and decide if that's intentional.</p>
 
 <h2>The Bottom Line</h2>
 
 <p>Ray Dalio's All-Weather Portfolio isn't dead. It's doing what it was designed to do: protect capital across environments. If you're looking for maximum growth, it's the wrong framework. If you're looking for sleep-at-night diversification with macro awareness, it's still one of the best starting points for self-directed investors.</p>
 
-<p>The key is combining a framework like this with <em>active macro awareness</em> — watching yield curves, inflation data, and sentiment indicators to understand which economic regime you're in. That context turns a static allocation into an informed strategy.</p>"""
+<p>The key is combining a framework like this with <em>active macro awareness</em>: watching yield curves, inflation data, and sentiment indicators to understand which economic regime you're in. That context turns a static allocation into an informed strategy.</p>"""
     },
     {
         "slug": "gold-silver-ratio-explained-investors-2026",
@@ -70,34 +70,34 @@ POSTS = [
 
 <h2>Why the Ratio Matters for Your Portfolio</h2>
 
-<p>If you hold physical gold or silver (or ETFs like GLD/SLV), the ratio helps you think about <strong>relative value</strong>. A high ratio doesn't mean silver will definitely catch up — but historically, extreme readings have tended to mean-revert over 2-5 year periods.</p>
+<p>If you hold physical gold or silver (or ETFs like GLD/SLV), the ratio helps you think about <strong>relative value</strong>. A high ratio doesn't mean silver will definitely catch up, but historically, extreme readings have tended to mean-revert over 2-5 year periods.</p>
 
 <p>Some investors use the ratio to swap between metals: selling gold and buying silver when the ratio is high, then reversing when it contracts. This is an advanced strategy that requires patience and conviction.</p>
 
 <h2>How to Track the Ratio</h2>
 
-<p>Most brokerage apps show gold and silver prices separately, but calculating the ratio requires manual math. Nickel & Dime's pulse card system lets you create a custom ratio card — gold/silver — that updates live every 5 minutes. You can also track gold/oil, gold/S&P 500, and other cross-asset ratios that macro investors care about.</p>
+<p>Most brokerage apps show gold and silver prices separately, but calculating the ratio requires manual math. Nickel & Dime's pulse card system lets you create a custom ratio card (gold/silver) that updates live every 5 minutes. You can also track gold/oil, gold/S&P 500, and other cross-asset ratios that macro investors care about.</p>
 
 <h2>What the Current Ratio Signals</h2>
 
 <p>At 85, the ratio is above its long-term average but not extreme. With industrial demand for silver rising (solar panels, EVs, electronics) and mine supply stagnant, the fundamental case for silver is arguably stronger than any time since 2011.</p>
 
-<p>But fundamentals take time to play out. The near-term driver is monetary policy. If the Fed cuts rates, both metals benefit — but silver tends to outperform gold in rate-cutting cycles due to its higher beta and industrial demand sensitivity.</p>
+<p>But fundamentals take time to play out. The near-term driver is monetary policy. If the Fed cuts rates, both metals benefit, but silver tends to outperform gold in rate-cutting cycles due to its higher beta and industrial demand sensitivity.</p>
 
 <p>Watch the ratio alongside yield curves and Fed policy expectations. When real rates fall and liquidity expands, the gold-silver ratio typically contracts. That's the macro context every precious metals investor should be tracking.</p>"""
     },
     {
         "slug": "track-net-worth-across-every-account",
         "title": "How to Actually Track Your Net Worth Across Every Account",
-        "excerpt": "Tracking net worth sounds simple, but most people's money is scattered across 5+ accounts. Here's how to consolidate everything into one view — and which tools actually work.",
-        "meta_description": "How to track your net worth across all accounts — brokerage, bank, crypto, and physical assets. Compare Empower, Kubera, Mint, and Nickel & Dime for portfolio tracking.",
-        "body": """<p>Your net worth is the single most important number in personal finance. It's the sum of everything you own minus everything you owe. Simple in concept — messy in practice.</p>
+        "excerpt": "Tracking net worth sounds simple, but most people's money is scattered across 5+ accounts. Here's how to consolidate everything into one view, and which tools actually work.",
+        "meta_description": "How to track your net worth across all accounts: brokerage, bank, crypto, and physical assets. Compare Empower, Kubera, Mint, and Nickel & Dime for portfolio tracking.",
+        "body": """<p>Your net worth is the single most important number in personal finance. It's the sum of everything you own minus everything you owe. Simple in concept, messy in practice.</p>
 
 <p>The average self-directed investor has their money in 5-8 different places: a 401(k), a Roth IRA, a taxable brokerage account, a bank account, maybe a crypto exchange, and possibly physical assets like gold or real estate. Tracking all of this in one place is surprisingly hard.</p>
 
 <h2>The Spreadsheet Problem</h2>
 
-<p>Many investors start with a spreadsheet. It works at first — manually enter account balances monthly, track the trend. But spreadsheets break when:</p>
+<p>Many investors start with a spreadsheet. It works at first: manually enter account balances monthly, track the trend. But spreadsheets break when:</p>
 
 <ul>
 <li>You forget to update for a few months</li>
@@ -113,7 +113,7 @@ POSTS = [
 Cons: No macro data. No physical metals tracking. Aggressive upselling to their advisory service. The app focuses on retirement projections rather than active portfolio analysis.</p>
 
 <h3>Kubera</h3>
-<p>Pros: Comprehensive — tracks crypto, real estate, vehicles, art, and traditional accounts.<br>
+<p>Pros: Comprehensive; tracks crypto, real estate, vehicles, art, and traditional accounts.<br>
 Cons: $150/year is steep for individuals. No economic data integration. Designed more for high-net-worth tracking than active investment analysis.</p>
 
 <h3>Mint (Discontinued)</h3>
@@ -128,11 +128,11 @@ Cons: Newer product, smaller user base. No real estate or vehicle tracking (yet)
 <p>Here's what we recommend:</p>
 
 <ol>
-<li><strong>Centralize your investment accounts</strong> — use Plaid-based linking or CSV import to get all your brokerage accounts in one place.</li>
+<li><strong>Centralize your investment accounts</strong> using Plaid-based linking or CSV import to get all your brokerage accounts in one place.</li>
 <li><strong>Add manual accounts</strong> for anything that can't be linked (physical gold, real estate equity, private investments).</li>
 <li><strong>Track monthly</strong> at minimum. Daily if your tool supports it with live prices.</li>
-<li><strong>Look at allocation, not just total</strong> — knowing you have $200K is less useful than knowing 80% of it is in tech stocks.</li>
-<li><strong>Add macro context</strong> — your portfolio doesn't exist in a vacuum. Track it alongside the economic indicators that affect your holdings.</li>
+<li><strong>Look at allocation, not just total</strong>: knowing you have $200K is less useful than knowing 80% of it is in tech stocks.</li>
+<li><strong>Add macro context</strong>: your portfolio doesn't exist in a vacuum. Track it alongside the economic indicators that affect your holdings.</li>
 </ol>
 
 <p>The best net worth tracker is the one you actually use consistently. Pick a tool, commit to it for 3 months, and watch how much clearer your financial picture becomes.</p>"""
@@ -142,31 +142,31 @@ Cons: Newer product, smaller user base. No real estate or vehicle tracking (yet)
         "title": "Understanding the Yield Curve: A Practical Guide for Investors",
         "excerpt": "The yield curve is one of the most-watched economic indicators. This guide explains what it is, what an inversion means, and how to use it in your investment decisions.",
         "meta_description": "The yield curve explained for investors. Learn what yield curve inversions mean, how to read the 2s10s spread, and what the curve is signaling in 2026.",
-        "body": """<p>The yield curve is a graph showing interest rates on U.S. Treasury bonds across different maturities — from 1-month bills to 30-year bonds. In a normal economy, longer-term bonds pay higher rates than short-term ones (you're compensated for locking up money longer). When this relationship breaks down, it tells you something important about market expectations.</p>
+        "body": """<p>The yield curve is a graph showing interest rates on U.S. Treasury bonds across different maturities, from 1-month bills to 30-year bonds. In a normal economy, longer-term bonds pay higher rates than short-term ones (you're compensated for locking up money longer). When this relationship breaks down, it tells you something important about market expectations.</p>
 
 <h2>The Three Shapes</h2>
 
 <h3>Normal (Upward Sloping)</h3>
-<p>Short-term rates are lower than long-term rates. This is the "healthy" shape — it means markets expect steady growth and gradually rising rates. Banks can profit by borrowing short (paying low rates) and lending long (earning higher rates).</p>
+<p>Short-term rates are lower than long-term rates. This is the "healthy" shape: it means markets expect steady growth and gradually rising rates. Banks can profit by borrowing short (paying low rates) and lending long (earning higher rates).</p>
 
 <h3>Flat</h3>
-<p>Short-term and long-term rates are roughly equal. This often signals a transition period — the economy is slowing, and markets aren't sure which direction things are headed. It's a yellow light.</p>
+<p>Short-term and long-term rates are roughly equal. This often signals a transition period: the economy is slowing, and markets aren't sure which direction things are headed. It's a yellow light.</p>
 
 <h3>Inverted (Downward Sloping)</h3>
 <p>Short-term rates are <em>higher</em> than long-term rates. This is the recession warning signal. An inverted yield curve has preceded every U.S. recession since 1970, though the timing varies from 6 to 24 months.</p>
 
 <h2>The 2s10s Spread</h2>
 
-<p>The most-watched measure is the spread between the 2-year and 10-year Treasury yields ("2s10s"). When the 10-year yield drops below the 2-year yield, the curve is inverted. This spread went negative in mid-2022 and stayed inverted into 2024 — one of the longest inversions in history.</p>
+<p>The most-watched measure is the spread between the 2-year and 10-year Treasury yields ("2s10s"). When the 10-year yield drops below the 2-year yield, the curve is inverted. This spread went negative in mid-2022 and stayed inverted into 2024, one of the longest inversions in history.</p>
 
-<p>The curve uninverted in 2025, which historically is <em>also</em> a warning sign. Recessions often begin not during the inversion, but after the curve steepens back to normal — a phenomenon known as the "bull steepener" signal.</p>
+<p>The curve uninverted in 2025, which historically is <em>also</em> a warning sign. Recessions often begin not during the inversion, but after the curve steepens back to normal, a phenomenon known as the "bull steepener" signal.</p>
 
 <h2>What the Curve Tells You About Your Portfolio</h2>
 
 <p>As a self-directed investor, the yield curve affects you in several ways:</p>
 
 <ul>
-<li><strong>Bond allocation:</strong> In an inverted curve, short-term Treasuries and money markets can pay more than long bonds — with less risk. Consider where your fixed-income allocation sits on the curve.</li>
+<li><strong>Bond allocation:</strong> In an inverted curve, short-term Treasuries and money markets can pay more than long bonds with less risk. Consider where your fixed-income allocation sits on the curve.</li>
 <li><strong>Equity risk:</strong> Curve inversions precede recessions. If you're heavily allocated to cyclical stocks (financials, consumer discretionary, industrials), an inversion is a signal to review your exposure.</li>
 <li><strong>Real estate:</strong> An inverted curve often means tight credit conditions, which slow housing markets.</li>
 <li><strong>Gold and commodities:</strong> These tend to perform well when the curve steepens after inversion, as it often coincides with rate cuts and dollar weakness.</li>
@@ -174,20 +174,20 @@ Cons: Newer product, smaller user base. No real estate or vehicle tracking (yet)
 
 <h2>How to Track the Yield Curve</h2>
 
-<p>FRED (Federal Reserve Economic Data) publishes yield curve data daily. Nickel & Dime's economics tab pulls this data directly from FRED and visualizes it alongside your portfolio — so you can see your holdings in the context of the rate environment.</p>
+<p>FRED (Federal Reserve Economic Data) publishes yield curve data daily. Nickel & Dime's economics tab pulls this data directly from FRED and visualizes it alongside your portfolio, so you can see your holdings in the context of the rate environment.</p>
 
 <p>Track the 2s10s spread, the 3-month/10-year spread (which the Fed's own recession model uses), and the full curve shape over 1-year, 5-year, and maximum timeframes. The trend matters as much as the current level.</p>
 
 <h2>The 2026 Picture</h2>
 
-<p>As of early 2026, the curve has normalized but remains relatively flat by historical standards. The Fed has paused rate cuts, inflation is sticky above 2%, and long-term rates reflect uncertainty about government debt levels. This is a "watch closely" environment — not a panic signal, but not an all-clear either.</p>
+<p>As of early 2026, the curve has normalized but remains relatively flat by historical standards. The Fed has paused rate cuts, inflation is sticky above 2%, and long-term rates reflect uncertainty about government debt levels. This is a "watch closely" environment: not a panic signal, but not an all-clear either.</p>
 
 <p>The investors who navigate this well will be the ones who monitor the data regularly and adjust allocation proactively rather than reactively.</p>"""
     },
     {
         "slug": "5-macro-indicators-investors-should-watch-daily",
         "title": "5 Macro Indicators Every Investor Should Watch Daily",
-        "excerpt": "Markets don't move in isolation. These five macro indicators give you real-time context for every investment decision — and most investors ignore at least two of them.",
+        "excerpt": "Markets don't move in isolation. These five macro indicators give you real-time context for every investment decision, and most investors ignore at least two of them.",
         "meta_description": "5 macro indicators every investor should watch daily: VIX, yield curve, gold/silver ratio, Fear & Greed index, and DXY. How to track them all in one dashboard.",
         "body": """<p>Most investors check their portfolio daily but ignore the macro backdrop. That's like checking the score of a game without knowing what quarter it is, what the weather conditions are, or who's injured. These five indicators give you the context your portfolio needs.</p>
 
@@ -218,7 +218,7 @@ Cons: Newer product, smaller user base. No real estate or vehicle tracking (yet)
 
 <h2>4. CNN Fear & Greed Index</h2>
 
-<p>This composite index combines seven market indicators — stock price momentum, stock price strength, stock price breadth, put/call ratio, junk bond demand, market volatility, and safe haven demand — into a single 0-100 score.</p>
+<p>This composite index combines seven market indicators (stock price momentum, stock price strength, stock price breadth, put/call ratio, junk bond demand, market volatility, and safe haven demand) into a single 0-100 score.</p>
 
 <ul>
 <li><strong>0-25 (Extreme Fear):</strong> Markets are oversold. Historically a contrarian buy signal.</li>
@@ -243,11 +243,11 @@ Cons: Newer product, smaller user base. No real estate or vehicle tracking (yet)
 
 <h2>Putting It All Together</h2>
 
-<p>These five indicators — VIX, 10-year yield, gold/silver ratio, Fear & Greed, and DXY — give you a real-time macro snapshot. Check them every morning before you look at your portfolio. They tell you <em>why</em> your portfolio is moving, not just <em>that</em> it's moving.</p>
+<p>These five indicators (VIX, 10-year yield, gold/silver ratio, Fear & Greed, and DXY) give you a real-time macro snapshot. Check them every morning before you look at your portfolio. They tell you <em>why</em> your portfolio is moving, not just <em>that</em> it's moving.</p>
 
 <p>Nickel & Dime's dashboard shows all five on the pulse bar, with the sentiment gauges and economics tab providing the deeper context. It's designed for exactly this workflow: glance at the macro picture, then look at your portfolio in that context.</p>
 
-<p>The best investors don't react to price movements — they interpret them through the macro lens. These five indicators are your lens.</p>"""
+<p>The best investors don't react to price movements; they interpret them through the macro lens. These five indicators are your lens.</p>"""
     },
 ]
 

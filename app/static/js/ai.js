@@ -12,12 +12,12 @@ var AI_QUICK_PROMPTS = {
     "to the All Weather template and share your opinion on what I might adjust.",
   outlook:
     "What's the macro environment telling us right now? Check sentiment, VIX, " +
-    "yield curve, and any relevant FRED data. Then share your opinion — using " +
-    "Howard Marks' cycle framework — on where we might be in the market cycle " +
+    "yield curve, and any relevant FRED data. Then share your opinion using " +
+    "Howard Marks' cycle framework on where we might be in the market cycle " +
     "and what positioning ideas are worth considering.",
   risk:
     "Channel Warren Buffett's thinking: look at my top holdings and sector " +
-    "exposure and tell me — do I seem to understand what I own? Where's my " +
+    "exposure and tell me: do I seem to understand what I own? Where's my " +
     "biggest concentration risk, and what's my margin of safety if markets " +
     "dropped 30%? Be honest with your opinion.",
   rebalance:

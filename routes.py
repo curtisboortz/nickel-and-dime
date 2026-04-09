@@ -105,7 +105,7 @@ def check_demo_mode():
         return
     # Block all other POST/PUT/DELETE in demo mode
     if request.is_json or request.path.startswith("/api/"):
-        return jsonify({"success": False, "error": "Demo mode — changes are disabled. Deploy your own instance to use all features."}), 403
+        return jsonify({"success": False, "error": "Demo mode: changes are disabled. Deploy your own instance to use all features."}), 403
     # For form submissions, redirect with message
     return redirect("/?saved=Demo+mode+%E2%80%94+changes+are+disabled")
 
@@ -1363,7 +1363,7 @@ def api_quick_update():
             if not current_price or current_price <= 0:
                 current_price = metals_prices.get(ticker.upper())
             if not current_price or current_price <= 0:
-                return jsonify({"ok": False, "error": f"No live price for {ticker} — can't calculate shares"})
+                return jsonify({"ok": False, "error": f"No live price for {ticker}; can't calculate shares"})
             new_shares = round(amount / current_price, 3)
             old_qty = float(qty)
             new_qty = round(old_qty + new_shares, 3)

@@ -565,7 +565,7 @@ def generate_dashboard_html(
     for cat in categories:
         limit = cat.get("limit", 0)
         total_limit += limit
-        pct_used = "" if limit == 0 else "—"  # User enters actual in Excel
+        pct_used = "" if limit == 0 else "N/A"  # User enters actual in Excel
         budget_rows += f"<tr><td>{cat.get('name', '')}</td><td>${limit:,.0f}</td><td>{pct_used}</td></tr>"
     budget_html = f"""
     <div class="card">

@@ -6,7 +6,7 @@ Use one per day, not all at once. Wait until you've built karma in each subreddi
 
 ## r/SideProject
 
-**Title:** I built a portfolio tracker for macro investors — 6 months of solo dev
+**Title:** I built a portfolio tracker for macro investors (6 months of solo dev)
 
 **Body:**
 
@@ -14,10 +14,10 @@ Hey r/SideProject,
 
 I've been building Nickel & Dime for about 6 months. It's a portfolio tracker designed for self-directed investors who follow macro data.
 
-The problem I was solving: every morning I'd check my brokerage, then FRED for yield curves, then Twitter for gold prices, then a spreadsheet for net worth. Five tools for one question — "how is my portfolio positioned?"
+The problem I was solving: every morning I'd check my brokerage, then FRED for yield curves, then Twitter for gold prices, then a spreadsheet for net worth. Five tools for one question: "how is my portfolio positioned?"
 
 What it does:
-- Live market pulse (gold, silver, BTC, yields, DXY, VIX — updates every 5 min)
+- Live market pulse (gold, silver, BTC, yields, DXY, VIX; updates every 5 min)
 - Portfolio tracker for stocks, ETFs, crypto, physical metals
 - FRED economic data (yield curves, CPI, unemployment, GDP)
 - Sentiment gauges (Fear & Greed, CAPE ratio, Buffett Indicator)
@@ -32,13 +32,13 @@ Free tier available, Pro is $12/month. Would love feedback from other builders.
 
 ## r/startups
 
-**Title:** Launching Nickel & Dime — the portfolio tracker that shows your money in the context of the economy
+**Title:** Launching Nickel & Dime: the portfolio tracker that shows your money in the context of the economy
 
 **Body:**
 
-After 6 months of solo development, I'm launching Nickel & Dime — a portfolio tracking dashboard built for investors who follow macro data.
+After 6 months of solo development, I'm launching Nickel & Dime, a portfolio tracking dashboard built for investors who follow macro data.
 
-**The gap I found:** Existing portfolio trackers (Empower, Kubera) show your money in isolation. If you're the kind of investor who reads Fed minutes, watches yield curves, and tracks gold/silver ratios, you need those data points next to your portfolio — not in a separate tab.
+**The gap I found:** Existing portfolio trackers (Empower, Kubera) show your money in isolation. If you're the kind of investor who reads Fed minutes, watches yield curves, and tracks gold/silver ratios, you need those data points next to your portfolio, not in a separate tab.
 
 **What Nickel & Dime does differently:**
 1. Live FRED data (yield curves, CPI, GDP) alongside your holdings
@@ -51,7 +51,7 @@ After 6 months of solo development, I'm launching Nickel & Dime — a portfolio 
 
 **Target market:** Self-directed investors who follow macro trends. Think r/Gold, r/Bogleheads, FinTwit.
 
-Just launched on Product Hunt — would appreciate any feedback on positioning or features.
+Just launched on Product Hunt; would appreciate any feedback on positioning or features.
 
 ---
 
@@ -65,7 +65,7 @@ Hey r/Gold,
 
 I'm a gold/silver investor myself and I got tired of manually calculating ratios and checking FRED for macro data in separate tabs while trying to manage my portfolio.
 
-So I built Nickel & Dime — it's a portfolio tracker with a built-in macro dashboard. The features most relevant to this community:
+So I built Nickel & Dime. It's a portfolio tracker with a built-in macro dashboard. The features most relevant to this community:
 
 - Gold/silver ratio as a live pulse card (updates every 5 min)
 - Physical metals tracking by weight and purity (not just ETFs)
@@ -76,13 +76,13 @@ So I built Nickel & Dime — it's a portfolio tracker with a built-in macro dash
 
 The market pulse and economics features are free. Portfolio tracking is $12/month with a 14-day trial.
 
-Not trying to hard-sell — genuinely built this for investors like us. Happy to hear feedback.
+Not trying to hard-sell; genuinely built this for investors like us. Happy to hear feedback.
 
 ---
 
 ## r/Bogleheads
 
-**Title:** I made a portfolio template comparison tool — All-Weather, 60/40, Permanent Portfolio side by side against your actual holdings
+**Title:** I made a portfolio template comparison tool: All-Weather, 60/40, Permanent Portfolio side by side against your actual holdings
 
 **Body:**
 
@@ -100,6 +100,6 @@ It shows you exactly where your allocation diverges from each template, with a r
 
 This is part of Nickel & Dime, a portfolio tracker I've been building. The template comparison is available on the Pro tier ($12/month, 14-day free trial). The free tier includes live market data, economic calendar, and sentiment gauges.
 
-Not a replacement for your brokerage app — more of a complement for the macro-aware Boglehead who wants their portfolio in the context of economic data.
+Not a replacement for your brokerage app; more of a complement for the macro-aware Boglehead who wants their portfolio in the context of economic data.
 
 Interested in honest feedback from this community.

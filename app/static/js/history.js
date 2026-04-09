@@ -90,7 +90,7 @@ function buildHistoryChart(metric) {
   } else {
     // Line mode using close/total values with proper time-based x-axis
     var pointData = PRICE_HISTORY_DATA.map(function(r) { return { x: _histDateTs(r.date), y: r.close || r.total }; });
-    var fmt = function(v) { return v != null ? "$" + v.toLocaleString(undefined, {maximumFractionDigits:0}) : "—"; };
+    var fmt = function(v) { return v != null ? "$" + v.toLocaleString(undefined, {maximumFractionDigits:0}) : "N/A"; };
     var validData = pointData.filter(function(p) { return p.y != null && isFinite(p.y); });
     var vals = validData.map(function(p) { return p.y; });
     var dataMin = vals.length ? Math.min.apply(null, vals) : 0;

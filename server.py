@@ -1,7 +1,7 @@
 """
 Local server for the Nickel&Dime dashboard.
 Run: python server.py
-Then open http://localhost:5000 — one interface: Summary, Balances, Budget, Investments.
+Then open http://localhost:5000. One interface: Summary, Balances, Budget, Investments.
 Saves go to config.json and are logged to Excel History sheet.
 """
 
@@ -40,7 +40,7 @@ if DEMO_MODE:
             shutil.copy(src_path, DEMO_DIR / dst)
     CONFIG_PATH = DEMO_DIR / "config.json"
     BASE = DEMO_DIR
-    print(f"[DEMO MODE] Sample data loaded into temp dir — your real files are untouched")
+    print(f"[DEMO MODE] Sample data loaded into temp dir; your real files are untouched")
 else:
     CONFIG_PATH = BASE / "config.json"
 

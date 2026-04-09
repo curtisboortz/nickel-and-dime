@@ -3,7 +3,7 @@
 ---
 
 ## App Name
-Nickel & Dime — Portfolio Tracker
+Nickel & Dime | Portfolio Tracker
 
 ## Subtitle (iOS, 30 chars max)
 Macro Investing Dashboard
@@ -17,16 +17,16 @@ Track your portfolio alongside live macro data, FRED economics, and AI insights.
 
 Nickel & Dime is the portfolio tracker built for investors who follow the macro picture.
 
-See your holdings alongside live economic data — Fed policy, inflation trends, gold/silver ratios, yield curves, and market sentiment — all in one clean dashboard. No switching between apps. No spreadsheets.
+See your holdings alongside live economic data: Fed policy, inflation trends, gold/silver ratios, yield curves, and market sentiment, all in one clean dashboard. No switching between apps. No spreadsheets.
 
 **LIVE MARKET PULSE**
-Gold, silver, Bitcoin, S&P 500, yields, DXY, VIX, oil, copper — all updating every 5 minutes. Create custom pulse cards with ratio tracking (gold/silver, gold/oil) and price alerts.
+Gold, silver, Bitcoin, S&P 500, yields, DXY, VIX, oil, copper, all updating every 5 minutes. Create custom pulse cards with ratio tracking (gold/silver, gold/oil) and price alerts.
 
 **PORTFOLIO TRACKER**
 Stocks, ETFs, crypto, and physical metals with live prices and allocation drift analysis. Import from Fidelity, Schwab, Vanguard, and more via CSV or connect via Plaid.
 
 **ECONOMIC DASHBOARD**
-FRED data series — yield curves, CPI, unemployment, GDP, Fed Funds rate. Economic calendar with actual vs. forecast. FedWatch probability tracker.
+FRED data series: yield curves, CPI, unemployment, GDP, Fed Funds rate. Economic calendar with actual vs. forecast. FedWatch probability tracker.
 
 **SENTIMENT GAUGES**
 CNN Fear & Greed, crypto sentiment, CAPE ratio, Buffett Indicator, and Sahm Rule in visual gauges at a glance.
@@ -46,7 +46,7 @@ Free tier with full market data. Pro at $12/month for advanced features.
 
 Nickel & Dime is the portfolio tracker for macro-focused investors.
 
-Track your investments alongside live economic data — yield curves, Fed policy, gold/silver ratios, and market sentiment — all in one dashboard.
+Track your investments alongside live economic data: yield curves, Fed policy, gold/silver ratios, and market sentiment, all in one dashboard.
 
 Features:
 • Live market pulse: gold, silver, BTC, S&P 500, yields, VIX, DXY
@@ -71,12 +71,12 @@ portfolio,tracker,macro,investing,gold,silver,stocks,FRED,yield,curve,budget,net
 - Secondary: Productivity
 
 ## Screenshots (6 per platform)
-1. Market Pulse — live gold, S&P, BTC, yields, DXY, VIX cards
-2. Portfolio Overview — allocation donut, net worth, daily change
-3. Economics Tab — yield curve chart from FRED data
-4. Sentiment Gauges — Fear & Greed, CAPE, Buffett Indicator dials
-5. AI Advisor — conversation showing portfolio analysis
-6. Budget — monthly spending breakdown with savings rate
+1. Market Pulse: live gold, S&P, BTC, yields, DXY, VIX cards
+2. Portfolio Overview: allocation donut, net worth, daily change
+3. Economics Tab: yield curve chart from FRED data
+4. Sentiment Gauges: Fear & Greed, CAPE, Buffett Indicator dials
+5. AI Advisor: conversation showing portfolio analysis
+6. Budget: monthly spending breakdown with savings rate
 
 ## What's New (for updates)
 - Live macro dashboard with real-time market data

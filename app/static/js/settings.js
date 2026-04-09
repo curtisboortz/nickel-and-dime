@@ -178,7 +178,7 @@ function openPlaidLink() {
             if (msg) { msg.textContent = result.error; msg.style.color = "var(--danger)"; }
           } else {
             var inv = result.sync && result.sync.investments ? result.sync.investments : {};
-            if (msg) { msg.textContent = "Linked " + _esc(result.institution || "account") + " — synced " + (inv.synced || 0) + " holdings"; msg.style.color = "var(--success)"; }
+            if (msg) { msg.textContent = "Linked " + _esc(result.institution || "account") + "; synced " + (inv.synced || 0) + " holdings"; msg.style.color = "var(--success)"; }
             _holdingsLoaded = false;
             if (typeof loadHoldings === "function") loadHoldings();
           }
@@ -389,7 +389,7 @@ function _loadReferralCode() {
     .then(function(r) { return r.json(); })
     .then(function(d) {
       var el = document.getElementById("referral-code-display");
-      if (el) el.value = d.code || "—";
+      if (el) el.value = d.code || "N/A";
       var cnt = document.getElementById("referral-count");
       if (cnt) cnt.textContent = d.total_referrals || 0;
       var cred = document.getElementById("referral-credits");

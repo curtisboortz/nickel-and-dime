@@ -1,7 +1,7 @@
 {
   "name": "finance-tool",
   "version": "1.0.0",
-  "description": "A full-stack personal finance platform built with Python/Flask and PostgreSQL. Track multi-asset portfolios with live market data, allocation drift analysis, economic indicators, budgeting, and technical analysis — all behind a subscription-gated SaaS model.",
+  "description": "A full-stack personal finance platform built with Python/Flask and PostgreSQL. Track multi-asset portfolios with live market data, allocation drift analysis, economic indicators, budgeting, and technical analysis, all behind a subscription-gated SaaS model.",
   "main": "index.js",
   "directories": {
     "doc": "docs",

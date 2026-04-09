@@ -983,7 +983,7 @@ function loadTLH() {
       rows.forEach(function(r) {
         totalLoss += r.unrealized;
         var washBadge = r.wash_sale_risk
-          ? ' <span title="Purchased within 30 days — potential wash sale" style="background:rgba(248,113,113,0.15);color:#f87171;padding:2px 6px;border-radius:4px;font-size:0.72rem;font-weight:600;cursor:help;">WASH</span>'
+          ? ' <span title="Purchased within 30 days (potential wash sale)" style="background:rgba(248,113,113,0.15);color:#f87171;padding:2px 6px;border-radius:4px;font-size:0.72rem;font-weight:600;cursor:help;">WASH</span>'
           : '';
         var subHint = r.substitute
           ? '<span class="hint" style="font-size:0.75rem;"> → ' + r.substitute + '</span>'
@@ -1054,7 +1054,7 @@ function _renderInsights(d) {
         '<div style="padding:8px 12px;background:' +
         'rgba(74,222,128,0.08);border-radius:var(--radius)' +
         ';font-size:0.82rem;color:var(--success);">' +
-        "No concentration warnings — well diversified." +
+        "No concentration warnings: well diversified." +
         "</div>";
     } else {
       var whtml = "";
@@ -1146,41 +1146,41 @@ var _metricExplainers = {
     title: "Risk Score (0 – 100)",
     body: "Measures overall portfolio risk based on the combined volatility of your asset classes and how they correlate with each other. " +
       "It's scaled so that a 100% equity portfolio scores ~50.\n\n" +
-      "<strong>0 – 20 &nbsp;Conservative</strong> — Very low risk. Dominated by cash and bonds. Low growth potential but minimal drawdowns.\n" +
-      "<strong>21 – 40 &nbsp;Moderate</strong> — Balanced risk/return. Typical of diversified portfolios with a tilt toward stability.\n" +
-      "<strong>41 – 60 &nbsp;Balanced</strong> — Medium risk. Roughly mirrors the volatility of a stock-heavy portfolio.\n" +
-      "<strong>61 – 80 &nbsp;Growth</strong> — Higher risk. Concentrated in equities, crypto, or alternatives. Expect larger swings.\n" +
-      "<strong>81 – 100 &nbsp;Aggressive</strong> — Maximum risk. Heavily weighted toward the most volatile asset classes."
+      "<strong>0 – 20 &nbsp;Conservative</strong>: Very low risk. Dominated by cash and bonds. Low growth potential but minimal drawdowns.\n" +
+      "<strong>21 – 40 &nbsp;Moderate</strong>: Balanced risk/return. Typical of diversified portfolios with a tilt toward stability.\n" +
+      "<strong>41 – 60 &nbsp;Balanced</strong>: Medium risk. Roughly mirrors the volatility of a stock-heavy portfolio.\n" +
+      "<strong>61 – 80 &nbsp;Growth</strong>: Higher risk. Concentrated in equities, crypto, or alternatives. Expect larger swings.\n" +
+      "<strong>81 – 100 &nbsp;Aggressive</strong>: Maximum risk. Heavily weighted toward the most volatile asset classes."
   },
   vol: {
     title: "Estimated Volatility",
-    body: "Annualized portfolio volatility — the expected range of returns in a typical year. " +
+    body: "Annualized portfolio volatility: the expected range of returns in a typical year. " +
       "Calculated from each asset class's historical volatility and their cross-correlations.\n\n" +
-      "<strong>0% – 5%</strong> — Very low. Cash-like. Your portfolio barely moves.\n" +
-      "<strong>5% – 10%</strong> — Low. Bond-heavy or well-hedged. Expect small fluctuations.\n" +
-      "<strong>10% – 16%</strong> — Moderate. Typical of a diversified stock/bond mix. ~16% is roughly the long-term volatility of the S&P 500.\n" +
-      "<strong>16% – 25%</strong> — High. Equity-dominated or concentrated. Significant swings are normal.\n" +
-      "<strong>25%+</strong> — Very high. Crypto-heavy or leveraged. Double-digit monthly moves are common."
+      "<strong>0% – 5%</strong>: Very low. Cash-like. Your portfolio barely moves.\n" +
+      "<strong>5% – 10%</strong>: Low. Bond-heavy or well-hedged. Expect small fluctuations.\n" +
+      "<strong>10% – 16%</strong>: Moderate. Typical of a diversified stock/bond mix. ~16% is roughly the long-term volatility of the S&P 500.\n" +
+      "<strong>16% – 25%</strong>: High. Equity-dominated or concentrated. Significant swings are normal.\n" +
+      "<strong>25%+</strong>: Very high. Crypto-heavy or leveraged. Double-digit monthly moves are common."
   },
   div: {
     title: "Diversification Ratio",
     body: "Measures how much your asset mix reduces risk compared to holding each asset class individually. " +
       "Calculated as the weighted average volatility divided by the actual portfolio volatility. " +
       "A higher ratio means your assets don't all move together, which lowers overall risk.\n\n" +
-      "<strong>Below 1.05x &nbsp;Low</strong> — Your holdings are highly correlated. Diversification provides almost no benefit.\n" +
-      "<strong>1.05x – 1.20x &nbsp;Moderate</strong> — Some diversification benefit, but there's room to add uncorrelated assets.\n" +
-      "<strong>1.20x – 1.50x &nbsp;Good</strong> — Meaningful risk reduction from diversification. A solid, well-balanced portfolio.\n" +
-      "<strong>1.50x+ &nbsp;Excellent</strong> — Strong diversification. Your asset classes offset each other well, significantly reducing overall risk."
+      "<strong>Below 1.05x &nbsp;Low</strong>: Your holdings are highly correlated. Diversification provides almost no benefit.\n" +
+      "<strong>1.05x – 1.20x &nbsp;Moderate</strong>: Some diversification benefit, but there's room to add uncorrelated assets.\n" +
+      "<strong>1.20x – 1.50x &nbsp;Good</strong>: Meaningful risk reduction from diversification. A solid, well-balanced portfolio.\n" +
+      "<strong>1.50x+ &nbsp;Excellent</strong>: Strong diversification. Your asset classes offset each other well, significantly reducing overall risk."
   },
   classes: {
     title: "Asset Classes",
     body: "The number of distinct parent asset categories in your portfolio. Nickel&Dime tracks six parent classes: " +
       "Equities, Fixed Income, Real Assets (Gold, Silver, Real Estate, Art), Alternatives (Crypto, Private Equity, Venture Capital), " +
-      "Commodities (energy, agriculture — excluding precious metals), and Cash.\n\n" +
-      "<strong>1 – 2</strong> — Very concentrated. A single downturn in one sector can hit your entire portfolio.\n" +
-      "<strong>3 – 4</strong> — Moderate breadth. Some diversification but still exposed to correlated risks.\n" +
-      "<strong>5</strong> — Good breadth. Most major asset types are represented.\n" +
-      "<strong>6</strong> — Full breadth. You have exposure across all tracked asset classes."
+      "Commodities (energy, agriculture: excluding precious metals), and Cash.\n\n" +
+      "<strong>1 – 2</strong>: Very concentrated. A single downturn in one sector can hit your entire portfolio.\n" +
+      "<strong>3 – 4</strong>: Moderate breadth. Some diversification but still exposed to correlated risks.\n" +
+      "<strong>5</strong>: Good breadth. Most major asset types are represented.\n" +
+      "<strong>6</strong>: Full breadth. You have exposure across all tracked asset classes."
   }
 };
 

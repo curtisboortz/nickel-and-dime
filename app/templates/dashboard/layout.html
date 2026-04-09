@@ -184,7 +184,7 @@ function _skeletonRows(r,c){var h="";for(var i=0;i<(r||5);i++){h+="<tr>";for(var
       <div style="text-align:center;">
         <svg viewBox="0 0 24 24" style="width:40px;height:40px;margin-bottom:12px;fill:none;stroke:var(--accent-primary);stroke-width:1.5;"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
         <h2 style="font-size:1.2rem;margin-bottom:8px;">You&rsquo;re All Set!</h2>
-        <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:20px;">Explore the dashboard — check out the Portfolio tab for AI insights, allocation templates, and projections.</p>
+        <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:20px;">Explore the dashboard. Check out the Portfolio tab for AI insights, allocation templates, and projections.</p>
         <button onclick="obFinish()" style="width:100%;padding:12px;font-weight:600;font-size:0.92rem;background:linear-gradient(135deg,var(--accent-primary),var(--accent-secondary));color:#09090b;border:none;border-radius:var(--radius);cursor:pointer;">Start Exploring</button>
       </div>
     </div>
@@ -1452,10 +1452,10 @@ function obFinish() {
         <button type="button" onclick="openPlaidLink()" id="plaid-connect-btn" style="padding:8px 22px;font-size:0.85rem;">+ Connect Account</button>
       </div>
       <p style="font-size:0.72rem;color:var(--text-muted);margin-top:10px;line-height:1.4;text-align:center;">
-        Powered by Plaid. We only read your data &mdash; we never initiate trades or transfers.
+        Powered by Plaid. We only read your data; we never initiate trades or transfers.
       </p>
       <p style="font-size:0.72rem;color:var(--accent-primary);margin-top:6px;line-height:1.4;text-align:center;">
-        For crypto, we recommend the Coinbase integration below &mdash; but linking Coinbase through Plaid works too.
+        For crypto, we recommend the Coinbase integration below, but linking Coinbase through Plaid works too.
       </p>
     </div>
 
@@ -1667,17 +1667,21 @@ function runDiagnostics() {
   if (!out) return;
   out.style.display = "block";
   out.textContent = "Fetching server health...";
-  fetch("/api/diag").then(function(r) { return r.json(); }).then(function(d) {
+  fetch("/api/diag").then(function(r) {
+    if (!r.ok) throw new Error("Server returned " + r.status);
+    return r.json();
+  }).then(function(d) {
     var lines = [];
     lines.push("=== SERVER HEALTH: " + (d.health || "unknown").toUpperCase() + " ===");
-    lines.push("Timestamp: " + d.timestamp);
+    lines.push("Timestamp: " + (d.timestamp || "-"));
     if (d.issues && d.issues.length) {
       lines.push("\n!! ISSUES !!");
       d.issues.forEach(function(i) { lines.push("  - " + i); });
     }
+    var p = d.prices || {};
     lines.push("\n--- Prices ---");
-    lines.push("Total cached: " + d.prices.total + " | Fresh (<1h): " + d.prices.fresh + " | Stale: " + d.prices.stale);
-    if (d.prices.missing_critical.length) lines.push("Missing critical: " + d.prices.missing_critical.join(", "));
+    lines.push("Total cached: " + (p.total || 0) + " | Fresh (<1h): " + (p.fresh || 0) + " | Stale: " + (p.stale || 0));
+    if (p.missing_critical && p.missing_critical.length) lines.push("Missing critical: " + p.missing_critical.join(", "));
     lines.push("\n--- FRED Data ---");
     Object.keys(d.fred || {}).forEach(function(k) {
       var f = d.fred[k];
@@ -1692,10 +1696,14 @@ function runDiagnostics() {
     lines.push("\n--- Calendar ---");
     if (d.calendar) lines.push("  Age: " + d.calendar.age_minutes + "m | Weeks: " + (d.calendar.weeks || []).join(", "));
     else lines.push("  No calendar data");
+    var u = d.users || {};
     lines.push("\n--- Users ---");
-    lines.push("  Total: " + d.users.total + " | Subscriptions: " + d.users.subscriptions + " | Active: " + d.users.active_subs);
+    lines.push("  Total: " + (u.total || 0) + " | Subscriptions: " + (u.subscriptions || 0) + " | Active: " + (u.active_subs || 0));
     lines.push("\n--- Environment ---");
     Object.keys(d.env || {}).forEach(function(k) { lines.push("  " + k + ": " + d.env[k]); });
+    lines.push("\n--- Redis ---");
+    var rd = d.redis || {};
+    lines.push("  Connected: " + (rd.connected || false) + " | Backend: " + (rd.backend || "unknown"));
     out.textContent = lines.join("\n");
   }).catch(function(e) { out.textContent = "Error: " + e.message; });
 }

@@ -1,4 +1,4 @@
-NICKEL&DIME — PRIVACY POLICY
+NICKEL&DIME PRIVACY POLICY
 https://nickelanddime.io/privacy
 Last updated: March 16, 2026
 
@@ -34,10 +34,10 @@ We collect basic request logs (IP address, user agent, timestamps) for security 
 
 We do NOT sell, rent, or share your personal or financial data with third parties, except:
 
-- Stripe — processes subscription payments (receives only billing-related data)
-- Plaid — facilitates bank and brokerage account linking (receives institution credentials directly; we store only encrypted access tokens)
-- Email provider (Resend) — sends transactional emails (receives only your email address)
-- Legal obligations — if required by law or valid legal process
+- Stripe: processes subscription payments (receives only billing-related data)
+- Plaid: facilitates bank and brokerage account linking (receives institution credentials directly; we store only encrypted access tokens)
+- Email provider (Resend): sends transactional emails (receives only your email address)
+- Legal obligations: if required by law or valid legal process
 
 ============================================================
 

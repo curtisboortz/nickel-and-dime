@@ -205,7 +205,7 @@ def _concentration_analysis(user_id, weights, total):
                 "severity": "high",
                 "msg": (
                     f"{bucket} makes up {pct:.0f}% of your "
-                    f"portfolio — consider diversifying."
+                    f"portfolio. Consider diversifying."
                 ),
             })
         elif pct >= 35:
@@ -215,7 +215,7 @@ def _concentration_analysis(user_id, weights, total):
                 "pct": round(pct, 1),
                 "severity": "medium",
                 "msg": (
-                    f"{bucket} is {pct:.0f}% — a meaningful "
+                    f"{bucket} is {pct:.0f}%, a meaningful "
                     f"concentration."
                 ),
             })
@@ -252,7 +252,7 @@ def _concentration_analysis(user_id, weights, total):
                     "pct": round(pct, 1),
                     "severity": "medium",
                     "msg": (
-                        f"{h.ticker} is {pct:.0f}% — "
+                        f"{h.ticker} is {pct:.0f}%; "
                         f"top-heavy position."
                     ),
                 })
@@ -353,17 +353,17 @@ def _plain_english(
     dr = diversification["ratio"]
     if dr >= 1.3:
         insights.append(
-            f"Diversification ratio of {dr}x — your asset "
+            f"Diversification ratio of {dr}x: your asset "
             f"mix is reducing risk meaningfully."
         )
     elif dr >= 1.1:
         insights.append(
-            f"Diversification ratio of {dr}x — moderate "
+            f"Diversification ratio of {dr}x, moderate "
             f"benefit from diversification."
         )
     else:
         insights.append(
-            f"Diversification ratio of {dr}x — your "
+            f"Diversification ratio of {dr}x: your "
             f"holdings move together. Consider adding "
             f"uncorrelated assets."
         )
@@ -378,7 +378,7 @@ def _plain_english(
         )
     elif n_buckets >= 5:
         insights.append(
-            f"Spread across {n_buckets} asset classes — "
+            f"Spread across {n_buckets} asset classes: "
             f"good breadth."
         )
 
@@ -403,7 +403,7 @@ def _plain_english(
     if crypto_pct >= 10:
         insights.append(
             f"Crypto is {crypto_pct:.0f}% of your "
-            f"portfolio — high volatility (~65% annual) "
+            f"portfolio with high volatility (~65% annual) "
             f"can swing total returns significantly."
         )
 

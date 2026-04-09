@@ -61,7 +61,7 @@ def render_economics_fragment_html() -> str:
         <div><div class="card-title" style="font-size:0.85rem;">Government Spending as % of GDP</div><div style="position:relative;height:200px;"><canvas id="fred-chart-spending-pct"></canvas></div></div>
         <div><div class="card-title" style="font-size:0.85rem;">Interest Expense as % of GDP</div><div style="position:relative;height:200px;"><canvas id="fred-chart-interest-pct"></canvas></div></div>
       </div>
-      <p class="hint" style="margin-top:12px;">Debt and deficit ratios show fiscal sustainability. Interest % of GDP reflects debt-service burden &mdash; rising fast = concern.</p>
+      <p class="hint" style="margin-top:12px;">Debt and deficit ratios show fiscal sustainability. Interest % of GDP reflects debt-service burden; rising fast means concern.</p>
     </div>
 
     <!-- Inflation -->
@@ -160,7 +160,7 @@ def render_economics_fragment_html() -> str:
         <div><div style="position:relative;height:200px;"><canvas id="fred-chart-unemployment"></canvas></div></div>
         <div><div style="position:relative;height:200px;"><canvas id="fred-chart-claims"></canvas></div></div>
       </div>
-      <p class="hint" style="margin-top:8px;">Unemployment rate (U-3) and weekly jobless claims. Rising claims can lead unemployment by weeks &mdash; early warning of slowdown.</p>
+      <p class="hint" style="margin-top:8px;">Unemployment rate (U-3) and weekly jobless claims. Rising claims can lead unemployment by weeks, an early warning of slowdown.</p>
     </div>
 
     <!-- Growth & Sentiment -->
@@ -213,7 +213,7 @@ def render_economics_fragment_html() -> str:
         <div><div style="position:relative;height:200px;"><canvas id="fred-chart-housing"></canvas></div></div>
         <div><div style="position:relative;height:200px;"><canvas id="fred-chart-mortgage"></canvas></div></div>
       </div>
-      <p class="hint" style="margin-top:8px;">Case-Shiller tracks home prices nationally. Mortgage rates drive affordability &mdash; spiking rates often cool housing and economy.</p>
+      <p class="hint" style="margin-top:8px;">Case-Shiller tracks home prices nationally. Mortgage rates drive affordability; spiking rates often cool housing and the broader economy.</p>
     </div>
   </div>"""
 
@@ -233,9 +233,9 @@ def render_dashboard(data: dict, saved: str = "", active_tab: str = "summary", d
     price_history = data.get("price_history", [])
     tnx_10y = treasury_yields.get("tnx_10y")
     tnx_2y = treasury_yields.get("tnx_2y")
-    tnx_10y_s = f"{tnx_10y:.2f}%" if tnx_10y is not None else "—"
-    tnx_2y_s = f"{tnx_2y:.2f}%" if tnx_2y is not None else "—"
-    gs_ratio_s = f"{gold_silver_ratio:.2f}" if gold_silver_ratio is not None else "—"
+    tnx_10y_s = f"{tnx_10y:.2f}%" if tnx_10y is not None else "N/A"
+    tnx_2y_s = f"{tnx_2y:.2f}%" if tnx_2y is not None else "N/A"
+    gs_ratio_s = f"{gold_silver_ratio:.2f}" if gold_silver_ratio is not None else "N/A"
 
     from finance_manager import get_next_buys
     next_buys = get_next_buys(config, 0)
@@ -284,7 +284,7 @@ def render_dashboard(data: dict, saved: str = "", active_tab: str = "summary", d
         d_balance = float(d.get("balance", 0) or 0)
         d_payment = float(d.get("monthly_payment", 0) or 0)
         d_months = int(d_balance / d_payment) if d_payment > 0 else 0
-        d_months_label = f"{d_months} mo" if d_months > 0 else "—"
+        d_months_label = f"{d_months} mo" if d_months > 0 else "N/A"
         debt_rows_html += (
             f'<tr>'
             f'<td><input type="text" name="debt_name_{di}" value="{d_name}" style="width:100%;border:none;background:transparent;color:var(--text-primary);font-size:0.85rem;"></td>'
@@ -313,8 +313,8 @@ def render_dashboard(data: dict, saved: str = "", active_tab: str = "summary", d
         price = stock_prices.get(ticker) or crypto_prices.get(ticker)
         if price is None and qty and val:
             price = val / float(qty)
-        price_s = f"${price:,.2f}" if price is not None else "—"
-        val_s = f"${val:,.2f}" if val else "—"
+        price_s = f"${price:,.2f}" if price is not None else "N/A"
+        val_s = f"${val:,.2f}" if val else "N/A"
         holding_rows += f'<tr><td><input type="text" name="h_account" value="{h.get("account", "")}"></td><td><input type="text" name="h_ticker" value="{ticker}"></td><td><input type="text" name="h_asset_class" value="{h.get("asset_class", "")}"></td><td><input type="text" name="h_qty" value="{qty_s}" class="num"></td><td style="text-align:right;color:#8b949e">{price_s}</td><td style="text-align:right;color:#e6edf3">{val_s}</td><td><input type="text" name="h_value_override" value="{vo_s}" class="num"></td><td><input type="text" name="h_notes" value="{h.get("notes", "")}"></td></tr>'
     # One blank row for add
     holding_rows += '<tr><td><input type="text" name="h_account" placeholder="Account"></td><td><input type="text" name="h_ticker" placeholder="Ticker"></td><td><input type="text" name="h_asset_class" placeholder="Asset class"></td><td><input type="text" name="h_qty" class="num" placeholder="Qty"></td><td></td><td></td><td><input type="text" name="h_value_override" class="num" placeholder="Value override"></td><td><input type="text" name="h_notes" placeholder="Notes"></td></tr>'
@@ -337,7 +337,7 @@ def render_dashboard(data: dict, saved: str = "", active_tab: str = "summary", d
     crypto_entries.sort(key=lambda x: -x[3])
     for sym, qty, price, val in crypto_entries:
         qty_fmt = f"{qty:.6f}" if qty < 1 else (f"{qty:.4f}" if qty < 100 else f"{qty:,.2f}")
-        price_s = f"${price:,.2f}" if price else "—"
+        price_s = f"${price:,.2f}" if price else "N/A"
         val_s = f"${val:,.2f}" if val >= 0.01 else "<$0.01"
         pct = (val / crypto_total_value * 100) if crypto_total_value > 0 else 0
         bar_w = min(100, pct)
@@ -372,14 +372,14 @@ def render_dashboard(data: dict, saved: str = "", active_tab: str = "summary", d
         m_cost_basis = m_qty * m_cost if m_cost > 0 else 0
         m_gl = m_cur_val - m_cost_basis if m_cost > 0 else 0
         m_gl_cls = "color:var(--success)" if m_gl >= 0 else "color:var(--danger)"
-        m_gl_s = f"${m_gl:+,.2f}" if m_cost > 0 else "—"
+        m_gl_s = f"${m_gl:+,.2f}" if m_cost > 0 else "N/A"
         if m_metal.lower() == "gold":
             metals_gold_oz += m_qty
         else:
             metals_silver_oz += m_qty
         metals_total_cost += m_cost_basis
         metals_total_value += m_cur_val
-        cost_td = f'<td class="mono" style="text-align:right">${m_cost:,.2f}</td>' if m_cost > 0 else '<td class="hint" style="text-align:right">—</td>'
+        cost_td = f'<td class="mono" style="text-align:right">${m_cost:,.2f}</td>' if m_cost > 0 else '<td class="hint" style="text-align:right">N/A</td>'
         metals_rows_html += (
             f'<tr>'
             f'<td>{m_metal}</td>'
@@ -417,12 +417,12 @@ def render_dashboard(data: dict, saved: str = "", active_tab: str = "summary", d
         r = e.get("gold_silver_ratio")
         y10 = e.get("tnx_10y")
         y2 = e.get("tnx_2y")
-        t_s = f"${t:,.0f}" if t is not None else "—"
-        g_s = f"${g:,.0f}" if g is not None else "—"
-        s_s = f"${s:,.1f}" if s is not None else "—"
-        r_s = f"{r:.2f}" if r is not None else "—"
-        y10_s = f"{y10:.2f}%" if y10 is not None else "—"
-        y2_s = f"{y2:.2f}%" if y2 is not None else "—"
+        t_s = f"${t:,.0f}" if t is not None else "N/A"
+        g_s = f"${g:,.0f}" if g is not None else "N/A"
+        s_s = f"${s:,.1f}" if s is not None else "N/A"
+        r_s = f"{r:.2f}" if r is not None else "N/A"
+        y10_s = f"{y10:.2f}%" if y10 is not None else "N/A"
+        y2_s = f"{y2:.2f}%" if y2 is not None else "N/A"
         history_rows += f'<tr><td>{d}</td><td>{t_s}</td><td>{g_s}</td><td>{s_s}</td><td>{r_s}</td><td>{y10_s}</td><td>{y2_s}</td></tr>'
     if not history_rows:
         history_rows = '<tr><td colspan="7" style="color:#8b949e">No history yet. Click Refresh prices to log a snapshot.</td></tr>'
@@ -518,7 +518,7 @@ def render_dashboard(data: dict, saved: str = "", active_tab: str = "summary", d
     oil_price = stock_prices.get("CL=F", 0)
     copper_price = stock_prices.get("HG=F", 0)
     gold_oil_ratio = gold_price / oil_price if gold_price and oil_price else None
-    gold_oil_s = f"{gold_oil_ratio:.1f}" if gold_oil_ratio is not None else "—"
+    gold_oil_s = f"{gold_oil_ratio:.1f}" if gold_oil_ratio is not None else "N/A"
 
     # ── Market Pulse Cards (built-in + custom) ──
     default_pulse_cards = [
@@ -587,7 +587,7 @@ def render_dashboard(data: dict, saved: str = "", active_tab: str = "summary", d
         spark_id = pc.get("spark", "")
 
         if not isinstance(val, (int, float)) or val == 0:
-            val_s = "—"
+            val_s = "N/A"
         elif fmt == "dollar0":
             val_s = f"${val:,.0f}"
         elif fmt == "dollar1":
@@ -778,7 +778,7 @@ def render_dashboard(data: dict, saved: str = "", active_tab: str = "summary", d
     if demo_mode:
         demo_banner = ('<div style="position:fixed;top:0;left:0;right:0;z-index:10000;background:linear-gradient(90deg,#d4a017,#f0c040);'
                        'color:#09090b;text-align:center;padding:8px 16px;font-size:0.85rem;font-weight:600;letter-spacing:0.02em;">'
-                       'Live Demo &mdash; sample data shown. Write operations disabled. '
+                       'Live Demo: sample data shown. Write operations disabled. '
                        '<a href="https://github.com/curtisboortz/nickel-and-dime" target="_blank" '
                        'style="color:#09090b;text-decoration:underline;margin-left:8px;">View on GitHub</a>'
                        '</div><style>.sidebar{top:36px !important;height:calc(100vh - 36px) !important;}'
@@ -1966,7 +1966,7 @@ html.light .skeleton {{ background:linear-gradient(90deg, rgba(0,0,0,0.04) 25%, 
     <div class="card-header">
       <div>
         <div class="card-title">Crypto Holdings</div>
-        <div class="card-subtitle">Synced from Coinbase &mdash; {len(crypto_entries)} assets</div>
+        <div class="card-subtitle">Synced from Coinbase ({len(crypto_entries)} assets)</div>
       </div>
     </div>
     <div style="display:flex;gap:20px;margin-bottom:12px;">
@@ -1992,7 +1992,7 @@ html.light .skeleton {{ background:linear-gradient(90deg, rgba(0,0,0,0.04) 25%, 
     <div class="card-header">
       <div>
         <div class="card-title">Physical Metals</div>
-        <div class="card-subtitle">Track gold &amp; silver purchases — values update with live spot prices</div>
+        <div class="card-subtitle">Track gold &amp; silver purchases; values update with live spot prices</div>
       </div>
       <button type="button" class="secondary" style="padding:5px 10px;font-size:0.75rem;" onclick="toggleMetalForm()">+ Add Purchase</button>
     </div>
@@ -2125,7 +2125,7 @@ html.light .skeleton {{ background:linear-gradient(90deg, rgba(0,0,0,0.04) 25%, 
     <p class="hint" style="margin-bottom:16px;">Upload one or more CSV/PDF statements to auto-import and categorize spending transactions into your budget tracker.</p>
     <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:end;">
       <div style="flex:1;min-width:200px;">
-        <span class="label">Statements (CSV or PDF — select multiple)</span>
+        <span class="label">Statements (CSV or PDF; select multiple)</span>
         <input type="file" id="stmt-file" accept=".csv,.pdf" multiple style="padding:7px 0;">
       </div>
       <button type="button" onclick="previewStatement()" style="padding:8px 14px;">Preview</button>
@@ -2547,7 +2547,7 @@ function buildHistoryChart(metric) {{
   }} else {{
     // Line mode using close/total values with proper time-based x-axis
     var pointData = PRICE_HISTORY_DATA.map(function(r) {{ return {{ x: r.date, y: r.close || r.total }}; }});
-    var fmt = function(v) {{ return v != null ? "$" + v.toLocaleString(undefined, {{maximumFractionDigits:0}}) : "—"; }};
+    var fmt = function(v) {{ return v != null ? "$" + v.toLocaleString(undefined, {{maximumFractionDigits:0}}) : "N/A"; }};
     var validData = pointData.filter(function(p) {{ return p.y != null && isFinite(p.y); }});
     var vals = validData.map(function(p) {{ return p.y; }});
     var dataMin = vals.length ? Math.min.apply(null, vals) : 0;
@@ -3658,7 +3658,7 @@ function renderSpendingBreakdown() {{
     html += '  <div class="spend-details">';
     html += '    <table><thead><tr><th>Date</th><th>Description / Note</th><th style="text-align:right">Amount</th></tr></thead><tbody>';
     incomeSorted.forEach(function(t) {{
-      var desc = t.description || t.note || "—";
+      var desc = t.description || t.note || "N/A";
       var amt = Math.abs(parseFloat(t.amount));
       html += '<tr><td class="mono">' + t.date + '</td><td>' + desc + '</td><td class="mono" style="text-align:right;color:var(--success);">+$' + amt.toFixed(2) + '</td></tr>';
     }});
@@ -3700,7 +3700,7 @@ function renderSpendingBreakdown() {{
     html += '  <div class="spend-details">';
     html += '    <table><thead><tr><th>Date</th><th>Description / Note</th><th style="text-align:right">Amount</th></tr></thead><tbody>';
     txns.forEach(function(t) {{
-      var desc = t.description || t.note || "—";
+      var desc = t.description || t.note || "N/A";
       html += '<tr><td class="mono">' + t.date + '</td><td>' + desc + '</td><td class="mono" style="text-align:right">$' + parseFloat(t.amount).toFixed(2) + '</td></tr>';
     }});
     html += '    </tbody></table>';
@@ -5698,7 +5698,7 @@ function _sentFetchAndRender(key, range) {{
     if (panel) panel.classList.add("open");
     return;
   }}
-  if (titleEl) titleEl.textContent = (_sentGaugeNames[key] || key) + " — loading…";
+  if (titleEl) titleEl.textContent = (_sentGaugeNames[key] || key) + " (loading…)";
   fetch("/api/sentiment-history?range=" + range)
     .then(function(r) {{ return r.json(); }})
     .then(function(d) {{

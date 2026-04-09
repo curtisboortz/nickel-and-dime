@@ -46,97 +46,96 @@ def health():
 @login_required
 def diagnostics():
     """Admin-only diagnostics: full system health report."""
-    import os
+    import os, traceback
     from datetime import datetime, timezone, timedelta
     if not getattr(current_user, "is_admin", False):
         abort(403)
 
-    from ..extensions import db
-    from ..models.market import PriceCache, FredCache, SentimentCache, EconCalendarCache
-    from ..models.user import User, Subscription
-
     now = datetime.now(timezone.utc)
     stale_threshold = now - timedelta(hours=1)
-
-    prices = PriceCache.query.all()
-    fresh_prices = [p for p in prices if p.updated_at and p.updated_at.replace(tzinfo=timezone.utc) > stale_threshold]
-    stale_prices = [p for p in prices if not p.updated_at or p.updated_at.replace(tzinfo=timezone.utc) <= stale_threshold]
-    price_sample = {p.symbol: {"price": p.price, "updated": str(p.updated_at)} for p in prices[:30]}
-
-    fred_rows = FredCache.query.all()
-    fred_status = {}
-    for f in fred_rows:
-        age_min = int((now - f.updated_at.replace(tzinfo=timezone.utc)).total_seconds() / 60) if f.updated_at else -1
-        has_data = bool(f.data) and len(f.data) > 0 if f.data else False
-        fred_status[f.series_group] = {"has_data": has_data, "age_minutes": age_min}
-
-    sent_rows = SentimentCache.query.all()
-    sentiment_status = {}
-    for s in sent_rows:
-        age_min = int((now - s.updated_at.replace(tzinfo=timezone.utc)).total_seconds() / 60) if s.updated_at else -1
-        sentiment_status[s.source] = {"data": s.data, "age_minutes": age_min}
-
-    cal = EconCalendarCache.query.first()
-    cal_status = None
-    if cal:
-        cal_age = int((now - cal.updated_at.replace(tzinfo=timezone.utc)).total_seconds() / 60) if cal.updated_at else -1
-        cal_weeks = list(cal.data.keys()) if cal.data else []
-        cal_status = {"age_minutes": cal_age, "weeks": cal_weeks}
-
-    users = User.query.count()
-    subs = Subscription.query.count()
-    active_subs = Subscription.query.filter(Subscription.status == "active").count()
-
-    critical_symbols = ["^GSPC", "^DJI", "^IXIC", "GC=F", "SI=F", "^VIX", "^TNX", "BTC-USD", "ETH-USD", "DX-Y.NYB"]
-    missing_prices = [s for s in critical_symbols if not any(p.symbol == s and p.price for p in prices)]
-
     health = "healthy"
     issues = []
-    if missing_prices:
-        issues.append(f"Missing prices for: {', '.join(missing_prices)}")
-    if not fred_rows:
-        issues.append("FRED cache is empty")
-    if not any(s.source == "cnn_fg" for s in sent_rows):
-        issues.append("CNN Fear & Greed not cached")
-    if not any(s.source == "crypto_fg" for s in sent_rows):
-        issues.append("Crypto Fear & Greed not cached")
-    if len(stale_prices) > len(fresh_prices):
-        issues.append(f"{len(stale_prices)}/{len(prices)} prices are stale (>1h)")
-    if issues:
-        health = "degraded"
-    if not prices:
-        health = "critical"
+    result = {"health": health, "issues": issues, "timestamp": now.isoformat()}
 
-    return jsonify({
-        "health": health,
-        "issues": issues,
-        "timestamp": now.isoformat(),
-        "prices": {
-            "total": len(prices),
-            "fresh": len(fresh_prices),
-            "stale": len(stale_prices),
-            "missing_critical": missing_prices,
-            "sample": price_sample,
-        },
-        "fred": fred_status,
-        "sentiment": sentiment_status,
-        "calendar": cal_status,
-        "users": {"total": users, "subscriptions": subs, "active_subs": active_subs},
-        "env": {
-            "run_scheduler": os.environ.get("RUN_SCHEDULER", "NOT SET"),
-            "admin_emails_set": bool(os.environ.get("ADMIN_EMAILS")),
-            "database_url_set": bool(os.environ.get("DATABASE_URL")),
-            "flask_env": os.environ.get("FLASK_ENV", "NOT SET"),
-            "stripe_key_set": bool(os.environ.get("STRIPE_SECRET_KEY")),
-            "fred_key_set": bool(os.environ.get("FRED_API_KEY")),
-            "cmc_key_set": bool(os.environ.get("CMC_API_KEY")),
-            "redis_url_set": bool(os.environ.get("REDIS_URL")),
-        },
-        "redis": {
-            "connected": _redis_healthy(),
-            "backend": "redis" if os.environ.get("REDIS_URL") else "in-memory",
-        },
-    })
+    try:
+        from ..models.market import PriceCache, FredCache, SentimentCache, EconCalendarCache
+        from ..models.user import User, Subscription
+
+        prices = PriceCache.query.all()
+        fresh_prices = [p for p in prices if p.updated_at and p.updated_at.replace(tzinfo=timezone.utc) > stale_threshold]
+        stale_prices = [p for p in prices if not p.updated_at or p.updated_at.replace(tzinfo=timezone.utc) <= stale_threshold]
+        price_sample = {p.symbol: {"price": p.price, "updated": str(p.updated_at)} for p in prices[:30]}
+        result["prices"] = {
+            "total": len(prices), "fresh": len(fresh_prices),
+            "stale": len(stale_prices), "sample": price_sample,
+        }
+
+        critical_symbols = ["^GSPC", "^DJI", "^IXIC", "GC=F", "SI=F", "^VIX", "^TNX", "BTC-USD", "ETH-USD", "DX-Y.NYB"]
+        missing_prices = [s for s in critical_symbols if not any(p.symbol == s and p.price for p in prices)]
+        result["prices"]["missing_critical"] = missing_prices
+        if missing_prices:
+            issues.append(f"Missing prices for: {', '.join(missing_prices)}")
+        if len(stale_prices) > len(fresh_prices):
+            issues.append(f"{len(stale_prices)}/{len(prices)} prices are stale (>1h)")
+        if not prices:
+            health = "critical"
+
+        fred_rows = FredCache.query.all()
+        fred_status = {}
+        for f in fred_rows:
+            age_min = int((now - f.updated_at.replace(tzinfo=timezone.utc)).total_seconds() / 60) if f.updated_at else -1
+            has_data = bool(f.data) and len(f.data) > 0 if f.data else False
+            fred_status[f.series_group] = {"has_data": has_data, "age_minutes": age_min}
+        result["fred"] = fred_status
+        if not fred_rows:
+            issues.append("FRED cache is empty")
+
+        sent_rows = SentimentCache.query.all()
+        sentiment_status = {}
+        for s in sent_rows:
+            age_min = int((now - s.updated_at.replace(tzinfo=timezone.utc)).total_seconds() / 60) if s.updated_at else -1
+            sentiment_status[s.source] = {"data": s.data, "age_minutes": age_min}
+        result["sentiment"] = sentiment_status
+        if not any(s.source == "cnn_fg" for s in sent_rows):
+            issues.append("CNN Fear & Greed not cached")
+        if not any(s.source == "crypto_fg" for s in sent_rows):
+            issues.append("Crypto Fear & Greed not cached")
+
+        cal = EconCalendarCache.query.first()
+        if cal:
+            cal_age = int((now - cal.updated_at.replace(tzinfo=timezone.utc)).total_seconds() / 60) if cal.updated_at else -1
+            cal_weeks = list(cal.data.keys()) if cal.data else []
+            result["calendar"] = {"age_minutes": cal_age, "weeks": cal_weeks}
+
+        result["users"] = {
+            "total": User.query.count(),
+            "subscriptions": Subscription.query.count(),
+            "active_subs": Subscription.query.filter(Subscription.status == "active").count(),
+        }
+    except Exception as exc:
+        issues.append(f"Diag query error: {exc}")
+        health = "error"
+
+    if issues and health == "healthy":
+        health = "degraded"
+    result["health"] = health
+    result["issues"] = issues
+
+    result["env"] = {
+        "run_scheduler": os.environ.get("RUN_SCHEDULER", "NOT SET"),
+        "admin_emails_set": bool(os.environ.get("ADMIN_EMAILS")),
+        "database_url_set": bool(os.environ.get("DATABASE_URL")),
+        "flask_env": os.environ.get("FLASK_ENV", "NOT SET"),
+        "stripe_key_set": bool(os.environ.get("STRIPE_SECRET_KEY")),
+        "fred_key_set": bool(os.environ.get("FRED_API_KEY")),
+        "cmc_key_set": bool(os.environ.get("CMC_API_KEY")),
+        "redis_url_set": bool(os.environ.get("REDIS_URL")),
+    }
+    result["redis"] = {
+        "connected": _redis_healthy(),
+        "backend": "redis" if os.environ.get("REDIS_URL") else "in-memory",
+    }
+    return jsonify(result)
 
 
 def _redis_healthy():

@@ -455,7 +455,7 @@ function _renderAmortTable(schedule) {
     if (row.extra > 0) {
       html += '<td class="mono" style="text-align:right;color:var(--success)">' + _amortFmt(row.extra) + "</td>";
     } else {
-      html += '<td class="mono" style="text-align:right;color:var(--text-muted)">—</td>';
+      html += '<td class="mono" style="text-align:right;color:var(--text-muted)">N/A</td>';
     }
     if (hasRate) {
       html += '<td class="mono" style="text-align:right">' + row.rate + "%</td>";

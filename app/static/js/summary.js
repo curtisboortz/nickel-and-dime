@@ -305,7 +305,7 @@ function _updateAllocTotal() {
       msg.style.color = "var(--accent-primary)";
       msgRow.style.display = "";
     } else if (sum > 100) {
-      msg.textContent = "Total exceeds 100% — reduce targets before saving";
+      msg.textContent = "Total exceeds 100%. Reduce targets before saving.";
       msg.style.color = "var(--danger)";
       msgRow.style.display = "";
     } else {
@@ -338,7 +338,7 @@ function saveAllocationTargets() {
   });
   parentSum = Math.round(parentSum * 10) / 10;
   if (parentSum > 100) {
-    alert("Targets total " + parentSum + "% — must be 100% or less.");
+    alert("Targets total " + parentSum + "%; must be 100% or less.");
     return;
   }
   var tactical = {};

@@ -1,4 +1,4 @@
-# Skool Community Plan — The Macro Investor's Desk
+# Skool Community Plan: The Macro Investor's Desk
 
 ## Community Setup
 - **Name:** The Macro Investor's Desk
@@ -12,7 +12,7 @@
 **Title:** Welcome to The Macro Investor's Desk
 
 **Body:**
-Hey everyone, I'm Curtis — I'm building Nickel & Dime, a portfolio tracker designed for investors who follow the macro picture.
+Hey everyone, I'm Curtis. I'm building Nickel & Dime, a portfolio tracker designed for investors who follow the macro picture.
 
 This community is where we discuss the macro side of investing: yield curves, gold/silver ratios, Fed policy, inflation data, sentiment indicators, and how they all connect to portfolio positioning.
 
@@ -24,7 +24,7 @@ This community is where we discuss the macro side of investing: yield curves, go
 
 **The tool is optional.** You can get value from this community whether you use Nickel & Dime or not. But if you're curious: nickelanddime.io (free tier available).
 
-Rules: Be respectful. No financial advice — just sharing data and perspectives. No pump-and-dump or crypto shilling.
+Rules: Be respectful. No financial advice, just sharing data and perspectives. No pump-and-dump or crypto shilling.
 
 ---
 
@@ -50,7 +50,7 @@ Pick one topic per week:
 ### Friday: Open Discussion
 - "What are you watching this weekend?"
 - "Share your allocation (optional)"
-- "Questions thread — ask anything macro"
+- "Questions thread: ask anything macro"
 
 ### Monthly: Portfolio Review (1st of each month)
 - Members share their allocation (categories only, no specific amounts required)

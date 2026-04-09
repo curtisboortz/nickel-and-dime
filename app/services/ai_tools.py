@@ -325,7 +325,7 @@ def _handle_suggest_rebalance(args, user_id):
     total = pv["total"]
 
     if total == 0:
-        return {"error": "Portfolio is empty — add holdings first"}
+        return {"error": "Portfolio is empty. Add holdings first."}
 
     trades = []
     for bucket, target_pct in sorted(target_weights.items()):

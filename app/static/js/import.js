@@ -168,7 +168,7 @@ function _renderImportPreview(data) {
       '<td style="padding:8px 12px;color:var(--text-muted);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' +
         (h.description || "") + "</td>" +
       '<td style="padding:8px 12px;text-align:right;">' +
-        (h.shares != null ? Number(h.shares).toLocaleString(undefined, {maximumFractionDigits: 4}) : "—") + "</td>" +
+        (h.shares != null ? Number(h.shares).toLocaleString(undefined, {maximumFractionDigits: 4}) : "N/A") + "</td>" +
       '<td style="padding:8px 12px;text-align:right;">' + cbDisplay + "</td>" +
       '<td style="padding:8px 12px;">' + selectHtml + "</td>" +
       '<td style="padding:8px 12px;">' + (h.account || "") + "</td>" +

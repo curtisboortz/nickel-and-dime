@@ -387,7 +387,7 @@ function renderCape(d) {
     else if (d.label === "Below Average" || d.label === "Cheap") labelClass = "color:var(--success);font-weight:600;";
     el.innerHTML = (d.current != null ? '<div class="pulse-item"><span class="pulse-label">Current CAPE</span><span class="pulse-price">' + d.current.toFixed(1) + '</span></div>' : '')
       + '<div class="pulse-item"><span class="pulse-label">Historic Median</span><span class="pulse-price">' + d.median + '</span></div>'
-      + (d.label ? '<div class="pulse-item" style="min-width:140px;max-width:180px;"><span class="pulse-label">Valuation</span><span class="pulse-price" style="' + labelClass + 'font-size:0.85rem;">' + d.label + '</span></div>' : '');
+      + (d.label ? '<div class="pulse-item" style="min-width:120px;max-width:150px;"><span class="pulse-label">Valuation</span><span class="pulse-price" style="' + labelClass + 'font-size:0.82rem;">' + d.label + '</span></div>' : '');
   }
   var pts = d.history || [];
   if (!pts.length) return;
@@ -436,7 +436,7 @@ function renderBuffett(d) {
     else if (d.label === "Undervalued" || d.label === "Significantly Undervalued") labelClass = "color:var(--success);font-weight:600;";
     el.innerHTML = (d.current != null ? '<div class="pulse-item"><span class="pulse-label">Current</span><span class="pulse-price">' + d.current.toFixed(0) + '%</span></div>' : '')
       + '<div class="pulse-item"><span class="pulse-label">Historic Average</span><span class="pulse-price">' + d.median + '%</span></div>'
-      + (d.label ? '<div class="pulse-item" style="min-width:140px;max-width:200px;"><span class="pulse-label">Valuation</span><span class="pulse-price" style="' + labelClass + 'font-size:0.85rem;">' + d.label + '</span></div>' : '');
+      + (d.label ? '<div class="pulse-item" style="min-width:120px;max-width:160px;"><span class="pulse-label">Valuation</span><span class="pulse-price" style="' + labelClass + 'font-size:0.82rem;">' + d.label + '</span></div>' : '');
   }
   var pts = d.history || [];
   if (!pts.length) return;

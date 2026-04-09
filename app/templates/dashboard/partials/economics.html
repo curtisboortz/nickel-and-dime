@@ -6,11 +6,11 @@
   <div id="fred-section-econcal" class="card" style="margin-top:16px;padding:16px;">
     <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin-bottom:10px;">
       <div class="card-title" style="margin:0;">Economic Calendar</div>
-      <span id="econcal-week" style="font-size:0.85rem;color:#94a3b8;"></span>
+      <span id="econcal-week" style="font-size:0.85rem;color:var(--text-muted);"></span>
       <div style="margin-left:auto;display:flex;gap:6px;">
-        <button type="button" id="econcal-prev" style="padding:5px 10px;font-size:0.82rem;border:1px solid rgba(255,255,255,0.2);border-radius:6px;background:rgba(255,255,255,0.06);color:#e2e8f0;cursor:pointer;">&laquo; Prev</button>
-        <button type="button" id="econcal-this" style="padding:5px 10px;font-size:0.82rem;border:1px solid rgba(99,102,241,0.5);border-radius:6px;background:rgba(99,102,241,0.15);color:#a5b4fc;cursor:pointer;font-weight:600;">This week</button>
-        <button type="button" id="econcal-next" style="padding:5px 10px;font-size:0.82rem;border:1px solid rgba(255,255,255,0.2);border-radius:6px;background:rgba(255,255,255,0.06);color:#e2e8f0;cursor:pointer;">Next &raquo;</button>
+        <button type="button" id="econcal-prev" class="secondary" style="padding:5px 10px;font-size:0.82rem;">&laquo; Prev</button>
+        <button type="button" id="econcal-this" style="padding:5px 10px;font-size:0.82rem;border:1px solid rgba(99,102,241,0.5);border-radius:6px;background:rgba(99,102,241,0.15);color:var(--accent-primary);cursor:pointer;font-weight:600;">This week</button>
+        <button type="button" id="econcal-next" class="secondary" style="padding:5px 10px;font-size:0.82rem;">Next &raquo;</button>
       </div>
     </div>
     <div id="econcal-body" style="max-height:440px;overflow-y:auto;">
@@ -160,38 +160,38 @@
   </div>
 
   <!-- CAPE -->
-  <div id="fred-section-cape" class="card" style="margin-top:16px;padding:16px;">
+  <div id="fred-section-cape" class="card" style="margin-top:16px;padding:16px;overflow:hidden;">
     <div class="card-title" style="margin-bottom:12px;">Market Valuation (Shiller CAPE Ratio)</div>
-    <div id="cape-stats" class="pulse-bar" style="flex-wrap:wrap;gap:12px;margin-bottom:16px;"></div>
+    <div id="cape-stats" class="pulse-bar" style="flex-wrap:wrap;gap:12px;margin-bottom:16px;overflow:hidden;"></div>
     <div style="position:relative;height:240px;"><canvas id="cape-chart"></canvas></div>
-    <p class="hint" style="margin-top:8px;">Cyclically-adjusted P/E (CAPE) smooths earnings over 10 years. Long-term median ~16.8. Above 25 = historically expensive. Below 15 = historically cheap.</p>
+    <p class="hint" style="margin-top:8px;word-wrap:break-word;overflow-wrap:break-word;">Cyclically-adjusted P/E (CAPE) smooths earnings over 10 years. Long-term median ~16.8. Above 25 = historically expensive. Below 15 = historically cheap.</p>
   </div>
 
   <!-- Buffett Indicator -->
-  <div id="fred-section-buffett" class="card" style="margin-top:16px;padding:16px;">
+  <div id="fred-section-buffett" class="card" style="margin-top:16px;padding:16px;overflow:hidden;">
     <div class="card-title" style="margin-bottom:12px;">Buffett Indicator (Total Market Cap / GDP)</div>
-    <div id="buffett-stats" class="pulse-bar" style="flex-wrap:wrap;gap:12px;margin-bottom:16px;"></div>
+    <div id="buffett-stats" class="pulse-bar" style="flex-wrap:wrap;gap:12px;margin-bottom:16px;overflow:hidden;"></div>
     <div style="position:relative;height:240px;"><canvas id="buffett-chart"></canvas></div>
-    <p class="hint" style="margin-top:8px;">Warren Buffett&#39;s &ldquo;best single measure of valuations.&rdquo; Compares total US market cap to GDP. Long-term average ~120%. Above 140% = overvalued territory.</p>
+    <p class="hint" style="margin-top:8px;word-wrap:break-word;overflow-wrap:break-word;">Warren Buffett&#39;s &ldquo;best single measure of valuations.&rdquo; Compares total US market cap to GDP. Long-term average ~120%. Above 140% = overvalued territory.</p>
   </div>
 
   <!-- World Uncertainty Index -->
-  <div id="fred-section-wui" class="card" style="margin-top:16px;padding:16px;">
+  <div id="fred-section-wui" class="card" style="margin-top:16px;padding:16px;overflow:hidden;">
     <div class="card-title" style="margin-bottom:12px;">World Uncertainty Index (GDP-Weighted)</div>
-    <div id="fred-wui-stats" class="pulse-bar" style="flex-wrap:wrap;gap:12px;margin-bottom:16px;"></div>
+    <div id="fred-wui-stats" class="pulse-bar" style="flex-wrap:wrap;gap:12px;margin-bottom:16px;overflow:hidden;"></div>
     <div style="position:relative;height:220px;"><canvas id="fred-chart-wui"></canvas></div>
-    <p class="hint" style="margin-top:8px;">Measures global uncertainty by counting &ldquo;uncertainty&rdquo; mentions in EIU country reports, GDP-weighted across 143 countries.</p>
+    <p class="hint" style="margin-top:8px;word-wrap:break-word;overflow-wrap:break-word;">Measures global uncertainty by counting &ldquo;uncertainty&rdquo; mentions in EIU country reports, GDP-weighted across 143 countries.</p>
   </div>
 
   <!-- Housing -->
-  <div id="fred-section-housing" class="card" style="margin-top:16px;padding:16px;">
+  <div id="fred-section-housing" class="card" style="margin-top:16px;padding:16px;overflow:hidden;">
     <div class="card-title" style="margin-bottom:12px;">Housing (Case-Shiller Home Price Index, 30Y Mortgage Rate)</div>
-    <div id="fred-housing-stats" class="pulse-bar" style="flex-wrap:wrap;gap:12px;margin-bottom:16px;"></div>
+    <div id="fred-housing-stats" class="pulse-bar" style="flex-wrap:wrap;gap:12px;margin-bottom:16px;overflow:hidden;"></div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(300px, 1fr));gap:16px;">
       <div><div style="position:relative;height:200px;"><canvas id="fred-chart-housing"></canvas></div></div>
       <div><div style="position:relative;height:200px;"><canvas id="fred-chart-mortgage"></canvas></div></div>
     </div>
-    <p class="hint" style="margin-top:8px;">Case-Shiller tracks home prices nationally. Mortgage rates drive affordability. Spiking rates often cool housing and economy.</p>
+    <p class="hint" style="margin-top:8px;word-wrap:break-word;overflow-wrap:break-word;">Case-Shiller tracks home prices nationally. Mortgage rates drive affordability. Spiking rates often cool housing and economy.</p>
   </div>
 
 </div>

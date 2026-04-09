@@ -387,7 +387,7 @@ function renderCape(d) {
     else if (d.label === "Below Average" || d.label === "Cheap") labelClass = "color:var(--success);font-weight:600;";
     el.innerHTML = (d.current != null ? '<div class="pulse-item"><span class="pulse-label">Current CAPE</span><span class="pulse-price">' + d.current.toFixed(1) + '</span></div>' : '')
       + '<div class="pulse-item"><span class="pulse-label">Historic Median</span><span class="pulse-price">' + d.median + '</span></div>'
-      + (d.label ? '<div class="pulse-item"><span class="pulse-label">Valuation</span><span class="pulse-price" style="' + labelClass + '">' + d.label + '</span></div>' : '');
+      + (d.label ? '<div class="pulse-item" style="min-width:140px;max-width:180px;"><span class="pulse-label">Valuation</span><span class="pulse-price" style="' + labelClass + 'font-size:0.85rem;">' + d.label + '</span></div>' : '');
   }
   var pts = d.history || [];
   if (!pts.length) return;
@@ -436,7 +436,7 @@ function renderBuffett(d) {
     else if (d.label === "Undervalued" || d.label === "Significantly Undervalued") labelClass = "color:var(--success);font-weight:600;";
     el.innerHTML = (d.current != null ? '<div class="pulse-item"><span class="pulse-label">Current</span><span class="pulse-price">' + d.current.toFixed(0) + '%</span></div>' : '')
       + '<div class="pulse-item"><span class="pulse-label">Historic Average</span><span class="pulse-price">' + d.median + '%</span></div>'
-      + (d.label ? '<div class="pulse-item"><span class="pulse-label">Valuation</span><span class="pulse-price" style="' + labelClass + '">' + d.label + '</span></div>' : '');
+      + (d.label ? '<div class="pulse-item" style="min-width:140px;max-width:200px;"><span class="pulse-label">Valuation</span><span class="pulse-price" style="' + labelClass + 'font-size:0.85rem;">' + d.label + '</span></div>' : '');
   }
   var pts = d.history || [];
   if (!pts.length) return;
@@ -710,7 +710,18 @@ function renderEconCalendar(d) {
     return;
   }
   var today = new Date().toISOString().slice(0, 10);
-  var impactColor = { high: "#ef4444", medium: "#f59e0b", low: "#64748b" };
+  var lt = ndIsLight();
+  var thHead = lt ? "#475569" : "#94a3b8";
+  var thEvent = lt ? "#1e293b" : "#e2e8f0";
+  var thDay = lt ? "#334155" : "#e2e8f0";
+  var thTime = lt ? "#64748b" : "#94a3b8";
+  var thForecast = lt ? "#64748b" : "#94a3b8";
+  var thPrev = lt ? "#94a3b8" : "#64748b";
+  var thNoActual = lt ? "#94a3b8" : "#94a3b8";
+  var borderHead = lt ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.08)";
+  var borderDay = lt ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.06)";
+  var borderRow = lt ? "rgba(0,0,0,0.04)" : "rgba(255,255,255,0.03)";
+  var impactColor = { high: "#ef4444", medium: "#f59e0b", low: lt ? "#94a3b8" : "#64748b" };
   var grouped = {};
   d.events.forEach(function(e) {
     if (!grouped[e.date]) grouped[e.date] = [];
@@ -718,22 +729,22 @@ function renderEconCalendar(d) {
   });
   var dates = Object.keys(grouped).sort();
   var html = '<table style="width:100%;border-collapse:collapse;font-size:0.85rem;">';
-  html += '<thead><tr style="border-bottom:1px solid rgba(255,255,255,0.08);text-align:left;">';
-  html += '<th style="padding:6px 8px;color:#94a3b8;font-weight:600;width:32px;"></th>';
-  html += '<th style="padding:6px 8px;color:#94a3b8;font-weight:600;">Time</th>';
-  html += '<th style="padding:6px 8px;color:#94a3b8;font-weight:600;">Event</th>';
-  html += '<th style="padding:6px 4px;color:#94a3b8;font-weight:600;text-align:right;">Actual</th>';
-  html += '<th style="padding:6px 4px;color:#94a3b8;font-weight:600;text-align:right;">Forecast</th>';
-  html += '<th style="padding:6px 4px;color:#94a3b8;font-weight:600;text-align:right;">Previous</th>';
+  html += '<thead><tr style="border-bottom:1px solid ' + borderHead + ';text-align:left;">';
+  html += '<th style="padding:6px 8px;color:' + thHead + ';font-weight:600;width:32px;"></th>';
+  html += '<th style="padding:6px 8px;color:' + thHead + ';font-weight:600;">Time</th>';
+  html += '<th style="padding:6px 8px;color:' + thHead + ';font-weight:600;">Event</th>';
+  html += '<th style="padding:6px 4px;color:' + thHead + ';font-weight:600;text-align:right;">Actual</th>';
+  html += '<th style="padding:6px 4px;color:' + thHead + ';font-weight:600;text-align:right;">Forecast</th>';
+  html += '<th style="padding:6px 4px;color:' + thHead + ';font-weight:600;text-align:right;">Previous</th>';
   html += '</tr></thead><tbody>';
   dates.forEach(function(dt) {
     var dayLabel = new Date(dt + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
     var isToday = dt === today;
-    html += '<tr><td colspan="6" style="padding:8px 8px 4px;font-weight:700;color:' + (isToday ? "var(--gold)" : "#e2e8f0") + ';font-size:0.82rem;border-top:1px solid rgba(255,255,255,0.06);">' + dayLabel + (isToday ? " (Today)" : "") + '</td></tr>';
+    html += '<tr><td colspan="6" style="padding:8px 8px 4px;font-weight:700;color:' + (isToday ? "var(--gold)" : thDay) + ';font-size:0.82rem;border-top:1px solid ' + borderDay + ';">' + dayLabel + (isToday ? " (Today)" : "") + '</td></tr>';
     grouped[dt].forEach(function(e) {
-      var ic = impactColor[e.impact] || "#64748b";
+      var ic = impactColor[e.impact] || impactColor.low;
       var actualVal = e.actual || "-";
-      var actualColor = "#94a3b8";
+      var actualColor = thNoActual;
       if (e.actual && e.actual !== "-") {
         actualColor = "#22c55e";
         if (e.forecast && e.forecast !== "-") {
@@ -751,13 +762,13 @@ function renderEconCalendar(d) {
           }
         }
       }
-      html += '<tr style="border-bottom:1px solid rgba(255,255,255,0.03);">';
+      html += '<tr style="border-bottom:1px solid ' + borderRow + ';">';
       html += '<td style="padding:4px 8px;"><span style="display:inline-block;width:8px;height:8px;background:' + ic + ';border-radius:50%;"></span></td>';
-      html += '<td style="padding:4px 8px;color:#94a3b8;white-space:nowrap;">' + (e.time || "-") + '</td>';
-      html += '<td style="padding:4px 8px;color:#e2e8f0;">' + e.event + '</td>';
+      html += '<td style="padding:4px 8px;color:' + thTime + ';white-space:nowrap;">' + (e.time || "-") + '</td>';
+      html += '<td style="padding:4px 8px;color:' + thEvent + ';">' + e.event + '</td>';
       html += '<td style="padding:4px 4px;text-align:right;color:' + actualColor + ';font-weight:' + (e.actual ? "600" : "400") + ';">' + actualVal + '</td>';
-      html += '<td style="padding:4px 4px;text-align:right;color:#94a3b8;">' + (e.forecast || "-") + '</td>';
-      html += '<td style="padding:4px 4px;text-align:right;color:#64748b;">' + (e.previous || "-") + '</td>';
+      html += '<td style="padding:4px 4px;text-align:right;color:' + thForecast + ';">' + (e.forecast || "-") + '</td>';
+      html += '<td style="padding:4px 4px;text-align:right;color:' + thPrev + ';">' + (e.previous || "-") + '</td>';
       html += '</tr>';
     });
   });

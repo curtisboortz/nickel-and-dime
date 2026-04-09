@@ -4,6 +4,50 @@ All notable changes to Nickel&Dime are documented here.
 
 ---
 
+## [3.0.0] — 2026-04-09 — Redis, UI Overhaul, Mobile App & Marketing Launch
+
+### Infrastructure
+- **Redis integration** — rate limiting (Flask-Limiter backed by Redis), server-side session storage (Flask-Session), and response caching (Flask-Caching) all wired to Redis; in-memory fallback when Redis is unavailable
+- **APScheduler distributed locking** — background jobs (price refresh, FRED sync, sentiment, snapshots) now acquire a Redis lock before execution, preventing duplicate runs across multiple workers
+- **Cache invalidation** — price and FRED caches are explicitly cleared after scheduler refreshes so stale data is never served
+
+### UI & Theming
+- **Deep light mode overhaul** — 70+ CSS variable overrides for light theme; shadow-based card elevation, gradient sidebar, distinct color palette; `color-scheme: light` enforced with high-specificity rules
+- **Centralized Chart.js theming** — `ndChartTheme()`, `ndTooltipOpts()`, `ndScaleOpts()`, `ndGradient()` helpers in `shared.js`; all charts (donut, line, bar, radar, candlestick) auto-adapt to light/dark mode
+- **Data visualization refinements** — donut chart increased cutout and segment spacing; line charts use gradient fills; bar charts have rounded corners; cleaner dashed grid lines with lower opacity
+- **Spacing and card polish** — card padding increased to 24px, summary grid gap to 20px, hero row gap to 28px; pulse bar gap tightened to 10px
+- **Theme-aware sentiment gauges** — needle, center dot, and background track dynamically switch colors for light/dark; gauges redraw on theme toggle
+- **Theme-aware economic calendar** — all hardcoded dark-mode colors replaced with dynamic light/dark values; navigation buttons use `.secondary` class
+- **Themed file input** — native "Choose Files" button replaced with styled button matching the app theme
+- **Valuation stat boxes** — CAPE and Buffett Indicator pulse items widened to fit labels like "Significantly Overvalued" without overflow
+
+### Mobile
+- **Capacitor app shell** — `capacitor.config.json` targeting iOS and Android with webview wrapper pointing to `nickelanddime.io`; safe-area CSS insets for notched devices; `package.json` with Capacitor dependencies
+- **Icon and splash generation** — `scripts/generate_icons.py` produces all required icon sizes from the ND logo; `@capacitor/assets` config for native platform assets
+
+### Marketing
+- **Ad landing page** — `/lp/macro-investors` with macro-investor focused copy, feature highlights, and CTA
+- **Email drip campaigns** — 4 lifecycle emails (welcome, feature highlight at day 3, referral prompt at day 7, renewal reminder); APScheduler daily cron job; templates in `app/templates/email/`
+- **Blog infrastructure** — 5 SEO blog posts seeded via `scripts/seed_blog_posts.py`; blog linked from homepage nav and footer; RSS `<link>` tag in header (button removed from UI)
+- **In-app referral prompt** — modal appears after 7+ days of account age with copy-to-clipboard referral code
+- **Marketing playbooks** — detailed plans for Product Hunt, Reddit, Twitter/X, Skool community, and app store listings in `docs/marketing/`
+
+### Features
+- **Budget & Investments sync** — "Investments" row on the budget page is bidirectionally linked to the monthly investment budget from UserSettings; editing from either the summary card or budget page updates both
+
+### Fixed
+- Plaid cash positions now captured with `value_override` for accurate totals
+- Ticker normalization for yfinance (`BRK.B` → `BRK-B`); `CASH:` tickers filtered from batch lookups
+- Allocation table syncs on live poll; all parent categories appear in correlation matrix
+- Railway deploy hanging — forced Nixpacks `python` provider in `railway.json` to prevent `package.json` confusion
+- Sidebar logo restored to `icon-192.png`; stale `logo.svg` placeholder deleted
+- Duplicate `referral-code-display` HTML ID causing settings referral code to show "Loading..." forever
+- Removed overly broad `[class*="card-"]` CSS selector that applied card borders to inner elements
+- Fear & Greed gauge arrows invisible in light mode — needles now use dark strokes when light theme is active
+- Admin diagnostics endpoint wrapped in try/catch; JS health check display is null-safe; shows Redis status
+
+---
+
 ## [2.8.0] — 2026-04-08 — Commodities Category, Alt Children & Chart Date Fix
 
 ### Added

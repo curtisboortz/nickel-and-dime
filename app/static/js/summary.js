@@ -101,18 +101,25 @@ function _renderAllocRows(rows) {
   tbody.innerHTML = html;
 }
 
-function loadMonthlyInvestments() {
+var _investCurrentMonth = "";
+var _investAvailableMonths = [];
+
+function loadMonthlyInvestments(month) {
   var tbody = document.getElementById("invest-table-body");
   var subtitle = document.getElementById("invest-subtitle");
   if (!tbody) return;
-  fetch("/api/investments")
+  var url = "/api/investments";
+  if (month) url += "?month=" + encodeURIComponent(month);
+  fetch(url)
     .then(function(r) { return r.json(); })
     .then(function(d) {
       var cats = d.categories || [];
       var budget = d.monthly_budget || 0;
-      var month = d.month || "";
-      var monthLabel = month ? new Date(month + "-01").toLocaleDateString(undefined, {year:"numeric", month:"long"}) : "";
-      if (subtitle) subtitle.textContent = monthLabel + " - Budget: $" + budget.toLocaleString(undefined, {maximumFractionDigits:0}) + " / $" + budget.toLocaleString(undefined, {maximumFractionDigits:0});
+      _investCurrentMonth = d.month || "";
+      _investAvailableMonths = d.available_months || [];
+      var monthLabel = _investCurrentMonth ? new Date(_investCurrentMonth + "-15").toLocaleDateString(undefined, {year:"numeric", month:"long"}) : "";
+      if (subtitle) subtitle.textContent = monthLabel + " - Budget: $" + budget.toLocaleString(undefined, {maximumFractionDigits:0});
+      _updateInvestNav();
 
       if (cats.length === 0) {
         tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:16px;color:var(--text-muted);">No investment categories set up for this month.</td></tr>';
@@ -170,7 +177,7 @@ function saveContributionsAPI() {
   fetch("/api/investments", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ categories: categories })
+    body: JSON.stringify({ month: _investCurrentMonth, categories: categories })
   }).then(function(r) { return r.json(); }).then(function(d) {
     if (d.success) {
       var btn = document.querySelector("button[onclick*='saveContributions']");
@@ -189,8 +196,41 @@ function newMonthAPI() {
     body: JSON.stringify({ month: month })
   }).then(function(r) { return r.json(); }).then(function() {
     _summaryDataLoaded = false;
-    loadMonthlyInvestments();
+    loadMonthlyInvestments(month);
   });
+}
+
+function investNavMonth(dir) {
+  if (!_investCurrentMonth) return;
+  var parts = _investCurrentMonth.split("-");
+  var y = parseInt(parts[0]), m = parseInt(parts[1]);
+  m += dir;
+  if (m < 1) { m = 12; y--; }
+  if (m > 12) { m = 1; y++; }
+  var target = y + "-" + String(m).padStart(2, "0");
+  var now = new Date();
+  var currentMonth = now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, "0");
+  if (target > currentMonth) return;
+  var oldest = _investAvailableMonths.length ? _investAvailableMonths[_investAvailableMonths.length - 1] : currentMonth;
+  var oneYearAgo = (now.getFullYear() - 1) + "-" + String(now.getMonth() + 1).padStart(2, "0");
+  if (target < oneYearAgo) return;
+  loadMonthlyInvestments(target);
+}
+
+function _updateInvestNav() {
+  var prevBtn = document.getElementById("invest-prev-btn");
+  var nextBtn = document.getElementById("invest-next-btn");
+  if (!prevBtn || !nextBtn || !_investCurrentMonth) return;
+  var now = new Date();
+  var currentMonth = now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, "0");
+  var oneYearAgo = (now.getFullYear() - 1) + "-" + String(now.getMonth() + 1).padStart(2, "0");
+  var parts = _investCurrentMonth.split("-");
+  var y = parseInt(parts[0]), m = parseInt(parts[1]);
+  var prevM = m - 1 < 1 ? 12 : m - 1;
+  var prevY = m - 1 < 1 ? y - 1 : y;
+  var prevMonth = prevY + "-" + String(prevM).padStart(2, "0");
+  prevBtn.disabled = prevMonth < oneYearAgo;
+  nextBtn.disabled = _investCurrentMonth >= currentMonth;
 }
 
 /* ── Add Investment Category ── */
@@ -205,14 +245,14 @@ function addInvestCategory() {
   fetch("/api/investments", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ categories: [{ category: name, target: target, contributed: 0 }] })
+    body: JSON.stringify({ month: _investCurrentMonth, categories: [{ category: name, target: target, contributed: 0 }] })
   }).then(function(r) { return r.json(); }).then(function(d) {
     if (d.success) {
       document.getElementById("new-cat-name").value = "";
       document.getElementById("new-cat-target").value = "";
       document.getElementById("add-category-form").style.display = "none";
       _summaryDataLoaded = false;
-      loadMonthlyInvestments();
+      loadMonthlyInvestments(_investCurrentMonth);
     }
   });
 }

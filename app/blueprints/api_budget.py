@@ -83,6 +83,9 @@ def budget_data():
                 break
         if not found:
             categories.append({"name": "Investments", "limit": inv_budget})
+        for cat in categories:
+            if cat.get("name", "").lower() in ("savings/investments", "savings / investments"):
+                cat["name"] = "Savings"
 
     budget_limits = {}
     budget_cats = []
@@ -354,10 +357,10 @@ def _compute_monthly_investment_budget(user_id):
     amt = settings.contribution_amount
     freq = settings.contribution_frequency or "biweekly"
     if freq == "biweekly":
-        return round(amt * 26 / 12, 2)
+        return round(amt * 26 / 12)
     elif freq == "weekly":
-        return round(amt * 52 / 12, 2)
-    return amt
+        return round(amt * 52 / 12)
+    return round(amt)
 
 
 def _sync_investment_budget_from_limit(user_id, monthly_limit):
@@ -455,13 +458,48 @@ def spending_insights():
 @api_budget_bp.route("/investments")
 @login_required
 def get_investments():
-    """Return monthly investment categories for the current or given month."""
+    """Return monthly investment categories for the current or given month.
+
+    Auto-initializes the current month by copying targets from the most recent
+    prior month if no rows exist yet.
+    """
     from ..models.settings import MonthlyInvestment, UserSettings
-    month = flask_request.args.get("month", dt_date.today().strftime("%Y-%m"))
+    current_month = dt_date.today().strftime("%Y-%m")
+    month = flask_request.args.get("month", current_month)
     rows = (MonthlyInvestment.query
             .filter_by(user_id=current_user.id, month=month)
             .order_by(MonthlyInvestment.id)
             .all())
+
+    if not rows and month == current_month:
+        prev = (MonthlyInvestment.query
+                .filter_by(user_id=current_user.id)
+                .filter(MonthlyInvestment.month < month)
+                .order_by(MonthlyInvestment.month.desc())
+                .limit(20)
+                .all())
+        if prev:
+            prev_month = prev[0].month
+            for r in prev:
+                if r.month == prev_month:
+                    db.session.add(MonthlyInvestment(
+                        user_id=current_user.id, month=month,
+                        category=r.category, target=r.target, contributed=0,
+                    ))
+            db.session.commit()
+            rows = (MonthlyInvestment.query
+                    .filter_by(user_id=current_user.id, month=month)
+                    .order_by(MonthlyInvestment.id)
+                    .all())
+
+    all_months = (db.session.query(MonthlyInvestment.month)
+                  .filter_by(user_id=current_user.id)
+                  .distinct()
+                  .order_by(MonthlyInvestment.month.desc())
+                  .limit(12)
+                  .all())
+    available_months = sorted(set(m[0] for m in all_months), reverse=True)
+
     settings = UserSettings.query.filter_by(user_id=current_user.id).first()
     contribution_plan = (settings.contribution_plan or {}) if settings else {}
     targets_data = (settings.targets or {}) if settings else {}
@@ -470,6 +508,7 @@ def get_investments():
     return jsonify({
         "month": month,
         "monthly_budget": monthly_budget,
+        "available_months": available_months,
         "categories": [
             {"id": r.id, "category": r.category, "target": r.target, "contributed": r.contributed}
             for r in rows

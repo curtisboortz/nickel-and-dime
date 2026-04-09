@@ -414,7 +414,11 @@ function obFinish() {
         <div class="card-header">
           <div>
             <div class="card-title"><span class="drag-handle" title="Drag to reorder">&#x2630;</span> Monthly Investments</div>
-            <div class="card-subtitle" id="invest-subtitle"></div>
+            <div style="display:flex;align-items:center;gap:8px;margin-top:2px;">
+              <button type="button" class="secondary" id="invest-prev-btn" onclick="investNavMonth(-1)" style="padding:2px 8px;font-size:0.75rem;line-height:1;">&laquo;</button>
+              <div class="card-subtitle" id="invest-subtitle" style="margin:0;"></div>
+              <button type="button" class="secondary" id="invest-next-btn" onclick="investNavMonth(1)" style="padding:2px 8px;font-size:0.75rem;line-height:1;">&raquo;</button>
+            </div>
           </div>
           <div style="display:flex;gap:6px;">
             <button type="button" class="secondary" style="padding:5px 10px;font-size:0.75rem;" onclick="showAddCategoryForm()">+ Category</button>

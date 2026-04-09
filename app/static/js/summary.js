@@ -189,7 +189,12 @@ function loadMonthlyInvestments(month) {
       totalTarget += c.target;
       totalContrib += c.contributed;
 
-      var bucketBadge = c.bucket ? '<span data-bucket="' + _esc(c.bucket) + '" style="display:inline-block;font-size:0.65rem;padding:1px 6px;border-radius:3px;background:rgba(99,102,241,0.15);color:var(--accent-primary);margin-left:4px;vertical-align:middle;">' + _esc(c.bucket) + '</span>' : '';
+      var bucketEl = "";
+      if (_investIsCurrent) {
+        bucketEl = '<select class="bucket-select" data-id="' + c.id + '" onchange="saveInvestBucket(this)" style="font-size:0.65rem;padding:1px 4px;border-radius:3px;background:rgba(99,102,241,0.10);color:var(--accent-primary);border:1px solid rgba(99,102,241,0.25);margin-left:4px;vertical-align:middle;max-width:110px;">' + _bucketDropdownHtml(c.bucket || "") + '</select>';
+      } else if (c.bucket) {
+        bucketEl = '<span style="display:inline-block;font-size:0.65rem;padding:1px 6px;border-radius:3px;background:rgba(99,102,241,0.15);color:var(--accent-primary);margin-left:4px;vertical-align:middle;">' + _esc(c.bucket) + '</span>';
+      }
 
       var suggestHint = "";
       if (_investIsCurrent && c.bucket && _investDriftSuggestions[c.bucket]) {
@@ -200,8 +205,8 @@ function loadMonthlyInvestments(month) {
         }
       }
 
-      html += '<tr>';
-      html += '<td style="padding:8px 6px;"><strong>' + _esc(c.category) + '</strong>' + bucketBadge + ' <span style="color:var(--text-muted);font-size:0.72rem;">(' + pct + '%)</span>' + suggestHint + '</td>';
+      html += '<tr data-bucket="' + _esc(c.bucket || "") + '">';
+      html += '<td style="padding:8px 6px;"><strong>' + _esc(c.category) + '</strong>' + bucketEl + ' <span style="color:var(--text-muted);font-size:0.72rem;">(' + pct + '%)</span>' + suggestHint + '</td>';
       html += '<td style="padding:8px 6px;text-align:right;font-family:var(--mono);">$' + c.target.toLocaleString(undefined, {maximumFractionDigits:0}) + '</td>';
       html += '<td style="padding:8px 6px;text-align:right;"><input type="number" class="contrib-input num" data-id="' + c.id + '" data-target="' + c.target + '" value="' + c.contributed + '" style="width:80px;text-align:right;" onchange="updateInvestTotals()"></td>';
       html += '<td style="padding:8px 6px;text-align:right;font-family:var(--mono);' + diffCls + '">' + diffStr + '</td>';
@@ -247,17 +252,41 @@ function saveContributionsAPI() {
   });
 }
 
+function saveInvestBucket(sel) {
+  var id = parseInt(sel.dataset.id);
+  var bucket = sel.value;
+  fetch("/api/investments", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ month: _investCurrentMonth, categories: [{ id: id, bucket: bucket }] })
+  }).then(function(r) { return r.json(); }).then(function(d) {
+    if (d.success) loadMonthlyInvestments(_investCurrentMonth);
+  });
+}
+
 function applySuggestedTargets() {
   if (!_investIsCurrent || !Object.keys(_investDriftSuggestions).length) return;
+  var bucketTotals = {};
+  document.querySelectorAll(".bucket-select").forEach(function(sel) {
+    var b = sel.value;
+    if (b) bucketTotals[b] = (bucketTotals[b] || 0) + 1;
+  });
+  var hasBuckets = Object.keys(bucketTotals).length > 0;
+  if (!hasBuckets) {
+    alert("Assign asset class buckets to your categories first, then apply suggestions.");
+    return;
+  }
   var categories = [];
   document.querySelectorAll(".contrib-input").forEach(function(i) {
     var id = parseInt(i.dataset.id);
     var row = i.closest("tr");
-    var bucketEl = row ? row.querySelector("[data-bucket]") : null;
-    var bucket = bucketEl ? bucketEl.dataset.bucket : "";
+    var bucketSel = row ? row.querySelector(".bucket-select") : null;
+    var bucket = bucketSel ? bucketSel.value : (row ? row.dataset.bucket : "");
     var entry = { id: id, contributed: parseFloat(i.value) || 0 };
     if (bucket && _investDriftSuggestions[bucket]) {
-      entry.target = _investDriftSuggestions[bucket].suggested;
+      var sg = _investDriftSuggestions[bucket];
+      var count = bucketTotals[bucket] || 1;
+      entry.target = Math.round(sg.suggested / count);
     }
     categories.push(entry);
   });

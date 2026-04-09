@@ -27,6 +27,9 @@ class UserSettings(db.Model):
     # Category rollup overrides -- {child: parent_or_null}
     bucket_rollup = db.Column(db.JSON, default=dict)
 
+    # Rebalancing
+    rebalance_months = db.Column(db.Integer, default=12)
+
     # Onboarding
     onboarding_completed = db.Column(
         db.Boolean, default=False)
@@ -89,8 +92,10 @@ class MonthlyInvestment(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
     month = db.Column(db.String(7), nullable=False)  # "2026-03"
     category = db.Column(db.String(100), nullable=False)
+    bucket = db.Column(db.String(50), nullable=True)
     target = db.Column(db.Float, default=0.0)
     contributed = db.Column(db.Float, default=0.0)
+    monthly_budget = db.Column(db.Float, default=0.0)
 
     __table_args__ = (
         db.UniqueConstraint("user_id", "month", "category", name="uq_monthly_inv"),

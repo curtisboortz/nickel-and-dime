@@ -455,13 +455,132 @@ def spending_insights():
     })
 
 
+@api_budget_bp.route("/drift-targets")
+@login_required
+def drift_targets():
+    """Compute suggested monthly investment amounts per bucket based on allocation drift."""
+    from ..models.settings import UserSettings
+    from ..services.portfolio_service import compute_portfolio_value
+    from ..utils.buckets import rollup_breakdown, normalize_bucket, BUCKET_PARENTS
+
+    settings = UserSettings.query.filter_by(user_id=current_user.id).first()
+    rebalance_months = (settings.rebalance_months or 12) if settings else 12
+    monthly_budget = _compute_monthly_investment_budget(current_user.id)
+    targets_raw = (settings.targets or {}) if settings else {}
+    overrides = (settings.bucket_rollup if settings and hasattr(settings, "bucket_rollup") else None)
+
+    pv = compute_portfolio_value(current_user.id)
+    total = pv["total"]
+    raw_breakdown = pv.get("breakdown", {})
+    breakdown, children = rollup_breakdown(raw_breakdown, overrides=overrides)
+    active = targets_raw.get("tactical", targets_raw.get("catchup", {}))
+
+    effective_parents = dict(BUCKET_PARENTS)
+    if overrides:
+        for child, parent in overrides.items():
+            nc = normalize_bucket(child)
+            if parent is None:
+                effective_parents.pop(nc, None)
+            else:
+                effective_parents[nc] = parent
+
+    child_target_map = {}
+    for k, v in active.items():
+        nk = normalize_bucket(k)
+        tgt = v.get("target", 0) if isinstance(v, dict) else 0
+        parent = effective_parents.get(nk)
+        if parent:
+            child_target_map[nk] = {"target_pct": tgt, "parent": parent}
+        else:
+            child_target_map[nk] = {"target_pct": tgt, "parent": None}
+
+    all_child_values = {}
+    for parent_name, child_dict in children.items():
+        for ck, cv in child_dict.items():
+            all_child_values[ck] = cv
+    for bk, bv in breakdown.items():
+        if bk not in all_child_values:
+            all_child_values[bk] = bv
+
+    suggestions = []
+    raw_needs = {}
+    for bucket, info in child_target_map.items():
+        target_pct = info["target_pct"]
+        if target_pct <= 0:
+            continue
+        current_val = all_child_values.get(bucket, 0)
+        current_pct = (current_val / total * 100) if total > 0 else 0
+        drift = round(current_pct - target_pct, 1)
+        drift_dollars = (target_pct - current_pct) / 100 * total
+        if drift_dollars > 0:
+            raw_needs[bucket] = {
+                "need": drift_dollars,
+                "parent": info["parent"],
+                "target_pct": target_pct,
+                "current_pct": round(current_pct, 1),
+                "drift": drift,
+            }
+        else:
+            suggestions.append({
+                "bucket": bucket,
+                "parent": info["parent"],
+                "suggested": 0,
+                "pct": 0,
+                "drift": drift,
+                "target_pct": target_pct,
+                "current_pct": round(current_pct, 1),
+            })
+
+    total_need = sum(v["need"] for v in raw_needs.values())
+    for bucket, info in raw_needs.items():
+        if total_need > 0:
+            share = info["need"] / total_need
+            share_based = round(monthly_budget * share)
+        else:
+            share_based = 0
+        suggestions.append({
+            "bucket": bucket,
+            "parent": info["parent"],
+            "suggested": share_based,
+            "pct": round(share_based / monthly_budget * 100) if monthly_budget > 0 else 0,
+            "drift": info["drift"],
+            "target_pct": info["target_pct"],
+            "current_pct": info["current_pct"],
+        })
+
+    suggestions.sort(key=lambda x: x["suggested"], reverse=True)
+    return jsonify({
+        "rebalance_months": rebalance_months,
+        "monthly_budget": monthly_budget,
+        "portfolio_total": round(total, 2),
+        "suggestions": suggestions,
+    })
+
+
+@api_budget_bp.route("/rebalance-months", methods=["POST"])
+@login_required
+def save_rebalance_months():
+    """Update the user's rebalance timeline."""
+    from ..models.settings import UserSettings
+    data = flask_request.get_json(silent=True) or {}
+    months = int(data.get("months", 12))
+    months = max(1, min(60, months))
+    settings = UserSettings.query.filter_by(user_id=current_user.id).first()
+    if not settings:
+        settings = UserSettings(user_id=current_user.id)
+        db.session.add(settings)
+    settings.rebalance_months = months
+    db.session.commit()
+    return jsonify({"success": True, "rebalance_months": months})
+
+
 @api_budget_bp.route("/investments")
 @login_required
 def get_investments():
     """Return monthly investment categories for the current or given month.
 
     Auto-initializes the current month by copying targets from the most recent
-    prior month if no rows exist yet.
+    prior month if no rows exist yet, stamping the monthly_budget at init time.
     """
     from ..models.settings import MonthlyInvestment, UserSettings
     current_month = dt_date.today().strftime("%Y-%m")
@@ -470,6 +589,8 @@ def get_investments():
             .filter_by(user_id=current_user.id, month=month)
             .order_by(MonthlyInvestment.id)
             .all())
+
+    live_budget = _compute_monthly_investment_budget(current_user.id)
 
     if not rows and month == current_month:
         prev = (MonthlyInvestment.query
@@ -484,13 +605,23 @@ def get_investments():
                 if r.month == prev_month:
                     db.session.add(MonthlyInvestment(
                         user_id=current_user.id, month=month,
-                        category=r.category, target=r.target, contributed=0,
+                        category=r.category, bucket=r.bucket,
+                        target=r.target, contributed=0,
+                        monthly_budget=live_budget,
                     ))
             db.session.commit()
             rows = (MonthlyInvestment.query
                     .filter_by(user_id=current_user.id, month=month)
                     .order_by(MonthlyInvestment.id)
                     .all())
+
+    stored_budget = rows[0].monthly_budget if rows and rows[0].monthly_budget else 0
+    display_budget = stored_budget if (stored_budget and month != current_month) else live_budget
+
+    if month == current_month and rows and not rows[0].monthly_budget:
+        for r in rows:
+            r.monthly_budget = live_budget
+        db.session.commit()
 
     all_months = (db.session.query(MonthlyInvestment.month)
                   .filter_by(user_id=current_user.id)
@@ -501,20 +632,20 @@ def get_investments():
     available_months = sorted(set(m[0] for m in all_months), reverse=True)
 
     settings = UserSettings.query.filter_by(user_id=current_user.id).first()
-    contribution_plan = (settings.contribution_plan or {}) if settings else {}
-    targets_data = (settings.targets or {}) if settings else {}
-    monthly_budget = _compute_monthly_investment_budget(current_user.id)
+    rebalance_months = (settings.rebalance_months or 12) if settings else 12
+    is_current = (month == current_month)
 
     return jsonify({
         "month": month,
-        "monthly_budget": monthly_budget,
+        "monthly_budget": display_budget,
         "available_months": available_months,
+        "is_current": is_current,
+        "rebalance_months": rebalance_months,
         "categories": [
-            {"id": r.id, "category": r.category, "target": r.target, "contributed": r.contributed}
+            {"id": r.id, "category": r.category, "bucket": r.bucket or "",
+             "target": r.target, "contributed": r.contributed}
             for r in rows
         ],
-        "targets": targets_data,
-        "contribution_plan": contribution_plan,
     })
 
 
@@ -526,6 +657,7 @@ def save_investments():
     from ..models.settings import MonthlyInvestment
     data = flask_request.get_json(silent=True) or {}
     month = data.get("month", dt_date.today().strftime("%Y-%m"))
+    budget = _compute_monthly_investment_budget(current_user.id)
     categories = data.get("categories", [])
     for item in categories:
         row_id = item.get("id")
@@ -536,6 +668,8 @@ def save_investments():
                     row.contributed = float(item["contributed"])
                 if "target" in item:
                     row.target = float(item["target"])
+                if "bucket" in item:
+                    row.bucket = item["bucket"] or None
         else:
             cat = item.get("category", "").strip()
             if not cat:
@@ -544,8 +678,10 @@ def save_investments():
                 user_id=current_user.id,
                 month=month,
                 category=cat,
+                bucket=item.get("bucket") or None,
                 target=float(item.get("target", 0)),
                 contributed=float(item.get("contributed", 0)),
+                monthly_budget=budget,
             )
             db.session.add(row)
     db.session.commit()
@@ -565,6 +701,7 @@ def new_investment_month():
     if existing > 0:
         return jsonify({"success": True, "message": "Month already exists"})
 
+    budget = _compute_monthly_investment_budget(current_user.id)
     prev = (MonthlyInvestment.query
             .filter_by(user_id=current_user.id)
             .filter(MonthlyInvestment.month < new_month)
@@ -578,7 +715,9 @@ def new_investment_month():
         for r in prev_rows:
             db.session.add(MonthlyInvestment(
                 user_id=current_user.id, month=new_month,
-                category=r.category, target=r.target, contributed=0,
+                category=r.category, bucket=r.bucket,
+                target=r.target, contributed=0,
+                monthly_budget=budget,
             ))
     db.session.commit()
     return jsonify({"success": True})

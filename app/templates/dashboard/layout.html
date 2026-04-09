@@ -1418,7 +1418,7 @@ function obFinish() {
     <p style="color:var(--text-muted);font-size:0.9rem;line-height:1.55;margin-bottom:20px;">
       Share your referral code with a friend. When they subscribe, you <strong style="color:var(--accent-primary);">both get a free month</strong> of Pro.
     </p>
-    <div id="referral-code-display" style="background:var(--bg-main);border:1px solid var(--border-accent);border-radius:8px;padding:12px 16px;font-family:monospace;font-size:1.1rem;color:var(--accent-primary);letter-spacing:1px;margin-bottom:16px;cursor:pointer;" onclick="copyReferralFromPrompt()" title="Click to copy">
+    <div id="referral-prompt-code" style="background:var(--bg-main);border:1px solid var(--border-accent);border-radius:8px;padding:12px 16px;font-family:monospace;font-size:1.1rem;color:var(--accent-primary);letter-spacing:1px;margin-bottom:16px;cursor:pointer;" onclick="copyReferralFromPrompt()" title="Click to copy">
       Loading...
     </div>
     <div style="display:flex;gap:10px;justify-content:center;">
@@ -1822,7 +1822,7 @@ function ensureTodayInHistory() {
     setTimeout(function() {
       fetch("/api/referral/code").then(function(r) { return r.json(); }).then(function(d) {
         if (d && d.code) {
-          document.getElementById("referral-code-display").textContent = d.code;
+          document.getElementById("referral-prompt-code").textContent = d.code;
           var m = document.getElementById("referral-prompt-modal");
           m.style.display = "flex";
         }
@@ -1836,11 +1836,11 @@ function dismissReferralPrompt() {
   localStorage.setItem("nd_referral_prompted", "1");
 }
 function copyReferralFromPrompt() {
-  var code = document.getElementById("referral-code-display").textContent;
+  var code = document.getElementById("referral-prompt-code").textContent;
   if (code && code !== "Loading...") {
     navigator.clipboard.writeText(code).then(function() {
-      document.getElementById("referral-code-display").textContent = code + " ✓ Copied!";
-      setTimeout(function() { document.getElementById("referral-code-display").textContent = code; }, 2000);
+      document.getElementById("referral-prompt-code").textContent = code + " \u2713 Copied!";
+      setTimeout(function() { document.getElementById("referral-prompt-code").textContent = code; }, 2000);
     });
   }
 }

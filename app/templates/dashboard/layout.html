@@ -424,7 +424,7 @@ function obFinish() {
             <button type="button" class="secondary" style="padding:5px 10px;font-size:0.75rem;" onclick="showAddCategoryForm()">+ Category</button>
           </div>
         </div>
-        <div id="invest-rebalance-ctrl" style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding:8px 10px;background:var(--bg-input);border-radius:var(--radius);font-size:0.78rem;">
+        <div id="invest-rebalance-ctrl" style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:10px;padding:8px 10px;background:var(--bg-input);border-radius:var(--radius);font-size:0.78rem;">
           <span class="hint" style="margin:0;">Close drift in</span>
           <select id="rebalance-months-sel" onchange="changeRebalanceMonths()" style="padding:3px 6px;font-size:0.78rem;border-radius:4px;border:1px solid var(--border-subtle);background:var(--bg-card);color:var(--text-primary);">
             <option value="3">3 months</option>
@@ -434,6 +434,7 @@ function obFinish() {
             <option value="36">36 months</option>
           </select>
           <button type="button" id="invest-apply-suggestions" class="secondary" style="padding:3px 10px;font-size:0.72rem;margin-left:auto;display:none;" onclick="applySuggestedTargets()">Apply Suggestions</button>
+          <div id="invest-pool-hint" class="hint" style="display:none;width:100%;font-size:0.68rem;margin-top:2px;"></div>
         </div>
         <div id="add-category-form" style="display:none;margin-bottom:10px;padding:10px;background:var(--bg-input);border-radius:var(--radius);">
           <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:end;">

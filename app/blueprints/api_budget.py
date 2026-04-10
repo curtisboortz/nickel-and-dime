@@ -502,8 +502,9 @@ def drift_targets():
         if bk not in all_child_values:
             all_child_values[bk] = bv
 
-    suggestions = []
-    raw_needs = {}
+    bucket_info = {}
+    total_target_pct = 0
+    total_drift_need = 0
     for bucket, info in child_target_map.items():
         target_pct = info["target_pct"]
         if target_pct <= 0:
@@ -512,40 +513,44 @@ def drift_targets():
         current_pct = (current_val / total * 100) if total > 0 else 0
         drift = round(current_pct - target_pct, 1)
         drift_dollars = (target_pct - current_pct) / 100 * total
-        if drift_dollars > 0:
-            raw_needs[bucket] = {
-                "need": drift_dollars,
-                "parent": info["parent"],
-                "target_pct": target_pct,
-                "current_pct": round(current_pct, 1),
-                "drift": drift,
-            }
-        else:
-            suggestions.append({
-                "bucket": bucket,
-                "parent": info["parent"],
-                "suggested": 0,
-                "pct": 0,
-                "drift": drift,
-                "target_pct": target_pct,
-                "current_pct": round(current_pct, 1),
-            })
+        total_target_pct += target_pct
+        need = max(drift_dollars, 0)
+        total_drift_need += need
+        bucket_info[bucket] = {
+            "parent": info["parent"],
+            "target_pct": target_pct,
+            "current_pct": round(current_pct, 1),
+            "drift": drift,
+            "need": need,
+        }
 
-    total_need = sum(v["need"] for v in raw_needs.values())
-    for bucket, info in raw_needs.items():
-        if total_need > 0:
-            share = info["need"] / total_need
-            share_based = round(monthly_budget * share)
+    catchup_pool = min(total_drift_need / max(rebalance_months, 1), monthly_budget) if total_drift_need > 0 else 0
+    maintenance_pool = monthly_budget - catchup_pool
+
+    suggestions = []
+    raw_totals = {}
+    for bucket, bi in bucket_info.items():
+        maint_share = (maintenance_pool * bi["target_pct"] / total_target_pct) if total_target_pct > 0 else 0
+        catch_share = 0
+        if total_drift_need > 0 and bi["need"] > 0:
+            catch_share = catchup_pool * bi["need"] / total_drift_need
+        raw_totals[bucket] = maint_share + catch_share
+
+    raw_sum = sum(raw_totals.values())
+    suggestions = []
+    for bucket, bi in bucket_info.items():
+        if raw_sum > 0:
+            suggested = round(monthly_budget * raw_totals[bucket] / raw_sum)
         else:
-            share_based = 0
+            suggested = 0
         suggestions.append({
             "bucket": bucket,
-            "parent": info["parent"],
-            "suggested": share_based,
-            "pct": round(share_based / monthly_budget * 100) if monthly_budget > 0 else 0,
-            "drift": info["drift"],
-            "target_pct": info["target_pct"],
-            "current_pct": info["current_pct"],
+            "parent": bi["parent"],
+            "suggested": suggested,
+            "pct": round(suggested / monthly_budget * 100) if monthly_budget > 0 else 0,
+            "drift": bi["drift"],
+            "target_pct": bi["target_pct"],
+            "current_pct": bi["current_pct"],
         })
 
     suggestions.sort(key=lambda x: x["suggested"], reverse=True)
@@ -553,6 +558,8 @@ def drift_targets():
         "rebalance_months": rebalance_months,
         "monthly_budget": monthly_budget,
         "portfolio_total": round(total, 2),
+        "catchup_pool": round(catchup_pool),
+        "maintenance_pool": round(maintenance_pool),
         "suggestions": suggestions,
     })
 
@@ -685,6 +692,21 @@ def save_investments():
             )
             db.session.add(row)
     db.session.commit()
+    return jsonify({"success": True})
+
+
+@api_budget_bp.route("/investments/delete", methods=["POST"])
+@login_required
+def delete_investment_category():
+    """Delete a single investment category row."""
+    from ..models.settings import MonthlyInvestment
+    data = flask_request.get_json(silent=True) or {}
+    row_id = data.get("id")
+    if row_id:
+        row = MonthlyInvestment.query.filter_by(id=row_id, user_id=current_user.id).first()
+        if row:
+            db.session.delete(row)
+            db.session.commit()
     return jsonify({"success": True})
 
 

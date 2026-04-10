@@ -525,9 +525,11 @@ def drift_targets():
         }
 
     # Urgency blending: smoothly interpolate between target-weight investing
-    # (urgency=0) and full drift-correction (urgency→max_urgency).
-    # Capped at 0.8 so every bucket always keeps >= 20% of its normal share.
-    max_urgency = 0.8
+    # (urgency=0) and drift-correction (urgency→max_urgency).
+    # The cap scales with timeline: short timelines allow more aggressive
+    # rebalancing, long timelines stay closer to target weights.
+    #   3mo → 0.80,  6mo → 0.70,  12mo → 0.55,  24mo → 0.40,  36mo → 0.30
+    max_urgency = max(0.25, min(0.80, 1.0 - rebalance_months / 60.0))
     if total_drift_need > 0 and monthly_budget > 0:
         urgency = min(
             total_drift_need / (rebalance_months * monthly_budget),

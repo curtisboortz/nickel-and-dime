@@ -152,8 +152,7 @@ function loadMonthlyInvestments(month) {
     (drift.suggestions || []).forEach(function(s) {
       _investDriftSuggestions[s.bucket] = s;
     });
-    var _catchupPool = drift.catchup_pool || 0;
-    var _maintenancePool = drift.maintenance_pool || 0;
+    var _urgency = drift.urgency || 0;
 
     var monthLabel = _investCurrentMonth ? new Date(_investCurrentMonth + "-15").toLocaleDateString(undefined, {year:"numeric", month:"long"}) : "";
     if (subtitle) subtitle.textContent = monthLabel + " \u2022 Budget: $" + budget.toLocaleString(undefined, {maximumFractionDigits:0});
@@ -167,8 +166,9 @@ function loadMonthlyInvestments(month) {
         if (sel) sel.value = String(_investRebalanceMonths);
         var poolHint = document.getElementById("invest-pool-hint");
         if (poolHint) {
-          if (_catchupPool > 0) {
-            poolHint.textContent = "Maintenance: $" + _maintenancePool.toLocaleString(undefined, {maximumFractionDigits:0}) + " \u00B7 Catch-up: $" + _catchupPool.toLocaleString(undefined, {maximumFractionDigits:0});
+          if (_urgency > 0) {
+            var pctRebal = Math.round(_urgency * 100);
+            poolHint.textContent = pctRebal + "% toward rebalancing \u00B7 " + (100 - pctRebal) + "% maintaining targets";
             poolHint.style.display = "";
           } else {
             poolHint.style.display = "none";
@@ -202,9 +202,17 @@ function loadMonthlyInvestments(month) {
 
       var bucketBadge = c.bucket ? '<span style="display:inline-block;font-size:0.62rem;padding:1px 5px;border-radius:3px;background:rgba(99,102,241,0.12);color:var(--accent-primary);margin-left:4px;vertical-align:middle;">' + _esc(c.bucket) + '</span>' : '';
 
+      var driftTag = "";
+      if (c.bucket && _investDriftSuggestions[c.bucket]) {
+        var sg = _investDriftSuggestions[c.bucket];
+        var driftColor = sg.drift < 0 ? "var(--danger)" : sg.drift > 0 ? "var(--success)" : "var(--text-muted)";
+        var driftLabel = sg.drift < 0 ? sg.drift.toFixed(1) + "%" : "+" + sg.drift.toFixed(1) + "%";
+        driftTag = ' <span style="font-size:0.62rem;color:' + driftColor + ';">' + driftLabel + '</span>';
+      }
+
       var detailId = "invest-detail-" + idx;
       html += '<tr class="invest-summary-row" data-bucket="' + _esc(c.bucket || "") + '" style="cursor:pointer;" onclick="toggleInvestDetail(\'' + detailId + '\',this)">';
-      html += '<td style="padding:8px 6px;"><span class="invest-chevron" style="display:inline-block;font-size:0.6rem;margin-right:4px;transition:transform .2s;color:var(--text-muted);">&#9654;</span><strong>' + _esc(c.category) + '</strong>' + bucketBadge + ' <span style="color:var(--text-muted);font-size:0.72rem;">(' + pct + '%)</span></td>';
+      html += '<td style="padding:8px 6px;"><span class="invest-chevron" style="display:inline-block;font-size:0.6rem;margin-right:4px;transition:transform .2s;color:var(--text-muted);">&#9654;</span><strong>' + _esc(c.category) + '</strong>' + bucketBadge + driftTag + ' <span style="color:var(--text-muted);font-size:0.72rem;">(' + pct + '%)</span></td>';
       html += '<td style="padding:8px 6px;text-align:right;font-family:var(--mono);">$' + c.target.toLocaleString(undefined, {maximumFractionDigits:0}) + '</td>';
       html += '<td style="padding:8px 6px;text-align:right;" onclick="event.stopPropagation()"><input type="number" class="contrib-input num" data-id="' + c.id + '" data-target="' + c.target + '" value="' + c.contributed + '" style="width:80px;text-align:right;" onchange="updateInvestTotals()"></td>';
       html += '<td style="padding:8px 6px;text-align:right;font-family:var(--mono);' + diffCls + '">' + diffStr + '</td>';
@@ -221,16 +229,6 @@ function loadMonthlyInvestments(month) {
       } else if (c.bucket) {
         detailContent += '<span style="font-size:0.72rem;color:var(--text-muted);">Asset class: ' + _esc(c.bucket) + '</span>';
       }
-
-      var suggestHint = "";
-      if (_investIsCurrent && c.bucket && _investDriftSuggestions[c.bucket]) {
-        var sg = _investDriftSuggestions[c.bucket];
-        if (Math.abs(sg.suggested - c.target) > 5) {
-          var driftLabel = sg.drift < 0 ? sg.drift.toFixed(1) + "%" : "+" + sg.drift.toFixed(1) + "%";
-          suggestHint = '<div style="font-size:0.68rem;color:var(--text-muted);margin-top:6px;">Suggested: <strong>$' + sg.suggested.toLocaleString(undefined, {maximumFractionDigits:0}) + '</strong> <span style="color:' + (sg.drift < 0 ? 'var(--danger)' : 'var(--success)') + ';">(drift ' + driftLabel + ')</span></div>';
-        }
-      }
-      if (suggestHint) detailContent += suggestHint;
 
       html += '<tr id="' + detailId + '" class="invest-detail-row" style="display:none;" data-bucket="' + _esc(c.bucket || "") + '">';
       html += '<td colspan="5" style="padding:4px 6px 10px 24px;border-top:none;">' + detailContent + '</td>';
@@ -313,39 +311,15 @@ function saveInvestBucket(sel) {
 
 function applySuggestedTargets() {
   if (!_investIsCurrent || !Object.keys(_investDriftSuggestions).length) return;
-  var bucketTotals = {};
-  document.querySelectorAll(".bucket-select").forEach(function(sel) {
-    var b = sel.value;
-    if (b) bucketTotals[b] = (bucketTotals[b] || 0) + 1;
+  var hasBuckets = false;
+  document.querySelectorAll(".invest-summary-row").forEach(function(row) {
+    if (row.dataset.bucket) hasBuckets = true;
   });
-  if (!Object.keys(bucketTotals).length) {
-    alert("Assign asset class buckets to your categories first, then apply suggestions.");
+  if (!hasBuckets) {
+    alert("Assign asset class buckets to your categories first (expand a row to set it).");
     return;
   }
-  var categories = [];
-  document.querySelectorAll(".contrib-input").forEach(function(i) {
-    var id = parseInt(i.dataset.id);
-    var summaryRow = i.closest("tr");
-    var bucket = summaryRow ? (summaryRow.dataset.bucket || "") : "";
-    var entry = { id: id, contributed: parseFloat(i.value) || 0 };
-    if (bucket && _investDriftSuggestions[bucket]) {
-      var sg = _investDriftSuggestions[bucket];
-      var count = bucketTotals[bucket] || 1;
-      entry.target = Math.round(sg.suggested / count);
-    }
-    categories.push(entry);
-  });
-  fetch("/api/investments", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ month: _investCurrentMonth, categories: categories })
-  }).then(function(r) { return r.json(); }).then(function(d) {
-    if (d.success) {
-      var btn = document.getElementById("invest-apply-suggestions");
-      if (btn) { btn.textContent = "Applied!"; setTimeout(function() { btn.textContent = "Apply Suggestions"; }, 2000); }
-      loadMonthlyInvestments(_investCurrentMonth);
-    }
-  });
+  _applyAndReload();
 }
 
 function changeRebalanceMonths() {
@@ -360,15 +334,49 @@ function changeRebalanceMonths() {
   }).then(function(r) { return r.json(); }).then(function(d) {
     sel.disabled = false;
     if (d && d.success) {
+      _applyAndReload();
+    } else {
+      loadMonthlyInvestments(_investCurrentMonth);
+    }
+  }).catch(function() { sel.disabled = false; });
+}
+
+function _applyAndReload() {
+  fetch("/api/drift-targets").then(function(r) { return r.json(); }).then(function(drift) {
+    var sug = {};
+    (drift.suggestions || []).forEach(function(s) { sug[s.bucket] = s; });
+    var bucketCounts = {};
+    document.querySelectorAll(".invest-summary-row").forEach(function(row) {
+      var b = row.dataset.bucket;
+      if (b) bucketCounts[b] = (bucketCounts[b] || 0) + 1;
+    });
+    if (!Object.keys(bucketCounts).length) { loadMonthlyInvestments(_investCurrentMonth); return; }
+    var categories = [];
+    document.querySelectorAll(".contrib-input").forEach(function(i) {
+      var id = parseInt(i.dataset.id);
+      var row = i.closest("tr");
+      var bucket = row ? (row.dataset.bucket || "") : "";
+      var entry = { id: id, contributed: parseFloat(i.value) || 0 };
+      if (bucket && sug[bucket]) {
+        var count = bucketCounts[bucket] || 1;
+        entry.target = Math.round(sug[bucket].suggested / count);
+      }
+      categories.push(entry);
+    });
+    fetch("/api/investments", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ month: _investCurrentMonth, categories: categories })
+    }).then(function() {
       var ctrl = document.getElementById("invest-rebalance-ctrl");
       if (ctrl) {
-        ctrl.style.transition = "box-shadow .3s, border-color .3s";
+        ctrl.style.transition = "box-shadow .3s";
         ctrl.style.boxShadow = "0 0 0 2px var(--success)";
         setTimeout(function() { ctrl.style.boxShadow = ""; }, 1200);
       }
-    }
-    loadMonthlyInvestments(_investCurrentMonth);
-  }).catch(function() { sel.disabled = false; });
+      loadMonthlyInvestments(_investCurrentMonth);
+    });
+  }).catch(function() { loadMonthlyInvestments(_investCurrentMonth); });
 }
 
 function investNavMonth(dir) {

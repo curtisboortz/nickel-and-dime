@@ -524,25 +524,28 @@ def drift_targets():
             "need": need,
         }
 
-    catchup_pool = min(total_drift_need / max(rebalance_months, 1), monthly_budget) if total_drift_need > 0 else 0
-    maintenance_pool = monthly_budget - catchup_pool
+    # Urgency blending: smoothly interpolate between target-weight investing
+    # (urgency=0) and full drift-correction (urgency→max_urgency).
+    # Capped at 0.8 so every bucket always keeps >= 20% of its normal share.
+    max_urgency = 0.8
+    if total_drift_need > 0 and monthly_budget > 0:
+        urgency = min(
+            total_drift_need / (rebalance_months * monthly_budget),
+            max_urgency,
+        )
+    else:
+        urgency = 0
 
-    suggestions = []
     raw_totals = {}
     for bucket, bi in bucket_info.items():
-        maint_share = (maintenance_pool * bi["target_pct"] / total_target_pct) if total_target_pct > 0 else 0
-        catch_share = 0
-        if total_drift_need > 0 and bi["need"] > 0:
-            catch_share = catchup_pool * bi["need"] / total_drift_need
-        raw_totals[bucket] = maint_share + catch_share
+        maint_weight = bi["target_pct"] / total_target_pct if total_target_pct > 0 else 0
+        corr_weight = bi["need"] / total_drift_need if total_drift_need > 0 else 0
+        raw_totals[bucket] = (1 - urgency) * maint_weight + urgency * corr_weight
 
-    raw_sum = sum(raw_totals.values())
+    raw_sum = sum(raw_totals.values()) or 1
     suggestions = []
     for bucket, bi in bucket_info.items():
-        if raw_sum > 0:
-            suggested = round(monthly_budget * raw_totals[bucket] / raw_sum)
-        else:
-            suggested = 0
+        suggested = round(monthly_budget * raw_totals[bucket] / raw_sum)
         suggestions.append({
             "bucket": bucket,
             "parent": bi["parent"],
@@ -558,8 +561,7 @@ def drift_targets():
         "rebalance_months": rebalance_months,
         "monthly_budget": monthly_budget,
         "portfolio_total": round(total, 2),
-        "catchup_pool": round(catchup_pool),
-        "maintenance_pool": round(maintenance_pool),
+        "urgency": round(urgency, 2),
         "suggestions": suggestions,
     })
 

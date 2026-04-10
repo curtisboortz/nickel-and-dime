@@ -212,7 +212,11 @@ function loadMonthlyInvestments(month) {
       var detailId = "invest-detail-" + idx;
       html += '<tr class="invest-summary-row" data-bucket="' + _esc(c.bucket || "") + '" style="cursor:pointer;" onclick="toggleInvestDetail(\'' + detailId + '\',this)">';
       html += '<td style="padding:8px 6px;"><span class="invest-chevron" style="display:inline-block;font-size:0.6rem;margin-right:4px;transition:transform .2s;color:var(--text-muted);">&#9654;</span><strong>' + _esc(c.category) + '</strong>' + driftTag + ' <span style="color:var(--text-muted);font-size:0.72rem;">(' + pct + '%)</span></td>';
-      html += '<td style="padding:8px 6px;text-align:right;font-family:var(--mono);">$' + c.target.toLocaleString(undefined, {maximumFractionDigits:0}) + '</td>';
+      if (_investIsCurrent) {
+        html += '<td style="padding:8px 6px;text-align:right;" onclick="event.stopPropagation()"><input type="number" class="target-input num" data-id="' + c.id + '" value="' + c.target + '" style="width:80px;text-align:right;font-family:var(--mono);" onchange="updateInvestTotals()"></td>';
+      } else {
+        html += '<td style="padding:8px 6px;text-align:right;font-family:var(--mono);">$' + c.target.toLocaleString(undefined, {maximumFractionDigits:0}) + '</td>';
+      }
       html += '<td style="padding:8px 6px;text-align:right;" onclick="event.stopPropagation()"><input type="number" class="contrib-input num" data-id="' + c.id + '" data-target="' + c.target + '" value="' + c.contributed + '" style="width:80px;text-align:right;" onchange="updateInvestTotals()"></td>';
       html += '<td style="padding:8px 6px;text-align:right;font-family:var(--mono);' + diffCls + '">' + diffStr + '</td>';
       html += '<td style="padding:8px 6px;text-align:center;"><div class="progress-bar" style="width:80px;display:inline-block;"><div class="progress-fill mini-fill ' + barCls + '" style="width:' + progressPct + '%"></div></div></td>';
@@ -252,14 +256,25 @@ function _updateInvestFooter(totalTarget, totalContrib, budget) {
 
 function updateInvestTotals() {
   var tc = 0, tt = 0;
-  document.querySelectorAll(".contrib-input").forEach(function(i) { tc += parseFloat(i.value) || 0; tt += parseFloat(i.dataset.target) || 0; });
+  document.querySelectorAll(".contrib-input").forEach(function(i) { tc += parseFloat(i.value) || 0; });
+  document.querySelectorAll(".target-input").forEach(function(i) { tt += parseFloat(i.value) || 0; });
+  if (tt === 0) {
+    document.querySelectorAll(".contrib-input").forEach(function(i) { tt += parseFloat(i.dataset.target) || 0; });
+  }
   _updateInvestFooter(tt, tc, 0);
 }
 
 function saveContributionsAPI() {
+  var targetMap = {};
+  document.querySelectorAll(".target-input").forEach(function(i) {
+    targetMap[i.dataset.id] = parseFloat(i.value) || 0;
+  });
   var categories = [];
   document.querySelectorAll(".contrib-input").forEach(function(i) {
-    categories.push({ id: parseInt(i.dataset.id), contributed: parseFloat(i.value) || 0 });
+    var id = parseInt(i.dataset.id);
+    var entry = { id: id, contributed: parseFloat(i.value) || 0 };
+    if (targetMap[id] !== undefined) entry.target = targetMap[id];
+    categories.push(entry);
   });
   fetch("/api/investments", {
     method: "POST",
@@ -356,20 +371,25 @@ function _applyAndReload() {
       return;
     }
 
-    var categories = [];
+    var budget = drift.monthly_budget || 4000;
+    var rawCategories = [];
+    var rawSum = 0;
     document.querySelectorAll(".contrib-input").forEach(function(i) {
       var id = parseInt(i.dataset.id);
       var row = i.closest("tr");
       var bucket = row ? (row.dataset.bucket || "") : "";
-      var entry = { id: id, contributed: parseFloat(i.value) || 0 };
+      var rawTarget = 0;
       if (bucket && sug[bucket]) {
         var count = bucketCounts[bucket] || 1;
-        entry.target = Math.round(sug[bucket].suggested / count);
-        console.log("[ND:recalc] category id=" + id + " bucket=" + bucket + " -> target=" + entry.target + " (suggested=" + sug[bucket].suggested + " / " + count + ")");
-      } else {
-        console.log("[ND:recalc] category id=" + id + " bucket='" + bucket + "' -> NO match in suggestions");
+        rawTarget = sug[bucket].suggested / count;
       }
-      categories.push(entry);
+      rawSum += rawTarget;
+      rawCategories.push({ id: id, contributed: parseFloat(i.value) || 0, rawTarget: rawTarget, bucket: bucket });
+    });
+    var categories = rawCategories.map(function(rc) {
+      var target = rawSum > 0 ? Math.round(budget * rc.rawTarget / rawSum) : 0;
+      console.log("[ND:recalc] id=" + rc.id + " bucket=" + rc.bucket + " -> target=$" + target);
+      return { id: rc.id, contributed: rc.contributed, target: target };
     });
 
     console.log("[ND:recalc] POSTing", categories.length, "categories to /api/investments");

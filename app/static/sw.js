@@ -1,4 +1,4 @@
-var CACHE_NAME = "nd-v24";
+var CACHE_NAME = "nd-v25";
 
 self.addEventListener("install", function(e) {
   self.skipWaiting();

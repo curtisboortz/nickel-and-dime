@@ -182,8 +182,6 @@ function loadMonthlyInvestments(month) {
       }
     }
 
-    var applyBtn = document.getElementById("invest-apply-suggestions");
-    if (applyBtn) applyBtn.style.display = _investIsCurrent && Object.keys(_investDriftSuggestions).length ? "" : "none";
 
     if (cats.length === 0) {
       tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:16px;color:var(--text-muted);">No investment categories set up for this month.</td></tr>';
@@ -311,23 +309,6 @@ function saveInvestBucket(sel) {
   });
 }
 
-function applySuggestedTargets() {
-  console.log("[ND:recalc] applySuggestedTargets called, isCurrent:", _investIsCurrent, "suggestions:", Object.keys(_investDriftSuggestions).length);
-  if (!_investIsCurrent || !Object.keys(_investDriftSuggestions).length) {
-    console.log("[ND:recalc] early return - not current or no suggestions");
-    return;
-  }
-  var hasBuckets = false;
-  document.querySelectorAll(".invest-summary-row").forEach(function(row) {
-    if (row.dataset.bucket) hasBuckets = true;
-  });
-  if (!hasBuckets) {
-    console.log("[ND:recalc] no buckets assigned");
-    alert("Assign asset class buckets to your categories first (expand a row to set it).");
-    return;
-  }
-  _applyAndReload();
-}
 
 function changeRebalanceMonths() {
   var sel = document.getElementById("rebalance-months-sel");

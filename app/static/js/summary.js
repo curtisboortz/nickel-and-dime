@@ -132,17 +132,20 @@ function loadMonthlyInvestments(month) {
   var tbody = document.getElementById("invest-table-body");
   var subtitle = document.getElementById("invest-subtitle");
   if (!tbody) return;
-  var url = "/api/investments";
-  if (month) url += "?month=" + encodeURIComponent(month);
+  var _cb = "_t=" + Date.now();
+  var url = "/api/investments?" + _cb;
+  if (month) url += "&month=" + encodeURIComponent(month);
 
+  console.log("[ND:invest] loadMonthlyInvestments fetching", url);
   var investPromise = fetch(url).then(function(r) { return r.json(); });
-  var driftPromise = fetch("/api/drift-targets").then(function(r) { return r.json(); }).catch(function() { return { suggestions: [] }; });
+  var driftPromise = fetch("/api/drift-targets?" + _cb).then(function(r) { return r.json(); }).catch(function() { return { suggestions: [] }; });
 
   Promise.all([investPromise, driftPromise]).then(function(results) {
     var d = results[0];
     var drift = results[1];
     var cats = d.categories || [];
     var budget = d.monthly_budget || 0;
+    console.log("[ND:invest] loaded", cats.length, "cats, budget=$" + budget, "urgency=" + (drift.urgency || 0), "rebal=" + (d.rebalance_months || "?"), "targets:", cats.map(function(c) { return c.category + "=$" + c.target; }).join(", "));
     _investCurrentMonth = d.month || "";
     _investAvailableMonths = d.available_months || [];
     _investIsCurrent = d.is_current !== false;
@@ -234,7 +237,8 @@ function loadMonthlyInvestments(month) {
     });
     tbody.innerHTML = html;
     _updateInvestFooter(totalTarget, totalContrib, budget);
-  }).catch(function() {});
+    console.log("[ND:invest] render complete, totalTarget=$" + totalTarget);
+  }).catch(function(err) { console.error("[ND:invest] loadMonthlyInvestments error:", err); });
 }
 
 function _updateInvestFooter(totalTarget, totalContrib, budget) {
@@ -349,7 +353,7 @@ function changeRebalanceMonths() {
 
 function _applyAndReload() {
   console.log("[ND:recalc] _applyAndReload starting, fetching /api/drift-targets");
-  fetch("/api/drift-targets").then(function(r) {
+  fetch("/api/drift-targets?_t=" + Date.now()).then(function(r) {
     console.log("[ND:recalc] drift-targets response status:", r.status);
     return r.json();
   }).then(function(drift) {

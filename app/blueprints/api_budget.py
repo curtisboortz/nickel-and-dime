@@ -526,10 +526,13 @@ def drift_targets():
 
     # Urgency blending: smoothly interpolate between target-weight investing
     # (urgency=0) and drift-correction (urgency→max_urgency).
-    # The cap scales with timeline: short timelines allow more aggressive
-    # rebalancing, long timelines stay closer to target weights.
-    #   3mo → 0.80,  6mo → 0.70,  12mo → 0.55,  24mo → 0.40,  36mo → 0.30
-    max_urgency = max(0.25, min(0.80, 1.0 - rebalance_months / 60.0))
+    # The cap scales with timeline so short timelines are more aggressive
+    # and long timelines stay closer to target weights.
+    _URGENCY_CAPS = {3: 0.80, 6: 0.65, 12: 0.50, 24: 0.35, 36: 0.25}
+    max_urgency = _URGENCY_CAPS.get(
+        rebalance_months,
+        max(0.20, 0.90 - rebalance_months * 0.02),
+    )
     if total_drift_need > 0 and monthly_budget > 0:
         urgency = min(
             total_drift_need / (rebalance_months * monthly_budget),

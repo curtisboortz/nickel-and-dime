@@ -139,7 +139,10 @@
       method: "POST",
       headers: {"Content-Type": "application/json"},
       body: JSON.stringify({ticker: ticker, label: label})
-    }).then(function(r) { return r.json(); }).then(function(d) {
+    }).then(function(r) {
+      if (r.status === 400) return r.json().then(function(d) { throw d; });
+      return r.json();
+    }).then(function(d) {
       if (d.success) {
         tickerInput.value = "";
         labelInput.value = "";
@@ -149,7 +152,11 @@
       } else {
         _wlToast(d.error || "Failed to add ticker.", true);
       }
-    }).catch(function() { _wlToast("Network error.", true); });
+    }).catch(function(e) {
+      var msg = (e && e.error) || "Network error.";
+      if (msg.toLowerCase().indexOf("csrf") !== -1) msg = "Session expired — please refresh the page.";
+      _wlToast(msg, true);
+    });
   };
 
   // Enter key to submit add form
@@ -195,7 +202,10 @@
       method: "POST",
       headers: {"Content-Type": "application/json"},
       body: JSON.stringify({ticker: _alertFormTicker, condition: condition, target_price: parseFloat(price)})
-    }).then(function(r) { return r.json(); }).then(function(d) {
+    }).then(function(r) {
+      if (r.status === 400) return r.json().then(function(d) { throw d; });
+      return r.json();
+    }).then(function(d) {
       if (d.success) {
         wlHideAlertForm();
         _wlToast("Alert set: " + _alertFormTicker + " " + condition + " $" + price);
@@ -203,7 +213,11 @@
       } else {
         _wlToast(d.error || "Failed to set alert.", true);
       }
-    }).catch(function() { _wlToast("Network error.", true); });
+    }).catch(function(e) {
+      var msg = (e && e.error) || "Network error.";
+      if (msg.toLowerCase().indexOf("csrf") !== -1) msg = "Session expired — please refresh the page.";
+      _wlToast(msg, true);
+    });
   };
 
   // Enter key in alert price input
@@ -386,7 +400,10 @@
       method: "POST",
       headers: {"Content-Type": "application/json"},
       body: JSON.stringify({ticker: _pcmCurrentTicker, label: _pcmCurrentLabel || _pcmCurrentTicker})
-    }).then(function(r) { return r.json(); }).then(function(d) {
+    }).then(function(r) {
+      if (r.status === 400) return r.json().then(function(d) { throw d; });
+      return r.json();
+    }).then(function(d) {
       if (d.success) {
         _wlToast("Added " + _pcmCurrentTicker + " to watchlist.");
         loadWatchlist();
@@ -394,7 +411,11 @@
       } else {
         _wlToast(d.error || "Failed to add.", true);
       }
-    }).catch(function() { _wlToast("Network error.", true); });
+    }).catch(function(e) {
+      var msg = (e && e.error) || "Network error.";
+      if (msg.toLowerCase().indexOf("csrf") !== -1) msg = "Session expired — please refresh the page.";
+      _wlToast(msg, true);
+    });
   };
 
   window.pcmShowAlertForm = function() {
@@ -417,7 +438,10 @@
       method: "POST",
       headers: {"Content-Type": "application/json"},
       body: JSON.stringify({ticker: ticker, condition: condition, target_price: parseFloat(price)})
-    }).then(function(r) { return r.json(); }).then(function(d) {
+    }).then(function(r) {
+      if (r.status === 400) return r.json().then(function(d) { throw d; });
+      return r.json();
+    }).then(function(d) {
       if (d.success) {
         document.getElementById("pcm-alert-form-inline").style.display = "none";
         _wlToast("Alert set: " + ticker + " " + condition + " $" + price);
@@ -425,7 +449,11 @@
       } else {
         _wlToast(d.error || "Failed to set alert.", true);
       }
-    }).catch(function() { _wlToast("Network error.", true); });
+    }).catch(function(e) {
+      var msg = (e && e.error) || "Network error.";
+      if (msg.toLowerCase().indexOf("csrf") !== -1) msg = "Session expired — please refresh the page.";
+      _wlToast(msg, true);
+    });
   };
 
   // Enter key in PCM alert input

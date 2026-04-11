@@ -54,6 +54,18 @@ var DEFAULT_LAYOUT = [
     return -1;
   }
 
+  function _applySizeClass(el, widgetId, w, h) {
+    el.classList.remove("gs-size-s", "gs-size-m", "gs-size-l");
+    var idx = _activeSizeIdx(widgetId, w, h);
+    var reg = WIDGET_REGISTRY[widgetId];
+    if (idx >= 0 && reg && reg.sizes[idx]) {
+      var label = reg.sizes[idx].label.toLowerCase();
+      el.classList.add("gs-size-" + label);
+    } else {
+      el.classList.add("gs-size-m");
+    }
+  }
+
   function _buildSizeBtns(widgetId, currentW, currentH) {
     var reg = WIDGET_REGISTRY[widgetId];
     if (!reg || !reg.sizes) return "";
@@ -84,7 +96,6 @@ var DEFAULT_LAYOUT = [
     wrapper.setAttribute("gs-h", h);
     wrapper.setAttribute("gs-x", opts.x != null ? opts.x : "");
     wrapper.setAttribute("gs-y", opts.y != null ? opts.y : "");
-    wrapper.setAttribute("gs-no-resize", "true");
 
     var content = document.createElement("div");
     content.className = "grid-stack-item-content";
@@ -103,6 +114,7 @@ var DEFAULT_LAYOUT = [
     content.appendChild(body);
 
     wrapper.appendChild(content);
+    _applySizeClass(wrapper, widgetId, w, h);
     return { wrapper: wrapper, body: body };
   }
 
@@ -130,8 +142,8 @@ var DEFAULT_LAYOUT = [
       animate: true,
       float: false,
       draggable: { handle: ".gs-widget-drag" },
+      resizable: { handles: "" },
       disableDrag: true,
-      disableResize: true,
       columnOpts: {
         breakpoints: [
           { w: 768, c: 1 }
@@ -197,6 +209,7 @@ var DEFAULT_LAYOUT = [
     for (var i = 0; i < items.length; i++) {
       if (items[i].getAttribute("gs-id") === widgetId) {
         _grid.update(items[i], { w: size.w, h: size.h });
+        _applySizeClass(items[i], widgetId, size.w, size.h);
         var btns = items[i].querySelectorAll(".gs-size-btn");
         for (var j = 0; j < btns.length; j++) {
           btns[j].classList.toggle("active", j === sizeIdx);

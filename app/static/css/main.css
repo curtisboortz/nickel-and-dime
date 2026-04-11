@@ -1506,6 +1506,23 @@ html.light .wl-alert-row { border-bottom:1px solid rgba(0,0,0,0.04); }
 }
 .ui-resizable-handle { display: none !important; }
 
+/* Override inner max-height/scroll when inside grid widgets */
+.gs-widget-body [style*="max-height"],
+.gs-widget-body [style*="overflow-y"] {
+  max-height: none !important;
+  overflow-y: visible !important;
+}
+
+/* Size-aware content: hide secondary content at S, show everything at L */
+.gs-size-s .card-header .secondary,
+.gs-size-s .drag-handle,
+.gs-size-s .rebalance-ctrl,
+.gs-size-s #invest-rebalance-ctrl,
+.gs-size-s #add-category-form,
+.gs-size-s .invest-table tfoot {
+  display: none !important;
+}
+
 /* Grid toolbar */
 .grid-toolbar {
   position: relative;

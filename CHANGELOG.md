@@ -4,6 +4,41 @@ All notable changes to Nickel&Dime are documented here.
 
 ---
 
+## [3.1.0] — 2026-04-11 — Watchlist, Investment Rebalancing Engine & AI Overhaul
+
+### Added
+- **Watchlist & price alerts** — new draggable dashboard widget for tracking tickers with live prices, mini sparklines, and configurable price alerts (above/below triggers with toast notifications); add tickers directly from the Pulse Chart modal; drag-to-reorder support
+- **Drift-aware monthly investment rebalancing** — investments widget now computes allocation drift from user targets and suggests per-bucket monthly contributions using urgency-based blending; variable urgency caps by rebalance timeline (3-month aggressive through 36-month conservative); auto-applies target recalculation on timeline change
+- **Collapsible investment rows** — each bucket row expands/collapses to show sub-allocations; baseline + catch-up drift model with visual rebalance feedback
+- **Inline bucket selector** — investment rows now have an inline dropdown to reassign buckets without leaving the investments view
+- **Portfolio history time range selector** — 1W / 1M / 3M / 6M / 1Y / All buttons with intraday granularity for shorter ranges and daily data for longer periods
+- **P&L badge on portfolio history chart** — shows dollar and percentage gain/loss for the selected time range directly on the chart
+- **AI investment knowledge base** — comprehensive frameworks from 8 cornerstone investors (Graham, Buffett, Munger, Dalio, Marks, Ackman, Lynch, Bogle) loaded as a separate system message; each profile includes core thesis, actionable principles, key quotes, and situational triggers
+- **AI complete portfolio visibility** — AI context and tools now include physical metals, blended/alternative accounts (Masterworks, Fundrise, etc.), and cash accounts alongside stocks and crypto; new shared `_build_bucket_holdings` helper ensures suggest_rebalance and sector_exposure tools see every position
+- **AI specific ticker suggestions** — system prompt updated to recommend specific ETFs and stocks (e.g., "consider adding VOO or VTI") rather than generic bucket names; preset quick-action prompts hidden from chat history
+- **AI scaling guidance** — system prompt now instructs phased rebalancing (scale in/out over 2-4 weeks), position-size verification against actual holdings, and never recommending selling more than owned
+
+### Changed
+- Monthly investments widget renamed from "Savings" to "Investments" throughout
+- Removed redundant "New Month" and "Recalculate Targets" buttons — calendar advancement and target recalculation are now automatic
+- AI analytical frameworks section slimmed to a concise index referencing the detailed knowledge base, keeping the system prompt focused on behavioral rules
+- `get_sector_exposure` tool no longer returns a separate `crypto` array — crypto positions are included in bucket holdings like all other asset types
+
+### Fixed
+- Crypto price lookup bug in `get_sector_exposure` — now uses `coingecko_id` with fallback to `symbol.lower()`, matching `compute_portfolio_value` behavior
+- AI recommending selling more shares than user owns — root cause was suggest_rebalance only listing `Holding` rows while bucket totals included all asset types
+- CSRF session token errors on watchlist add — graceful client-side handling with "Session expired — refresh page" message
+- Investment target drift not summing to monthly budget — normalization pass ensures targets always sum correctly
+- Target column in investments table now editable inline
+- Intraday snapshots migration added with graceful fallback to daily data when intraday table doesn't exist
+- Stale API responses from browser cache — added cache-bust query parameters to fetch calls
+- Urgency cap values corrected (3mo=0.80 down to 36mo=0.25) with silent error logging
+
+### Database
+- Migration `d012`: Creates `watchlist_items` table with user/ticker unique constraint
+
+---
+
 ## [3.0.0] — 2026-04-09 — Redis, UI Overhaul, Mobile App & Marketing Launch
 
 ### Infrastructure

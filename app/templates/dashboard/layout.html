@@ -10,6 +10,10 @@ function _skeletonRows(r,c){var h="";for(var i=0;i<(r||5);i++){h+="<tr>";for(var
 {% if is_pro %}
 <script src="https://cdn.plaid.com/link/v2/stable/link-initialize.js"></script>
 {% endif %}
+<!-- Gridstack.js for configurable dashboard -->
+<link href="https://cdn.jsdelivr.net/npm/gridstack@10.3.1/dist/gridstack.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/gridstack@10.3.1/dist/gridstack-extra.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/gridstack@10.3.1/dist/gridstack-all.js"></script>
 <!-- Chart.js + Luxon + Financial charts + Zoom -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/luxon@3.4.4/build/global/luxon.min.js"></script>
@@ -226,6 +230,19 @@ function obFinish() {
 
 <!-- ═══ SUMMARY TAB ═══ -->
 <div id="tab-summary" class="tab{% if active_tab == 'summary' %} active{% endif %}">
+
+  <!-- Dashboard Grid Toolbar -->
+  <div class="grid-toolbar" style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+    <button type="button" class="secondary" id="grid-edit-btn" onclick="toggleGridEditMode()" style="padding:5px 12px;font-size:0.72rem;">Edit Layout</button>
+    <button type="button" class="secondary" onclick="openWidgetCatalog()" style="padding:5px 12px;font-size:0.72rem;">+ Add Widget</button>
+    <button type="button" class="secondary" onclick="resetDashboardLayout()" id="grid-reset-btn" style="padding:5px 12px;font-size:0.72rem;display:none;">Reset Layout</button>
+  </div>
+
+  <!-- Configurable Dashboard Grid -->
+  <div id="dashboard-grid" class="grid-stack"></div>
+
+  <!-- Staging area: existing DOM elements are moved into grid widgets by JS -->
+  <div id="widget-staging" style="display:none;">
 
   <!-- Net Worth Hero + Portfolio History -->
   <div class="hero-row">
@@ -538,7 +555,7 @@ function obFinish() {
   </div>
 
   <!-- Goal Tracking -->
-  <div class="card" style="margin-top:20px;">
+  <div class="card" id="goals-card" style="margin-top:20px;">
     <div class="card-header">
       <div class="card-title">Financial Goals</div>
       <button type="button" class="secondary" style="padding:5px 10px;font-size:0.75rem;" onclick="showGoalForm()">+ Add Goal</button>
@@ -555,11 +572,24 @@ function obFinish() {
     <div class="goals-grid" id="goals-container"><p class="hint">No goals set. Click + Add Goal to start tracking.</p></div>
   </div>
 
+  </div><!-- /widget-staging -->
+
+  <!-- Widget Catalog Slide-out Panel -->
+  <div id="widget-catalog-overlay" class="catalog-overlay" style="display:none;" onclick="closeWidgetCatalog()">
+    <div class="catalog-panel" onclick="event.stopPropagation()">
+      <div class="catalog-header">
+        <span class="catalog-title">Add Widgets</span>
+        <button type="button" class="catalog-close" onclick="closeWidgetCatalog()">&times;</button>
+      </div>
+      <div id="catalog-body" class="catalog-body"></div>
+    </div>
+  </div>
+
 </div>
 
 <!-- ═══ BALANCES TAB ═══ -->
 <div id="tab-balances" class="tab{% if active_tab == 'balances' %} active{% endif %}">
-  <div class="card">
+  <div class="card" id="balances-section">
     <div class="card-title">Account Balances</div>
     <p class="hint" style="margin-bottom:14px;">Managed accounts, manually updated. Free for all users.</p>
     <div id="balances-table-wrap">
@@ -583,7 +613,7 @@ function obFinish() {
   </div>
   {% else %}
   <!-- Stock/ETF Holdings -->
-  <div class="card">
+  <div class="card" id="holdings-section">
     <div class="card-title">Holdings</div>
     <p class="hint" style="margin-bottom:14px;">Stocks &amp; ETFs with live prices. Edit Total to override the computed value (highlighted in gold).</p>
     <div id="holdings-table-wrap"><script>document.write(_skeletonRows(6,6))</script></div>
@@ -591,7 +621,7 @@ function obFinish() {
   </div>
 
   <!-- Crypto Holdings -->
-  <div class="card">
+  <div class="card" id="crypto-section">
     <div class="card-header" style="display:flex;justify-content:space-between;align-items:flex-start;">
       <div>
         <div class="card-title">Crypto Holdings</div>
@@ -634,7 +664,7 @@ function obFinish() {
   </div>
 
   <!-- Physical Metals -->
-  <div class="card">
+  <div class="card" id="metals-section">
     <div class="card-header">
       <div>
         <div class="card-title">Physical Metals</div>
@@ -682,7 +712,7 @@ function obFinish() {
   </div>
 
   <!-- Dividends & Fees -->
-  <div class="card">
+  <div class="card" id="dividends-section">
     <div class="card-header">
       <div>
         <div class="card-title">Dividends &amp; Fees</div>
@@ -723,7 +753,7 @@ function obFinish() {
 <!-- ═══ BUDGET TAB ═══ -->
 <div id="tab-budget" class="tab{% if active_tab == 'budget' %} active{% endif %}">
   <!-- Monthly Budget -->
-  <div class="card">
+  <div class="card" id="budget-section">
     <div class="card-header">
       <div>
         <div class="card-title">Monthly Budget</div>
@@ -743,7 +773,7 @@ function obFinish() {
   </div>
 
   <!-- Spending vs Budget Breakdown -->
-  <div class="card">
+  <div class="card" id="spending-chart-section">
     <div class="card-header">
       <div>
         <div class="card-title">Spending vs Budget</div>
@@ -757,7 +787,7 @@ function obFinish() {
   </div>
 
   <!-- Spending Trends -->
-  <div class="card">
+  <div class="card" id="spending-trends-section">
     <div class="card-title">Spending Trends</div>
     <p class="hint" style="margin-bottom:12px;">Monthly spending by category (log transactions below to populate)</p>
     <div style="position:relative;height:200px;">
@@ -766,7 +796,7 @@ function obFinish() {
   </div>
 
   <!-- Debt Tracker -->
-  <div class="card">
+  <div class="card" id="debt-tracker-section">
     <div class="card-header">
       <div>
         <div class="card-title">Debt Tracker</div>
@@ -785,7 +815,7 @@ function obFinish() {
   </div>
 
   <!-- Amortization Calculator -->
-  <div class="card">
+  <div class="card" id="amortization-section">
     <div class="card-header">
       <div class="card-title">Loan Amortization Calculator</div>
       <div style="display:flex;gap:4px;">
@@ -922,7 +952,7 @@ function obFinish() {
   </div>
 
   <!-- Transaction Log -->
-  <div class="card">
+  <div class="card" id="transaction-log-section">
     <div class="card-header">
       <div class="card-title">Transaction Log</div>
       <button type="button" class="secondary" style="padding:5px 10px;font-size:0.75rem;" onclick="addTransaction()">+ Add</button>
@@ -1095,7 +1125,7 @@ function obFinish() {
 <!-- ═══ HISTORY / CHARTS TAB ═══ -->
 <div id="tab-history" class="tab{% if active_tab == 'history' %} active{% endif %}">
   <!-- Market Sentiment -->
-  <div class="card" id="sentiment-card">
+  <div class="card" id="sentiment-section">
     <div class="card-title">Market Sentiment</div>
     <p class="hint" style="margin-bottom:14px;">Fear &amp; Greed gauges across asset classes. Click a gauge to see history.</p>
     <div class="sentiment-row">
@@ -1150,7 +1180,7 @@ function obFinish() {
   </div>
 
   <!-- Projected Growth -->
-  <div class="card">
+  <div class="card" id="projection-section">
     <div class="card-title">Projected Growth</div>
     <p class="hint" style="margin-bottom:12px;">Pick rate and contribution, then drag the timeline to see projected value at any year.</p>
     <input type="hidden" id="proj-years" value="50">
@@ -1191,7 +1221,7 @@ function obFinish() {
   </div>
 
   <!-- Monte Carlo Projections -->
-  <div class="card">
+  <div class="card" id="monte-carlo-section">
     <div class="card-title">Monte Carlo Projections</div>
     <p class="hint" style="margin-bottom:12px;">1,000 randomized simulations based on historical volatility. Shaded bands show 10th-90th percentile outcomes.</p>
     <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:end;margin-bottom:12px;">
@@ -1217,7 +1247,7 @@ function obFinish() {
   </div>
 
   <!-- Drawdown Analysis -->
-  <div class="card">
+  <div class="card" id="drawdown-section">
     <div class="card-title">Drawdown Analysis</div>
     <p class="hint" style="margin-bottom:12px;">Portfolio drawdowns from peak values over recorded history</p>
     <div style="position:relative;height:200px;">
@@ -1227,7 +1257,7 @@ function obFinish() {
   </div>
 
   <!-- Performance Attribution -->
-  <div class="card">
+  <div class="card" id="perf-attribution-section">
     <div class="card-title">Performance Attribution</div>
     <p class="hint" style="margin-bottom:12px;">Portfolio return contribution by asset class</p>
     <div style="display:flex;gap:20px;flex-wrap:wrap;">
@@ -1239,7 +1269,7 @@ function obFinish() {
   </div>
 
   <!-- AI Portfolio Insights -->
-  <div class="card" id="insights-card">
+  <div class="card" id="insights-section">
     <div class="card-title">Portfolio Insights</div>
     <p class="hint" style="margin-bottom:14px;">AI-powered risk analysis and recommendations for your portfolio.</p>
 
@@ -1297,7 +1327,7 @@ function obFinish() {
   </div>
 
   <!-- Allocation Templates -->
-  <div class="card" id="templates-card">
+  <div class="card" id="templates-section">
     <div class="card-title">Allocation Templates</div>
     <p class="hint" style="margin-bottom:14px;">Compare your portfolio against proven allocation strategies.</p>
     <div id="templates-selector" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;"></div>
@@ -1829,6 +1859,8 @@ document.addEventListener("keydown", function(e) {
 <script src="{{ url_for('static', filename='js/theme.js') }}?v={{ v }}"></script>
 <script src="{{ url_for('static', filename='js/tabs.js') }}?v={{ v }}"></script>
 <script src="{{ url_for('static', filename='js/shared.js') }}?v={{ v }}"></script>
+<script src="{{ url_for('static', filename='js/widgets.js') }}?v={{ v }}"></script>
+<script src="{{ url_for('static', filename='js/grid.js') }}?v={{ v }}"></script>
 <script src="{{ url_for('static', filename='js/summary.js') }}?v={{ v }}"></script>
 <script src="{{ url_for('static', filename='js/history.js') }}?v={{ v }}"></script>
 <script src="{{ url_for('static', filename='js/pulse.js') }}?v={{ v }}"></script>
@@ -1909,6 +1941,7 @@ function ensureTodayInHistory() {
     }
   }).catch(function(e) { if (typeof NDDiag !== "undefined") NDDiag.track("portfolio-history", "error", e.message || String(e)); });
 
+  if (typeof initDashboardGrid === "function") initDashboardGrid();
   if (typeof loadSummaryData === "function") loadSummaryData();
 
   // Referral prompt: show once after 7+ days of account age

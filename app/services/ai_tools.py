@@ -435,6 +435,8 @@ def _build_bucket_holdings(user_id):
 
 
 def _handle_suggest_rebalance(args, user_id):
+    from ..utils.buckets import normalize_bucket as _nb_reb
+
     target_weights = args.get("target_weights", {})
     if not target_weights:
         return {"error": "No target_weights provided"}
@@ -455,30 +457,38 @@ def _handle_suggest_rebalance(args, user_id):
     )
 
     pv = compute_portfolio_value(user_id)
-    breakdown, _ = rollup_breakdown(pv.get("breakdown", {}), overrides=overrides)
+    raw_breakdown = pv.get("breakdown", {})
+    rolled_breakdown, _ = rollup_breakdown(raw_breakdown, overrides=overrides)
     total = pv["total"]
 
     if total == 0:
         return {"error": "Portfolio is empty. Add holdings first."}
 
+    has_child_targets = any(
+        _nb_reb(b) not in rolled_breakdown and _nb_reb(b) in raw_breakdown
+        for b in target_weights
+    )
+    breakdown = raw_breakdown if has_child_targets else rolled_breakdown
+
     bucket_holdings = _build_bucket_holdings(user_id)
 
     trades = []
     for bucket, target_pct in sorted(target_weights.items()):
-        current_val = breakdown.get(bucket, 0)
+        normed = _nb_reb(bucket) or bucket
+        current_val = breakdown.get(normed, 0)
         current_pct = current_val / total * 100 if total > 0 else 0
         target_val = total * target_pct / 100
         delta_val = target_val - current_val
         action = "buy" if delta_val > 0 else "sell" if delta_val < 0 else "hold"
         trades.append({
-            "bucket": bucket,
+            "bucket": normed,
             "current_pct": round(current_pct, 1),
             "target_pct": target_pct,
             "current_value": round(current_val, 2),
             "target_value": round(target_val, 2),
             "trade_amount": round(abs(delta_val), 2),
             "action": action,
-            "holdings": bucket_holdings.get(bucket, [])[:5],
+            "holdings": bucket_holdings.get(normed, [])[:5],
         })
 
     return {
@@ -549,7 +559,8 @@ def _handle_sector_exposure(args, user_id):
     )
 
     pv = compute_portfolio_value(user_id)
-    breakdown, _ = rollup_breakdown(pv.get("breakdown", {}), overrides=overrides)
+    raw_breakdown = pv.get("breakdown", {})
+    rolled_breakdown, children = rollup_breakdown(raw_breakdown, overrides=overrides)
     total = pv["total"]
 
     if total == 0:
@@ -558,14 +569,27 @@ def _handle_sector_exposure(args, user_id):
     bucket_holdings = _build_bucket_holdings(user_id)
 
     buckets = []
-    for bucket in sorted(breakdown.keys(), key=lambda b: -breakdown[b]):
-        bval = breakdown[bucket]
+    for bucket in sorted(rolled_breakdown.keys(),
+                         key=lambda b: -rolled_breakdown[b]):
+        bval = rolled_breakdown[bucket]
         top = bucket_holdings.get(bucket, [])[:5]
+        child_detail = []
+        if bucket in children:
+            for child_name, child_val in sorted(
+                children[bucket].items(), key=lambda x: -x[1]
+            ):
+                child_detail.append({
+                    "bucket": child_name,
+                    "value": round(child_val, 2),
+                    "weight_pct": round(child_val / total * 100, 1),
+                    "top_holdings": bucket_holdings.get(child_name, [])[:3],
+                })
         buckets.append({
             "bucket": bucket,
             "value": round(bval, 2),
             "weight_pct": round(bval / total * 100, 1),
             "top_holdings": top,
+            "children": child_detail,
         })
 
     return {

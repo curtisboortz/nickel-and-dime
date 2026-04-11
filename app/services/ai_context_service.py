@@ -120,6 +120,9 @@ def build_system_messages(user_id):
 
 def _build_portfolio_context(user_id):
     """Assemble a compact text representation of the user's portfolio."""
+    from ..services.portfolio_service import compute_portfolio_value
+    from ..utils.buckets import normalize_bucket
+
     settings = (
         db.session.query(UserSettings)
         .filter_by(user_id=user_id)
@@ -148,9 +151,23 @@ def _build_portfolio_context(user_id):
     lines.append(f"Asset classes: {conc.get('bucket_count', 0)}")
     lines.append("")
 
-    lines.append("Allocation weights:")
+    pv = compute_portfolio_value(user_id)
+    raw_breakdown = pv.get("breakdown", {})
+    rolled, children = rollup_breakdown(raw_breakdown, overrides)
+
+    lines.append("Allocation weights (rolled-up parent buckets):")
     for bucket, w in sorted(weights.items(), key=lambda x: -x[1]):
         lines.append(f"  {bucket}: {w * 100:.1f}%")
+
+    has_children = any(children.values())
+    if has_children and total > 0:
+        lines.append("")
+        lines.append("Detailed allocation (child buckets before rollup):")
+        for bucket, val in sorted(raw_breakdown.items(),
+                                  key=lambda x: -x[1]):
+            normed = normalize_bucket(bucket)
+            pct = val / total * 100
+            lines.append(f"  {normed}: {pct:.1f}% (${val:,.0f})")
 
     holdings = (
         Holding.query.filter_by(user_id=user_id)

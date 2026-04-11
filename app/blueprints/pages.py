@@ -260,6 +260,33 @@ def dashboard_page(tab="summary"):
     )
 
 
+@pages_bp.route("/api/dashboard-layout", methods=["GET"])
+@login_required
+def get_dashboard_layout():
+    """Return the user's saved grid layout, or an empty list for defaults."""
+    from ..models.settings import UserSettings
+    us = UserSettings.query.filter_by(user_id=current_user.id).first()
+    layout = (us.dashboard_layout if us and us.dashboard_layout else None)
+    return jsonify({"layout": layout})
+
+
+@pages_bp.route("/api/dashboard-layout", methods=["POST"])
+@login_required
+def save_dashboard_layout():
+    """Persist the user's grid layout."""
+    from ..extensions import db
+    from ..models.settings import UserSettings
+    data = flask_request.get_json(silent=True) or {}
+    layout = data.get("layout", [])
+    us = UserSettings.query.filter_by(user_id=current_user.id).first()
+    if not us:
+        us = UserSettings(user_id=current_user.id)
+        db.session.add(us)
+    us.dashboard_layout = layout
+    db.session.commit()
+    return jsonify({"ok": True})
+
+
 @pages_bp.route("/api/tab-content/<tab_name>")
 @login_required
 def tab_content(tab_name):

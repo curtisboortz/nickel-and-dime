@@ -30,6 +30,9 @@ class UserSettings(db.Model):
     # Rebalancing
     rebalance_months = db.Column(db.Integer, default=12)
 
+    # Dashboard grid layout
+    dashboard_layout = db.Column(db.JSON, default=list)
+
     # Onboarding
     onboarding_completed = db.Column(
         db.Boolean, default=False)

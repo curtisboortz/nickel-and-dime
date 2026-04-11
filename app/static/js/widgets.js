@@ -385,8 +385,8 @@ var WIDGET_REGISTRY = {};
   WIDGET_REGISTRY["dividends-fees"] = {
     name: "Dividends & Fees",
     category: "Holdings",
-    defaultW: 6, defaultH: 5,
-    minW: 4, minH: 4,
+    defaultW: 6, defaultH: 12,
+    minW: 4, minH: 8,
     init: function(el) {
       var section = document.getElementById("dividends-section");
       if (section) el.appendChild(section);
@@ -399,8 +399,8 @@ var WIDGET_REGISTRY = {};
   WIDGET_REGISTRY["account-balances"] = {
     name: "Account Balances",
     category: "Balances",
-    defaultW: 6, defaultH: 5,
-    minW: 4, minH: 3,
+    defaultW: 6, defaultH: 9,
+    minW: 4, minH: 6,
     init: function(el) {
       var section = document.getElementById("balances-section");
       if (section) el.appendChild(section);

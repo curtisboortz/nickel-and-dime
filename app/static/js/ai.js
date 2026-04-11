@@ -56,11 +56,11 @@ function _aiAutoResize() {
 
 function aiSendQuick(key) {
   var prompt = AI_QUICK_PROMPTS[key];
-  if (prompt) {
-    var input = document.getElementById("ai-chat-input");
-    if (input) input.value = prompt;
-    aiSend();
-  }
+  if (!prompt || _aiStreaming) return;
+  var actions = document.getElementById("ai-quick-actions");
+  if (actions) actions.style.display = "none";
+  _aiHideWelcome();
+  _aiStream(prompt);
 }
 
 /* ── Send Message ── */

@@ -340,6 +340,35 @@ def _handle_suggest_rebalance(args, user_id):
     if total == 0:
         return {"error": "Portfolio is empty. Add holdings first."}
 
+    holdings = Holding.query.filter_by(user_id=user_id).all()
+    tickers = list({h.ticker for h in holdings if h.ticker})
+    price_map = {}
+    if tickers:
+        price_map = {
+            r.symbol: r.price
+            for r in PriceCache.query.filter(PriceCache.symbol.in_(tickers)).all()
+            if r.price
+        }
+    bucket_holdings = {}
+    for h in holdings:
+        if h.value_override:
+            val = h.value_override
+        elif h.shares:
+            val = h.shares * (price_map.get(h.ticker) or 0)
+        else:
+            val = 0
+        b = h.bucket or "Other"
+        if b not in bucket_holdings:
+            bucket_holdings[b] = []
+        bucket_holdings[b].append({
+            "ticker": h.ticker,
+            "shares": round(h.shares or 0, 2),
+            "value": round(val, 2),
+            "cost_basis": round(h.cost_basis or 0, 2) if h.cost_basis else None,
+        })
+    for bh in bucket_holdings.values():
+        bh.sort(key=lambda x: -x["value"])
+
     trades = []
     for bucket, target_pct in sorted(target_weights.items()):
         current_val = breakdown.get(bucket, 0)
@@ -355,6 +384,7 @@ def _handle_suggest_rebalance(args, user_id):
             "target_value": round(target_val, 2),
             "trade_amount": round(abs(delta_val), 2),
             "action": action,
+            "holdings": bucket_holdings.get(bucket, [])[:5],
         })
 
     return {

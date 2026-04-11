@@ -1292,6 +1292,48 @@ function _renderTemplateComparison(d) {
   }
 
   _renderTemplateRadar(d);
+
+  var existing = document.getElementById("tpl-apply-btn");
+  if (existing) existing.parentNode.removeChild(existing);
+  var applyWrap = document.createElement("div");
+  applyWrap.id = "tpl-apply-btn";
+  applyWrap.style.cssText = "text-align:center;margin-top:14px;";
+  var applyBtn = document.createElement("button");
+  applyBtn.type = "button";
+  applyBtn.textContent = "Use as My Targets";
+  applyBtn.style.cssText = "padding:8px 20px;font-size:0.82rem;border-radius:var(--radius);border:1px solid var(--accent-primary);background:transparent;color:var(--accent-primary);cursor:pointer;transition:all .15s;";
+  applyBtn.onmouseover = function() { applyBtn.style.background = "var(--accent-primary)"; applyBtn.style.color = "var(--bg-primary)"; };
+  applyBtn.onmouseout = function() { applyBtn.style.background = "transparent"; applyBtn.style.color = "var(--accent-primary)"; };
+  applyBtn.onclick = function() { _applyTemplateAsTargets(d); };
+  applyWrap.appendChild(applyBtn);
+  var detail = document.getElementById("templates-detail");
+  if (detail) detail.appendChild(applyWrap);
+}
+
+function _applyTemplateAsTargets(d) {
+  var name = d.template ? d.template.name : "this template";
+  if (!confirm("Set your allocation targets to " + name + "? This will replace your current targets.")) return;
+  var tactical = {};
+  (d.rows || []).forEach(function(r) {
+    if (r.template_pct > 0) {
+      tactical[r.bucket] = { target: r.template_pct, min: 0, max: 100 };
+    }
+  });
+  if (Object.keys(tactical).length === 0) return;
+  fetch("/api/allocation-targets", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ targets: { tactical: tactical } })
+  })
+    .then(function(r) { return r.json(); })
+    .then(function(res) {
+      if (res.success) {
+        var btn = document.getElementById("tpl-apply-btn");
+        if (btn) btn.innerHTML = '<span style="color:var(--success);font-size:0.82rem;">Targets updated to ' + _esc(name) + '</span>';
+        if (typeof loadAllocationTable === "function") loadAllocationTable();
+      }
+    })
+    .catch(function() {});
 }
 
 function _renderTemplateRadar(d) {

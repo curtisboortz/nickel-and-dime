@@ -649,17 +649,33 @@ def get_investments():
     rebalance_months = (settings.rebalance_months or 12) if settings else 12
     is_current = (month == current_month)
 
+    raw_target_sum = sum(r.target or 0 for r in rows)
+    scale = (display_budget / raw_target_sum) if raw_target_sum > 0 and display_budget > 0 else 1
+    needs_rescale = abs(raw_target_sum - display_budget) > 1 and scale != 1
+
+    categories = []
+    running_total = 0
+    for i, r in enumerate(rows):
+        if needs_rescale:
+            if i == len(rows) - 1:
+                target = display_budget - running_total
+            else:
+                target = round((r.target or 0) * scale)
+                running_total += target
+        else:
+            target = r.target or 0
+        categories.append({
+            "id": r.id, "category": r.category, "bucket": r.bucket or "",
+            "target": target, "contributed": r.contributed,
+        })
+
     return jsonify({
         "month": month,
         "monthly_budget": display_budget,
         "available_months": available_months,
         "is_current": is_current,
         "rebalance_months": rebalance_months,
-        "categories": [
-            {"id": r.id, "category": r.category, "bucket": r.bucket or "",
-             "target": r.target, "contributed": r.contributed}
-            for r in rows
-        ],
+        "categories": categories,
     })
 
 

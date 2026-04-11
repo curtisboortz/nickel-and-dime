@@ -174,6 +174,18 @@ TOOL_DEFINITIONS = [
             "parameters": {"type": "object", "properties": {}},
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_user_targets",
+            "description": (
+                "Get the user's saved portfolio allocation targets, current drift "
+                "from those targets, and rebalance timeline. Use this to understand "
+                "what the user is aiming for before suggesting rebalance trades."
+            ),
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
 ]
 
 
@@ -183,7 +195,7 @@ def execute_tool(name, arguments, user_id):
     _user_tools = {
         "compare_to_template", "suggest_rebalance",
         "get_portfolio_history", "get_sector_exposure",
-        "get_tax_loss_harvest_candidates",
+        "get_tax_loss_harvest_candidates", "get_user_targets",
     }
     handlers = {
         "get_ticker_price": _handle_ticker_price,
@@ -195,6 +207,7 @@ def execute_tool(name, arguments, user_id):
         "get_portfolio_history": _handle_portfolio_history,
         "get_sector_exposure": _handle_sector_exposure,
         "get_tax_loss_harvest_candidates": _handle_tlh_candidates,
+        "get_user_targets": _handle_user_targets,
     }
     handler = handlers.get(name)
     if not handler:
@@ -562,4 +575,51 @@ def _handle_tlh_candidates(args, user_id):
         "total_unrealized_loss": round(total_loss, 2),
         "estimated_tax_savings_25pct": est_tax_savings,
         "note": "Estimated savings assume a 25% marginal tax rate. Wash sale risk means the same ticker was purchased within the last 30 days.",
+    }
+
+
+def _handle_user_targets(args, user_id):
+    settings = (
+        db.session.query(UserSettings)
+        .filter_by(user_id=user_id)
+        .first()
+    )
+    if not settings or not settings.targets:
+        return {"error": "No allocation targets have been set yet."}
+
+    targets = settings.targets
+    active = targets.get("tactical", targets.get("catchup", {}))
+    if not active:
+        return {"error": "No allocation targets have been set yet."}
+
+    overrides = (
+        settings.bucket_rollup
+        if hasattr(settings, "bucket_rollup")
+        else None
+    )
+
+    pv = compute_portfolio_value(user_id)
+    breakdown, _ = rollup_breakdown(pv.get("breakdown", {}), overrides=overrides)
+    total = pv["total"]
+
+    target_weights = {}
+    drift = {}
+    for bucket, v in active.items():
+        pct = v.get("target", v) if isinstance(v, dict) else v
+        target_weights[bucket] = pct
+        current_pct = round(breakdown.get(bucket, 0) / total * 100, 1) if total > 0 else 0
+        drift[bucket] = {
+            "target_pct": pct,
+            "current_pct": current_pct,
+            "drift_pct": round(current_pct - pct, 1),
+            "drift_dollars": round((current_pct - pct) / 100 * total, 2),
+        }
+
+    rebalance_months = settings.rebalance_months or 12
+
+    return {
+        "portfolio_total": round(total, 2),
+        "target_weights": target_weights,
+        "drift": drift,
+        "rebalance_months": rebalance_months,
     }

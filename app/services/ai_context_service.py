@@ -179,13 +179,15 @@ def _build_portfolio_context(user_id):
             lines.append(f"  {c.symbol}: {c.quantity:.4f}, ${val:,.0f}{cost_str} (source: {c.source})")
 
     if settings and settings.targets:
-        tactical = settings.targets.get("tactical", {})
-        if tactical:
+        active = settings.targets.get("tactical", settings.targets.get("catchup", {}))
+        if active:
             lines.append("")
-            lines.append("Allocation targets (tactical):")
-            for bucket, v in sorted(tactical.items()):
+            lines.append("User's allocation targets:")
+            for bucket, v in sorted(active.items()):
                 pct = v.get("target", v) if isinstance(v, dict) else v
                 lines.append(f"  {bucket}: {pct}%")
+    if settings and settings.rebalance_months:
+        lines.append(f"Rebalance timeline: {settings.rebalance_months} months")
 
     warnings = conc.get("warnings", [])
     if warnings:

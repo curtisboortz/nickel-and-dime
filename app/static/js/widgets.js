@@ -14,8 +14,8 @@ var WIDGET_REGISTRY = {};
   WIDGET_REGISTRY["allocation-donut"] = {
     name: "Portfolio Allocation",
     category: "Summary",
-    defaultW: 6, defaultH: 5,
-    minW: 4, minH: 4,
+    defaultW: 6, defaultH: 12,
+    minW: 4, minH: 8,
     init: function(el) {
       var card = document.querySelector('[data-widget="allocation-donut"]');
       if (card) el.appendChild(card);
@@ -26,8 +26,8 @@ var WIDGET_REGISTRY = {};
   WIDGET_REGISTRY["allocation-table"] = {
     name: "Allocation vs Target",
     category: "Summary",
-    defaultW: 6, defaultH: 5,
-    minW: 4, minH: 3,
+    defaultW: 6, defaultH: 9,
+    minW: 4, minH: 6,
     init: function(el) {
       var card = document.querySelector('[data-widget="allocation-table"]');
       if (card) el.appendChild(card);
@@ -38,8 +38,8 @@ var WIDGET_REGISTRY = {};
   WIDGET_REGISTRY["monthly-investments"] = {
     name: "Monthly Investments",
     category: "Summary",
-    defaultW: 6, defaultH: 8,
-    minW: 4, minH: 4,
+    defaultW: 6, defaultH: 12,
+    minW: 4, minH: 8,
     init: function(el) {
       var card = document.querySelector('[data-widget="monthly-investments"]');
       if (card) el.appendChild(card);
@@ -50,8 +50,8 @@ var WIDGET_REGISTRY = {};
   WIDGET_REGISTRY["watchlist"] = {
     name: "Watchlist & Alerts",
     category: "Summary",
-    defaultW: 6, defaultH: 5,
-    minW: 4, minH: 3,
+    defaultW: 6, defaultH: 9,
+    minW: 4, minH: 6,
     init: function(el) {
       var card = document.querySelector('[data-widget="watchlist"]');
       if (card) el.appendChild(card);
@@ -62,8 +62,8 @@ var WIDGET_REGISTRY = {};
   WIDGET_REGISTRY["financial-goals"] = {
     name: "Financial Goals",
     category: "Summary",
-    defaultW: 12, defaultH: 4,
-    minW: 6, minH: 3,
+    defaultW: 12, defaultH: 9,
+    minW: 6, minH: 6,
     init: function(el) {
       var card = document.getElementById("goals-card");
       if (!card) {
@@ -88,8 +88,8 @@ var WIDGET_REGISTRY = {};
   WIDGET_REGISTRY["sentiment-gauges"] = {
     name: "Market Sentiment",
     category: "Portfolio",
-    defaultW: 12, defaultH: 5,
-    minW: 6, minH: 4,
+    defaultW: 12, defaultH: 12,
+    minW: 6, minH: 8,
     init: function(el) {
       var section = document.getElementById("sentiment-section");
       if (section) el.appendChild(section);
@@ -101,8 +101,8 @@ var WIDGET_REGISTRY = {};
   WIDGET_REGISTRY["projected-growth"] = {
     name: "Projected Growth",
     category: "Portfolio",
-    defaultW: 6, defaultH: 6,
-    minW: 4, minH: 4,
+    defaultW: 6, defaultH: 12,
+    minW: 4, minH: 8,
     init: function(el) {
       var section = document.getElementById("projection-section");
       if (section) el.appendChild(section);
@@ -116,8 +116,8 @@ var WIDGET_REGISTRY = {};
   WIDGET_REGISTRY["monte-carlo"] = {
     name: "Monte Carlo Simulation",
     category: "Portfolio",
-    defaultW: 6, defaultH: 6,
-    minW: 4, minH: 4,
+    defaultW: 6, defaultH: 12,
+    minW: 4, minH: 8,
     init: function(el) {
       var section = document.getElementById("monte-carlo-section");
       if (section) el.appendChild(section);
@@ -131,8 +131,8 @@ var WIDGET_REGISTRY = {};
   WIDGET_REGISTRY["drawdown"] = {
     name: "Drawdown Analysis",
     category: "Portfolio",
-    defaultW: 6, defaultH: 5,
-    minW: 4, minH: 4,
+    defaultW: 6, defaultH: 12,
+    minW: 4, minH: 8,
     init: function(el) {
       var section = document.getElementById("drawdown-section");
       if (section) el.appendChild(section);
@@ -146,8 +146,8 @@ var WIDGET_REGISTRY = {};
   WIDGET_REGISTRY["perf-attribution"] = {
     name: "Performance Attribution",
     category: "Portfolio",
-    defaultW: 6, defaultH: 5,
-    minW: 4, minH: 4,
+    defaultW: 6, defaultH: 12,
+    minW: 4, minH: 8,
     init: function(el) {
       var section = document.getElementById("perf-attribution-section");
       if (section) el.appendChild(section);
@@ -161,8 +161,8 @@ var WIDGET_REGISTRY = {};
   WIDGET_REGISTRY["portfolio-insights"] = {
     name: "Portfolio Insights",
     category: "Portfolio",
-    defaultW: 6, defaultH: 6,
-    minW: 4, minH: 3,
+    defaultW: 6, defaultH: 9,
+    minW: 4, minH: 6,
     init: function(el) {
       var section = document.getElementById("insights-section");
       if (section) el.appendChild(section);
@@ -173,8 +173,8 @@ var WIDGET_REGISTRY = {};
   WIDGET_REGISTRY["allocation-templates"] = {
     name: "Allocation Templates",
     category: "Portfolio",
-    defaultW: 6, defaultH: 5,
-    minW: 4, minH: 3,
+    defaultW: 6, defaultH: 9,
+    minW: 4, minH: 6,
     init: function(el) {
       var section = document.getElementById("templates-section");
       if (section) el.appendChild(section);
@@ -187,8 +187,8 @@ var WIDGET_REGISTRY = {};
   WIDGET_REGISTRY["economic-calendar"] = {
     name: "Economic Calendar",
     category: "Economics",
-    defaultW: 12, defaultH: 6,
-    minW: 6, minH: 4,
+    defaultW: 12, defaultH: 16,
+    minW: 6, minH: 9,
     init: function(el) {
       _ensureEconLoaded();
       var section = document.getElementById("fred-section-econcal");
@@ -200,8 +200,8 @@ var WIDGET_REGISTRY = {};
   WIDGET_REGISTRY["fedwatch"] = {
     name: "FedWatch Tool",
     category: "Economics",
-    defaultW: 6, defaultH: 5,
-    minW: 4, minH: 4,
+    defaultW: 6, defaultH: 12,
+    minW: 4, minH: 8,
     init: function(el) {
       _ensureEconLoaded();
       var section = document.getElementById("fred-section-fedwatch");
@@ -213,8 +213,8 @@ var WIDGET_REGISTRY = {};
   WIDGET_REGISTRY["cape-buffett"] = {
     name: "CAPE & Buffett Indicator",
     category: "Economics",
-    defaultW: 12, defaultH: 5,
-    minW: 6, minH: 3,
+    defaultW: 12, defaultH: 12,
+    minW: 6, minH: 8,
     init: function(el) {
       _ensureEconLoaded();
       var cape = document.getElementById("fred-section-cape");
@@ -228,8 +228,8 @@ var WIDGET_REGISTRY = {};
   WIDGET_REGISTRY["macro-charts"] = {
     name: "Macro Charts",
     category: "Economics",
-    defaultW: 12, defaultH: 7,
-    minW: 6, minH: 5,
+    defaultW: 12, defaultH: 16,
+    minW: 6, minH: 9,
     init: function(el) {
       _ensureEconLoaded();
       var section = document.getElementById("fred-section-debt");
@@ -241,8 +241,8 @@ var WIDGET_REGISTRY = {};
   WIDGET_REGISTRY["world-uncertainty"] = {
     name: "World Uncertainty Index",
     category: "Economics",
-    defaultW: 6, defaultH: 5,
-    minW: 4, minH: 4,
+    defaultW: 6, defaultH: 12,
+    minW: 4, minH: 8,
     init: function(el) {
       _ensureEconLoaded();
       var section = document.getElementById("fred-section-wui");
@@ -273,8 +273,8 @@ var WIDGET_REGISTRY = {};
   WIDGET_REGISTRY["monthly-budget"] = {
     name: "Monthly Budget",
     category: "Budget",
-    defaultW: 6, defaultH: 6,
-    minW: 4, minH: 4,
+    defaultW: 6, defaultH: 12,
+    minW: 4, minH: 8,
     init: function(el) {
       var section = document.getElementById("budget-section");
       if (section) el.appendChild(section);
@@ -286,8 +286,8 @@ var WIDGET_REGISTRY = {};
   WIDGET_REGISTRY["spending-chart"] = {
     name: "Spending vs Budget",
     category: "Budget",
-    defaultW: 6, defaultH: 5,
-    minW: 4, minH: 4,
+    defaultW: 6, defaultH: 12,
+    minW: 4, minH: 8,
     init: function(el) {
       var section = document.getElementById("spending-chart-section");
       if (section) el.appendChild(section);
@@ -298,8 +298,8 @@ var WIDGET_REGISTRY = {};
   WIDGET_REGISTRY["spending-trends"] = {
     name: "Spending Trends",
     category: "Budget",
-    defaultW: 6, defaultH: 5,
-    minW: 4, minH: 4,
+    defaultW: 6, defaultH: 12,
+    minW: 4, minH: 8,
     init: function(el) {
       var section = document.getElementById("spending-trends-section");
       if (section) el.appendChild(section);
@@ -310,8 +310,8 @@ var WIDGET_REGISTRY = {};
   WIDGET_REGISTRY["debt-tracker"] = {
     name: "Debt Tracker",
     category: "Budget",
-    defaultW: 6, defaultH: 5,
-    minW: 4, minH: 3,
+    defaultW: 6, defaultH: 9,
+    minW: 4, minH: 6,
     init: function(el) {
       var section = document.getElementById("debt-tracker-section");
       if (section) el.appendChild(section);
@@ -322,8 +322,8 @@ var WIDGET_REGISTRY = {};
   WIDGET_REGISTRY["amortization"] = {
     name: "Loan Amortization",
     category: "Budget",
-    defaultW: 12, defaultH: 8,
-    minW: 6, minH: 5,
+    defaultW: 12, defaultH: 16,
+    minW: 6, minH: 9,
     init: function(el) {
       var section = document.getElementById("amortization-section");
       if (section) el.appendChild(section);
@@ -334,8 +334,8 @@ var WIDGET_REGISTRY = {};
   WIDGET_REGISTRY["transaction-log"] = {
     name: "Transaction Log",
     category: "Budget",
-    defaultW: 12, defaultH: 6,
-    minW: 6, minH: 4,
+    defaultW: 12, defaultH: 16,
+    minW: 6, minH: 9,
     init: function(el) {
       var section = document.getElementById("transaction-log-section");
       if (section) el.appendChild(section);
@@ -348,8 +348,8 @@ var WIDGET_REGISTRY = {};
   WIDGET_REGISTRY["brokerage-holdings"] = {
     name: "Brokerage Holdings",
     category: "Holdings",
-    defaultW: 12, defaultH: 7,
-    minW: 6, minH: 4,
+    defaultW: 12, defaultH: 16,
+    minW: 6, minH: 9,
     init: function(el) {
       var section = document.getElementById("holdings-section");
       if (section) el.appendChild(section);
@@ -361,8 +361,8 @@ var WIDGET_REGISTRY = {};
   WIDGET_REGISTRY["crypto-holdings"] = {
     name: "Crypto Holdings",
     category: "Holdings",
-    defaultW: 12, defaultH: 5,
-    minW: 6, minH: 3,
+    defaultW: 12, defaultH: 12,
+    minW: 6, minH: 8,
     init: function(el) {
       var section = document.getElementById("crypto-section");
       if (section) el.appendChild(section);
@@ -373,8 +373,8 @@ var WIDGET_REGISTRY = {};
   WIDGET_REGISTRY["physical-metals"] = {
     name: "Physical Metals",
     category: "Holdings",
-    defaultW: 12, defaultH: 5,
-    minW: 6, minH: 3,
+    defaultW: 12, defaultH: 9,
+    minW: 6, minH: 6,
     init: function(el) {
       var section = document.getElementById("metals-section");
       if (section) el.appendChild(section);

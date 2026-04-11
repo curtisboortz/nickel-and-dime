@@ -1421,17 +1421,13 @@ html.light .wl-alert-row { border-bottom:1px solid rgba(0,0,0,0.04); }
 }
 .grid-stack-item-content {
   background: transparent;
-  overflow: auto;
+  overflow: hidden;
   border-radius: var(--radius);
 }
 .grid-stack-item-content > .card,
 .grid-stack-item-content > .widget-card {
   margin: 0;
-  height: 100%;
   box-sizing: border-box;
-}
-.grid-stack-item-content .hero-row {
-  height: 100%;
 }
 
 /* Widget header (visible in edit mode) */
@@ -1471,7 +1467,7 @@ html.light .wl-alert-row { border-bottom:1px solid rgba(0,0,0,0.04); }
 .gs-widget-remove:hover { color: #f44; }
 .gs-widget-body {
   height: calc(100% - 0px);
-  overflow: auto;
+  overflow: hidden;
 }
 .gs-edit-mode .gs-widget-body {
   height: calc(100% - 28px);
@@ -1615,9 +1611,6 @@ html.light .wl-alert-row { border-bottom:1px solid rgba(0,0,0,0.04); }
   .catalog-panel {
     width: 100vw;
     max-width: 100vw;
-  }
-  .gs-widget-body {
-    overflow-x: auto;
   }
 }
 

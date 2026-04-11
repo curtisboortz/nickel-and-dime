@@ -1441,8 +1441,8 @@ function obFinish() {
           <select id="ai-history-select" onchange="aiLoadConversation(this.value)" style="padding:5px 10px;font-size:0.75rem;border-radius:var(--radius);border:1px solid var(--border-subtle);background:var(--bg-input);color:var(--text-primary);cursor:pointer;max-width:200px;">
             <option value="">History</option>
           </select>
-          <button id="ai-delete-conv-btn" onclick="aiDeleteConversation()" title="Delete this conversation" style="display:none;padding:4px 7px;font-size:0.72rem;border-radius:var(--radius);border:1px solid var(--border-subtle);background:transparent;color:var(--text-muted);cursor:pointer;line-height:1;">
-            <svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;vertical-align:middle;"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
+          <button id="ai-delete-conv-btn" onclick="aiDeleteConversation()" title="Delete this conversation" style="display:none;padding:5px 10px;font-size:0.75rem;border-radius:var(--radius);border:1px solid var(--border-subtle);background:transparent;color:var(--danger);cursor:pointer;transition:all .15s;" onmouseover="this.style.background='var(--danger)';this.style.color='#fff';this.style.borderColor='var(--danger)'" onmouseout="this.style.background='transparent';this.style.color='var(--danger)';this.style.borderColor='var(--border-subtle)'">
+            <svg viewBox="0 0 24 24" style="width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:2;vertical-align:-2px;margin-right:4px;"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>Delete
           </button>
         </div>
       </div>

@@ -10,11 +10,11 @@ var _gridEditMode = false;
 var _gridWidgetIds = [];
 
 var DEFAULT_LAYOUT = [
-  { id: "allocation-donut",    x: 0, y: 0,  w: 6, h: 12 },
+  { id: "allocation-donut",    x: 0, y: 0,  w: 6, h: 9  },
   { id: "allocation-table",    x: 6, y: 0,  w: 6, h: 9  },
-  { id: "monthly-investments", x: 0, y: 12, w: 6, h: 12 },
-  { id: "watchlist",           x: 6, y: 9,  w: 6, h: 9  },
-  { id: "financial-goals",     x: 6, y: 18, w: 6, h: 9  }
+  { id: "monthly-investments", x: 0, y: 9,  w: 6, h: 9  },
+  { id: "watchlist",           x: 6, y: 9,  w: 6, h: 6  },
+  { id: "financial-goals",     x: 6, y: 15, w: 6, h: 6  }
 ];
 
 (function() {
@@ -138,7 +138,7 @@ var DEFAULT_LAYOUT = [
     _grid = GridStack.init({
       column: 12,
       cellHeight: 40,
-      margin: 8,
+      margin: 4,
       animate: true,
       float: false,
       draggable: { handle: ".gs-widget-drag" },

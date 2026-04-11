@@ -5,14 +5,18 @@ holdings into a structured context string for the OpenAI system message.
 """
 
 from datetime import date, timedelta
+from pathlib import Path
 
 from ..extensions import db
-from ..models.portfolio import Holding, CryptoHolding
+from ..models.portfolio import Holding, CryptoHolding, PhysicalMetal, BlendedAccount, Account
 from ..models.market import PriceCache, SentimentCache
 from ..models.settings import UserSettings
 from ..models.snapshot import PortfolioSnapshot
 from ..services.insights_service import generate_insights
 from ..utils.buckets import rollup_breakdown
+
+_KB_PATH = Path(__file__).resolve().parent.parent / "data" / "investment_frameworks.md"
+_INVESTMENT_KB = _KB_PATH.read_text(encoding="utf-8")
 
 SYSTEM_PROMPT = """\
 You are a portfolio research assistant embedded in Nickel&Dime, a personal finance \
@@ -32,34 +36,22 @@ qualified financial advisor before making investment decisions.*"
 
 ## Analytical Frameworks
 
-Apply these investment philosophies contextually when they are relevant:
+You have a detailed investment knowledge base (provided in a separate system \
+message) covering the following cornerstone investors and their works. Apply \
+their principles contextually when relevant to the user's portfolio:
 
-**Ray Dalio (Risk Parity & All Weather):**
-- True diversification means owning assets that respond differently to economic \
-surprises (growth vs stagnation, inflation vs deflation)
-- Risk should be balanced across environments, not concentrated in equities
-- The "Holy Grail of Investing": 15+ uncorrelated return streams dramatically \
-reduce portfolio risk without sacrificing returns
-- When a portfolio is >70% equities, flag the growth-surprise concentration risk
+- **Benjamin Graham** — margin of safety, Mr. Market, defensive investor criteria
+- **Warren Buffett** — economic moats, circle of competence, owner earnings
+- **Charlie Munger** — inversion, second-order thinking, quality over cheapness
+- **Ray Dalio** — risk parity, All Weather, four economic quadrants, Holy Grail
+- **Howard Marks** — second-level thinking, the pendulum, risk as permanent loss
+- **Bill Ackman** — concentrated value, simple businesses, catalyst-driven investing
+- **Peter Lynch** — invest in what you know, PEG ratio, six stock categories
+- **John Bogle** — cost drag, indexing, reversion to the mean, stay the course
 
-**Benjamin Graham & Warren Buffett (Value & Margin of Safety):**
-- Price is what you pay, value is what you get: distinguish between price and worth
-- Concentrated portfolios can work well if the investor understands what they own
-- "Be fearful when others are greedy, greedy when others are fearful." Reference \
-the Fear & Greed index when discussing tactical positioning
-- Margin of safety: the gap between price and intrinsic value is the investor's buffer
-
-**Jack Bogle (Low-Cost Indexing):**
-- Costs compound destructively, so always consider expense ratios when discussing funds
-- Broad market index funds have historically outperformed most active managers over 20+ years
-- Simplicity often wins: a three-fund portfolio covers most diversification needs
-- Don't look for the needle in the haystack; buy the entire haystack
-
-**Howard Marks (Market Cycles & Risk):**
-- Risk comes primarily from overpaying, not from volatility alone
-- Market cycles are driven by psychology: greed and fear tend to overshoot
-- When sentiment indicators are extreme (F&G >80 or <20), flag it and discuss positioning
-- "The most dangerous words in investing: this time it's different"
+When citing a framework, reference the specific principle by name (e.g., \
+"Graham's Mr. Market concept," "Dalio's four-quadrant model," "Lynch's PEG \
+ratio") rather than generic attribution.
 
 **Portfolio Construction Principles:**
 - Rebalancing systematically captures the buy-low-sell-high discipline
@@ -67,6 +59,19 @@ the Fear & Greed index when discussing tactical positioning
 - Cash is a legitimate position: it represents optionality during drawdowns
 - International diversification reduces single-country political and currency risk
 - Bonds historically serve three roles: income, deflation hedge, and rebalancing fuel
+
+**Rebalancing Execution — Scale In / Scale Out:**
+- Large rebalancing moves should be spread over multiple transactions, not executed \
+all at once. Recommend phased approaches (e.g. "over 2-4 weeks" or "in 3-4 tranches").
+- For positions larger than 5% of the portfolio, always suggest scaling in or out \
+gradually to manage timing risk and reduce market impact.
+- Never recommend liquidating an entire position in one trade unless it is very small \
+(<1% of portfolio) or the thesis is clearly broken.
+- When recommending sells, **always verify the suggested dollar amount and share count \
+against the actual holding size shown in the portfolio data**. Never suggest selling \
+more than the user actually owns.
+- Frame rebalancing as a process, not a single event: "consider trimming X by $Y over \
+the next few weeks" rather than "sell $Z of X today."
 
 ## Your Capabilities
 - Analyze portfolio risk, concentration, and diversification
@@ -102,11 +107,13 @@ and a one-line rationale."""
 def build_system_messages(user_id):
     """Return the system message list for a new conversation.
 
-    Includes the base system prompt plus a portfolio context snapshot.
+    Includes the base system prompt, the investment knowledge base,
+    and a portfolio context snapshot.
     """
     context = _build_portfolio_context(user_id)
     return [
         {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "system", "content": f"Investment knowledge base:\n\n{_INVESTMENT_KB}"},
         {"role": "system", "content": f"Current portfolio snapshot:\n\n{context}"},
     ]
 
@@ -174,7 +181,7 @@ def _build_portfolio_context(user_id):
     crypto = CryptoHolding.query.filter_by(user_id=user_id).all()
     if crypto:
         lines.append("")
-        lines.append("Crypto holdings:")
+        lines.append("Crypto holdings (bucket: Crypto):")
         for c in crypto:
             cg_key = f"CG:{c.coingecko_id}" if c.coingecko_id else f"CG:{c.symbol.lower()}"
             pc = PriceCache.query.filter_by(symbol=cg_key).first()
@@ -182,6 +189,48 @@ def _build_portfolio_context(user_id):
             val = c.quantity * price
             cost_str = f", cost ${c.cost_basis:,.2f}" if c.cost_basis else ""
             lines.append(f"  {c.symbol}: {c.quantity:.4f}, ${val:,.0f}{cost_str} (source: {c.source})")
+
+    metals = PhysicalMetal.query.filter_by(user_id=user_id).all()
+    if metals:
+        lines.append("")
+        lines.append("Physical metals:")
+        gold_oz, silver_oz = 0, 0
+        for m in metals:
+            if m.metal.lower() == "gold":
+                gold_oz += m.oz
+            else:
+                silver_oz += m.oz
+        gold_pc = PriceCache.query.get("GC=F")
+        silver_pc = PriceCache.query.get("SI=F")
+        if gold_oz > 0:
+            gold_price = gold_pc.price if gold_pc and gold_pc.price else 0
+            lines.append(f"  Gold: {gold_oz:.2f} oz, ${gold_oz * gold_price:,.0f} (bucket: Gold)")
+        if silver_oz > 0:
+            silver_price = silver_pc.price if silver_pc and silver_pc.price else 0
+            lines.append(f"  Silver: {silver_oz:.2f} oz, ${silver_oz * silver_price:,.0f} (bucket: Silver)")
+
+    blended = BlendedAccount.query.filter_by(user_id=user_id).all()
+    if blended:
+        lines.append("")
+        lines.append("Blended / alternative accounts:")
+        for b in blended:
+            alloc = b.allocations or {}
+            asset_class = alloc.get("asset_class", "")
+            if asset_class:
+                lines.append(f"  {b.name}: ${b.value:,.0f} (bucket: {asset_class})")
+            elif alloc:
+                splits = ", ".join(f"{k} {v}%" for k, v in alloc.items())
+                lines.append(f"  {b.name}: ${b.value:,.0f} (split: {splits})")
+            else:
+                lines.append(f"  {b.name}: ${b.value:,.0f}")
+
+    accounts = Account.query.filter_by(user_id=user_id).all()
+    cash_accounts = [a for a in accounts if a.account_type in ("checking", "savings")]
+    if cash_accounts:
+        lines.append("")
+        lines.append("Cash accounts (bucket: Cash):")
+        for a in cash_accounts:
+            lines.append(f"  {a.name}: ${a.balance:,.0f}")
 
     if settings and settings.targets:
         active = settings.targets.get("tactical", settings.targets.get("catchup", {}))

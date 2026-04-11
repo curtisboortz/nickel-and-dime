@@ -9,7 +9,7 @@ from datetime import date, datetime, timedelta, timezone
 
 from ..extensions import db
 from ..models.market import PriceCache, SentimentCache, FredCache
-from ..models.portfolio import Holding, CryptoHolding
+from ..models.portfolio import Holding, CryptoHolding, PhysicalMetal, BlendedAccount, Account
 from ..models.snapshot import PortfolioSnapshot
 from ..models.settings import UserSettings
 from ..services.portfolio_service import compute_portfolio_value
@@ -313,6 +313,127 @@ def _handle_compare_to_template(args, user_id):
     return result
 
 
+def _build_bucket_holdings(user_id):
+    """Build a complete {bucket: [holdings…]} dict across all asset types.
+
+    Used by suggest_rebalance and sector_exposure so the AI sees every
+    position, not just Holding rows.
+    """
+    from ..utils.buckets import normalize_bucket as _nb
+
+    holdings = Holding.query.filter_by(user_id=user_id).all()
+    tickers = list({h.ticker for h in holdings if h.ticker})
+    price_map = {}
+    if tickers:
+        price_map = {
+            r.symbol: r.price
+            for r in PriceCache.query.filter(PriceCache.symbol.in_(tickers)).all()
+            if r.price
+        }
+
+    bucket_holdings = {}
+    for h in holdings:
+        if h.value_override:
+            val = h.value_override
+        elif h.shares:
+            val = h.shares * (price_map.get(h.ticker) or 0)
+        else:
+            val = 0
+        b = h.bucket or "Other"
+        bucket_holdings.setdefault(b, []).append({
+            "ticker": h.ticker,
+            "shares": round(h.shares or 0, 2),
+            "value": round(val, 2),
+            "cost_basis": round(h.cost_basis or 0, 2) if h.cost_basis else None,
+        })
+
+    crypto = CryptoHolding.query.filter_by(user_id=user_id).all()
+    for c in crypto:
+        cg_key = f"CG:{c.coingecko_id}" if c.coingecko_id else f"CG:{c.symbol.lower()}"
+        pc = PriceCache.query.filter_by(symbol=cg_key).first()
+        price = pc.price if pc and pc.price else 0
+        val = c.quantity * price
+        bucket_holdings.setdefault("Crypto", []).append({
+            "ticker": c.symbol,
+            "shares": round(c.quantity, 4),
+            "value": round(val, 2),
+            "cost_basis": round(c.cost_basis or 0, 2) if c.cost_basis else None,
+        })
+
+    metals = PhysicalMetal.query.filter_by(user_id=user_id).all()
+    gold_oz, silver_oz = 0.0, 0.0
+    for m in metals:
+        if m.metal.lower() == "gold":
+            gold_oz += m.oz
+        else:
+            silver_oz += m.oz
+    if gold_oz:
+        pc = PriceCache.query.get("GC=F")
+        gp = pc.price if pc and pc.price else 0
+        bucket_holdings.setdefault("Gold", []).append({
+            "ticker": "Physical Gold",
+            "shares": round(gold_oz, 2),
+            "value": round(gold_oz * gp, 2),
+            "cost_basis": None,
+        })
+    if silver_oz:
+        pc = PriceCache.query.get("SI=F")
+        sp = pc.price if pc and pc.price else 0
+        bucket_holdings.setdefault("Silver", []).append({
+            "ticker": "Physical Silver",
+            "shares": round(silver_oz, 2),
+            "value": round(silver_oz * sp, 2),
+            "cost_basis": None,
+        })
+
+    blended = BlendedAccount.query.filter_by(user_id=user_id).all()
+    for b in blended:
+        alloc = b.allocations or {}
+        if "asset_class" in alloc:
+            bucket = _nb(alloc["asset_class"]) or "Other"
+            bucket_holdings.setdefault(bucket, []).append({
+                "ticker": b.name,
+                "shares": None,
+                "value": round(b.value, 2),
+                "cost_basis": None,
+            })
+        elif alloc:
+            for raw_bucket, pct in alloc.items():
+                try:
+                    pct_val = float(pct)
+                except (TypeError, ValueError):
+                    continue
+                bucket = _nb(raw_bucket) or "Other"
+                bucket_holdings.setdefault(bucket, []).append({
+                    "ticker": f"{b.name} ({bucket} slice)",
+                    "shares": None,
+                    "value": round(b.value * pct_val / 100, 2),
+                    "cost_basis": None,
+                })
+        else:
+            bucket_holdings.setdefault("Other", []).append({
+                "ticker": b.name,
+                "shares": None,
+                "value": round(b.value, 2),
+                "cost_basis": None,
+            })
+
+    accounts = Account.query.filter_by(user_id=user_id).all()
+    for a in accounts:
+        if a.account_type in ("checking", "savings"):
+            bucket_holdings.setdefault("Cash", []).append({
+                "ticker": a.name,
+                "shares": None,
+                "value": round(a.balance, 2),
+                "cost_basis": None,
+            })
+
+    for bh in bucket_holdings.values():
+        bh.sort(key=lambda x: -x["value"])
+
+    return bucket_holdings
+
+
 def _handle_suggest_rebalance(args, user_id):
     target_weights = args.get("target_weights", {})
     if not target_weights:
@@ -340,34 +461,7 @@ def _handle_suggest_rebalance(args, user_id):
     if total == 0:
         return {"error": "Portfolio is empty. Add holdings first."}
 
-    holdings = Holding.query.filter_by(user_id=user_id).all()
-    tickers = list({h.ticker for h in holdings if h.ticker})
-    price_map = {}
-    if tickers:
-        price_map = {
-            r.symbol: r.price
-            for r in PriceCache.query.filter(PriceCache.symbol.in_(tickers)).all()
-            if r.price
-        }
-    bucket_holdings = {}
-    for h in holdings:
-        if h.value_override:
-            val = h.value_override
-        elif h.shares:
-            val = h.shares * (price_map.get(h.ticker) or 0)
-        else:
-            val = 0
-        b = h.bucket or "Other"
-        if b not in bucket_holdings:
-            bucket_holdings[b] = []
-        bucket_holdings[b].append({
-            "ticker": h.ticker,
-            "shares": round(h.shares or 0, 2),
-            "value": round(val, 2),
-            "cost_basis": round(h.cost_basis or 0, 2) if h.cost_basis else None,
-        })
-    for bh in bucket_holdings.values():
-        bh.sort(key=lambda x: -x["value"])
+    bucket_holdings = _build_bucket_holdings(user_id)
 
     trades = []
     for bucket, target_pct in sorted(target_weights.items()):
@@ -461,38 +555,7 @@ def _handle_sector_exposure(args, user_id):
     if total == 0:
         return {"error": "Portfolio is empty"}
 
-    holdings = Holding.query.filter_by(user_id=user_id).all()
-    tickers = list({h.ticker for h in holdings if h.ticker})
-    price_map = {}
-    if tickers:
-        price_map = {
-            r.symbol: r.price
-            for r in PriceCache.query.filter(
-                PriceCache.symbol.in_(tickers)
-            ).all()
-            if r.price
-        }
-
-    bucket_holdings = {}
-    for h in holdings:
-        if h.value_override:
-            val = h.value_override
-        elif h.shares:
-            val = h.shares * (price_map.get(h.ticker) or 0)
-        else:
-            val = 0
-        bucket = h.bucket or "Other"
-        if bucket not in bucket_holdings:
-            bucket_holdings[bucket] = []
-        bucket_holdings[bucket].append({
-            "ticker": h.ticker,
-            "value": round(val, 2),
-            "shares": round(h.shares or 0, 2),
-            "cost_basis": round(h.cost_basis or 0, 2) if h.cost_basis else None,
-        })
-
-    for bh in bucket_holdings.values():
-        bh.sort(key=lambda x: -x["value"])
+    bucket_holdings = _build_bucket_holdings(user_id)
 
     buckets = []
     for bucket in sorted(breakdown.keys(), key=lambda b: -breakdown[b]):
@@ -505,22 +568,10 @@ def _handle_sector_exposure(args, user_id):
             "top_holdings": top,
         })
 
-    crypto = CryptoHolding.query.filter_by(user_id=user_id).all()
-    crypto_list = []
-    for c in crypto:
-        pc = PriceCache.query.filter_by(symbol=f"CG:{c.coingecko_id}").first()
-        price = pc.price if pc and pc.price else 0
-        crypto_list.append({
-            "symbol": c.symbol,
-            "quantity": round(c.quantity, 4),
-            "value": round(c.quantity * price, 2),
-        })
-
     return {
         "portfolio_total": round(total, 2),
         "bucket_count": len(buckets),
         "buckets": buckets,
-        "crypto": crypto_list if crypto_list else None,
     }
 
 

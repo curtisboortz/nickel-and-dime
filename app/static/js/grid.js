@@ -2,6 +2,7 @@
  *
  * Manages the configurable widget grid on the Summary tab.
  * Loads layout from server, initializes widgets, saves on change.
+ * Widgets use preset S/M/L sizes instead of freeform resize.
  */
 
 var _grid = null;
@@ -26,19 +27,64 @@ var DEFAULT_LAYOUT = [
     _saveTimer = setTimeout(function() { saveDashboardLayout(); }, 800);
   }
 
+  function _returnToStaging(gridItem) {
+    var staging = document.getElementById("widget-staging");
+    if (!staging) return;
+    var body = gridItem.querySelector(".gs-widget-body");
+    if (!body) return;
+    while (body.firstChild) {
+      staging.appendChild(body.firstChild);
+    }
+  }
+
+  function _returnAllToStaging() {
+    if (!_grid) return;
+    var items = _grid.getGridItems();
+    for (var i = 0; i < items.length; i++) {
+      _returnToStaging(items[i]);
+    }
+  }
+
+  function _activeSizeIdx(widgetId, w, h) {
+    var reg = WIDGET_REGISTRY[widgetId];
+    if (!reg || !reg.sizes) return -1;
+    for (var i = 0; i < reg.sizes.length; i++) {
+      if (reg.sizes[i].w === w && reg.sizes[i].h === h) return i;
+    }
+    return -1;
+  }
+
+  function _buildSizeBtns(widgetId, currentW, currentH) {
+    var reg = WIDGET_REGISTRY[widgetId];
+    if (!reg || !reg.sizes) return "";
+    var html = '<div class="gs-size-btns">';
+    for (var i = 0; i < reg.sizes.length; i++) {
+      var s = reg.sizes[i];
+      var active = (s.w === currentW && s.h === currentH) ? " active" : "";
+      html += '<button class="gs-size-btn' + active + '" ' +
+        'onclick="setWidgetSize(\'' + widgetId + '\',' + i + ')" ' +
+        'title="' + s.w + '×' + s.h + '">' + s.label + '</button>';
+    }
+    html += '</div>';
+    return html;
+  }
+
   function _buildWidgetEl(widgetId, opts) {
     var reg = WIDGET_REGISTRY[widgetId];
     if (!reg) return null;
 
+    var sizeIdx = reg.defaultSize || 0;
+    var w = opts.w || reg.sizes[sizeIdx].w;
+    var h = opts.h || reg.sizes[sizeIdx].h;
+
     var wrapper = document.createElement("div");
     wrapper.className = "grid-stack-item";
     wrapper.setAttribute("gs-id", widgetId);
-    wrapper.setAttribute("gs-w", opts.w || reg.defaultW);
-    wrapper.setAttribute("gs-h", opts.h || reg.defaultH);
+    wrapper.setAttribute("gs-w", w);
+    wrapper.setAttribute("gs-h", h);
     wrapper.setAttribute("gs-x", opts.x != null ? opts.x : "");
     wrapper.setAttribute("gs-y", opts.y != null ? opts.y : "");
-    wrapper.setAttribute("gs-min-w", reg.minW || 3);
-    wrapper.setAttribute("gs-min-h", reg.minH || 2);
+    wrapper.setAttribute("gs-no-resize", "true");
 
     var content = document.createElement("div");
     content.className = "grid-stack-item-content";
@@ -47,6 +93,7 @@ var DEFAULT_LAYOUT = [
     header.className = "gs-widget-header";
     header.innerHTML = '<span class="gs-widget-drag" title="Drag to reorder">&#x2630;</span>' +
       '<span class="gs-widget-title">' + _esc(reg.name) + '</span>' +
+      _buildSizeBtns(widgetId, w, h) +
       '<button class="gs-widget-remove" title="Remove widget" onclick="removeWidgetFromGrid(\'' +
       widgetId + '\')">&times;</button>';
     content.appendChild(header);
@@ -83,7 +130,6 @@ var DEFAULT_LAYOUT = [
       animate: true,
       float: false,
       draggable: { handle: ".gs-widget-drag" },
-      resizable: { handles: "se,sw" },
       disableDrag: true,
       disableResize: true,
       columnOpts: {
@@ -141,13 +187,35 @@ var DEFAULT_LAYOUT = [
     }).catch(function() {});
   };
 
+  window.setWidgetSize = function(widgetId, sizeIdx) {
+    if (!_grid) return;
+    var reg = WIDGET_REGISTRY[widgetId];
+    if (!reg || !reg.sizes || !reg.sizes[sizeIdx]) return;
+
+    var size = reg.sizes[sizeIdx];
+    var items = _grid.getGridItems();
+    for (var i = 0; i < items.length; i++) {
+      if (items[i].getAttribute("gs-id") === widgetId) {
+        _grid.update(items[i], { w: size.w, h: size.h });
+        var btns = items[i].querySelectorAll(".gs-size-btn");
+        for (var j = 0; j < btns.length; j++) {
+          btns[j].classList.toggle("active", j === sizeIdx);
+        }
+        _debounceSave();
+        return;
+      }
+    }
+  };
+
   window.addWidgetToGrid = function(widgetId) {
     if (!_grid || !WIDGET_REGISTRY[widgetId]) return;
     if (_gridWidgetIds.indexOf(widgetId) !== -1) return;
 
     var reg = WIDGET_REGISTRY[widgetId];
+    var sizeIdx = reg.defaultSize || 0;
     var built = _buildWidgetEl(widgetId, {
-      w: reg.defaultW, h: reg.defaultH
+      w: reg.sizes[sizeIdx].w,
+      h: reg.sizes[sizeIdx].h
     });
     if (!built) return;
 
@@ -168,11 +236,7 @@ var DEFAULT_LAYOUT = [
     for (var i = 0; i < items.length; i++) {
       var gid = items[i].getAttribute("gs-id");
       if (gid === widgetId) {
-        var reg = WIDGET_REGISTRY[widgetId];
-        if (reg && reg.destroy) {
-          var body = items[i].querySelector(".gs-widget-body");
-          try { reg.destroy(body); } catch(e) {}
-        }
+        _returnToStaging(items[i]);
         _grid.removeWidget(items[i]);
         var idx = _gridWidgetIds.indexOf(widgetId);
         if (idx !== -1) _gridWidgetIds.splice(idx, 1);
@@ -192,10 +256,8 @@ var DEFAULT_LAYOUT = [
     if (!_grid) return;
     if (_gridEditMode) {
       _grid.enableMove(true);
-      _grid.enableResize(true);
     } else {
       _grid.enableMove(false);
-      _grid.enableResize(false);
     }
     var container = document.getElementById("dashboard-grid");
     if (container) {
@@ -217,6 +279,7 @@ var DEFAULT_LAYOUT = [
 
   window.resetDashboardLayout = function() {
     if (!_grid) return;
+    _returnAllToStaging();
     _grid.removeAll();
     _gridWidgetIds = [];
     _grid.batchUpdate();
@@ -232,6 +295,7 @@ var DEFAULT_LAYOUT = [
     _grid.commit();
     saveDashboardLayout();
     _updateCatalogStates();
+    _applyEditState();
   };
 
   function _updateCatalogStates() {

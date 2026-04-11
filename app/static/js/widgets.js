@@ -11,40 +11,6 @@ var WIDGET_REGISTRY = {};
 
   // ─── Summary widgets ─────────────────────────────────────────
 
-  WIDGET_REGISTRY["net-worth"] = {
-    name: "Net Worth & History",
-    category: "Summary",
-    defaultW: 12, defaultH: 5,
-    minW: 6, minH: 4,
-    init: function(el) {
-      var hero = document.querySelector(".hero-row");
-      if (hero) { el.appendChild(hero); hero.style.display = ""; }
-    },
-    destroy: function(el) {}
-  };
-
-  WIDGET_REGISTRY["pulse-bar"] = {
-    name: "Market Pulse",
-    category: "Summary",
-    defaultW: 12, defaultH: 3,
-    minW: 6, minH: 2,
-    init: function(el) {
-      var staging = document.getElementById("widget-staging");
-      if (staging) {
-        var sizeCtrl = staging.querySelector(".pulse-size-btn");
-        if (sizeCtrl) {
-          var row = sizeCtrl.closest("div");
-          if (row) el.appendChild(row);
-        }
-      }
-      var bar = document.getElementById("pulse-bar");
-      var addModal = document.getElementById("pulse-add-modal");
-      if (bar) el.appendChild(bar);
-      if (addModal) el.appendChild(addModal);
-    },
-    destroy: function(el) {}
-  };
-
   WIDGET_REGISTRY["allocation-donut"] = {
     name: "Portfolio Allocation",
     category: "Summary",

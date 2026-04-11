@@ -278,3 +278,19 @@ def delete_conversation(conv_id):
     return jsonify({"ok": True})
 
 
+@api_ai_bp.route("/ai/conversations", methods=["DELETE"])
+@login_required
+@requires_pro
+def delete_all_conversations():
+    """Delete all conversations for the current user."""
+    AIMessage.query.filter(
+        AIMessage.conversation_id.in_(
+            db.session.query(AIConversation.id)
+            .filter_by(user_id=current_user.id)
+        )
+    ).delete(synchronize_session=False)
+    AIConversation.query.filter_by(user_id=current_user.id).delete()
+    db.session.commit()
+    return jsonify({"ok": True})
+
+

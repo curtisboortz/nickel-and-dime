@@ -9,13 +9,11 @@ var _gridEditMode = false;
 var _gridWidgetIds = [];
 
 var DEFAULT_LAYOUT = [
-  { id: "net-worth",           x: 0,  y: 0,  w: 12, h: 5  },
-  { id: "pulse-bar",           x: 0,  y: 5,  w: 12, h: 3  },
-  { id: "allocation-donut",    x: 0,  y: 8,  w: 6,  h: 5  },
-  { id: "allocation-table",    x: 6,  y: 8,  w: 6,  h: 5  },
-  { id: "monthly-investments", x: 0,  y: 13, w: 6,  h: 8  },
-  { id: "watchlist",           x: 6,  y: 13, w: 6,  h: 5  },
-  { id: "financial-goals",     x: 6,  y: 18, w: 6,  h: 4  }
+  { id: "allocation-donut",    x: 0, y: 0,  w: 6, h: 5 },
+  { id: "allocation-table",    x: 6, y: 0,  w: 6, h: 5 },
+  { id: "monthly-investments", x: 0, y: 5,  w: 6, h: 8 },
+  { id: "watchlist",           x: 6, y: 5,  w: 6, h: 5 },
+  { id: "financial-goals",     x: 6, y: 10, w: 6, h: 4 }
 ];
 
 (function() {

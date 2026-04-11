@@ -257,7 +257,7 @@ function _aiLoadConversations() {
       var select = document.getElementById("ai-history-select");
       if (!select) return;
       var convs = d.conversations || [];
-      var html = '<option value="">History (' + convs.length + ")</option>";
+      var html = '<option value="">History</option>';
       convs.forEach(function (c) {
         var title = c.title || "Untitled";
         if (title.length > 40) title = title.substring(0, 40) + "...";
@@ -265,13 +265,23 @@ function _aiLoadConversations() {
         html += '<option value="' + c.id + '"' + selected + ">" +
           _aiEsc(title) + "</option>";
       });
+      if (convs.length > 0) {
+        html += '<option value="__clear_all__">Clear all history</option>';
+      }
       select.innerHTML = html;
+
+      var delBtn = document.getElementById("ai-delete-conv-btn");
+      if (delBtn) delBtn.style.display = _aiConversationId ? "" : "none";
     })
     .catch(function () {});
 }
 
 function aiLoadConversation(id) {
   if (!id) return;
+  if (id === "__clear_all__") {
+    aiClearAllHistory();
+    return;
+  }
   id = parseInt(id, 10);
 
   fetch("/api/ai/conversations/" + id)
@@ -283,16 +293,49 @@ function aiLoadConversation(id) {
 
       container.innerHTML = "";
       _aiHideWelcome();
+      var actions = document.getElementById("ai-quick-actions");
+      if (actions) actions.style.display = "none";
 
       var msgs = d.messages || [];
       if (msgs.length === 0) {
         _aiShowWelcome();
+        if (actions) actions.style.display = "";
         return;
       }
       msgs.forEach(function (m) {
         _aiAppendMessage(m.role, m.content);
       });
       _aiScrollBottom();
+
+      var delBtn = document.getElementById("ai-delete-conv-btn");
+      if (delBtn) delBtn.style.display = "";
+    })
+    .catch(function () {});
+}
+
+function aiDeleteConversation() {
+  if (!_aiConversationId) return;
+  if (!confirm("Delete this conversation?")) return;
+  fetch("/api/ai/conversations/" + _aiConversationId, { method: "DELETE" })
+    .then(function (r) { return r.json(); })
+    .then(function () {
+      aiNewChat();
+      _aiLoadConversations();
+    })
+    .catch(function () {});
+}
+
+function aiClearAllHistory() {
+  if (!confirm("Delete all chat history? This cannot be undone.")) {
+    var select = document.getElementById("ai-history-select");
+    if (select) select.value = _aiConversationId || "";
+    return;
+  }
+  fetch("/api/ai/conversations", { method: "DELETE" })
+    .then(function (r) { return r.json(); })
+    .then(function () {
+      aiNewChat();
+      _aiLoadConversations();
     })
     .catch(function () {});
 }
@@ -303,8 +346,14 @@ function aiNewChat() {
   if (container) container.innerHTML = "";
   _aiShowWelcome();
 
+  var actions = document.getElementById("ai-quick-actions");
+  if (actions) actions.style.display = "";
+
   var select = document.getElementById("ai-history-select");
   if (select) select.value = "";
+
+  var delBtn = document.getElementById("ai-delete-conv-btn");
+  if (delBtn) delBtn.style.display = "none";
 }
 
 /* ── Tab activation hook ── */

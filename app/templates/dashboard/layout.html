@@ -231,20 +231,7 @@ function obFinish() {
 <!-- ═══ SUMMARY TAB ═══ -->
 <div id="tab-summary" class="tab{% if active_tab == 'summary' %} active{% endif %}">
 
-  <!-- Dashboard Grid Toolbar -->
-  <div class="grid-toolbar" style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
-    <button type="button" class="secondary" id="grid-edit-btn" onclick="toggleGridEditMode()" style="padding:5px 12px;font-size:0.72rem;">Edit Layout</button>
-    <button type="button" class="secondary" onclick="openWidgetCatalog()" style="padding:5px 12px;font-size:0.72rem;">+ Add Widget</button>
-    <button type="button" class="secondary" onclick="resetDashboardLayout()" id="grid-reset-btn" style="padding:5px 12px;font-size:0.72rem;display:none;">Reset Layout</button>
-  </div>
-
-  <!-- Configurable Dashboard Grid -->
-  <div id="dashboard-grid" class="grid-stack"></div>
-
-  <!-- Staging area: existing DOM elements are moved into grid widgets by JS -->
-  <div id="widget-staging" style="display:none;">
-
-  <!-- Net Worth Hero + Portfolio History -->
+  <!-- Net Worth Hero + Portfolio History (static, not in grid) -->
   <div class="hero-row">
     <div class="hero">
       <div class="hero-label">Net Worth</div>
@@ -402,6 +389,12 @@ function obFinish() {
       </div>
     </div>
   </div>
+
+  <!-- Configurable Dashboard Grid (below pulse bar) -->
+  <div id="dashboard-grid" class="grid-stack"></div>
+
+  <!-- Staging area: existing DOM elements are moved into grid widgets by JS -->
+  <div id="widget-staging" style="display:none;">
 
   <!-- Two Column Grid -->
   <div class="summary-grid" id="summary-widgets">
@@ -573,6 +566,13 @@ function obFinish() {
   </div>
 
   </div><!-- /widget-staging -->
+
+  <!-- Dashboard Grid Toolbar (bottom of page) -->
+  <div class="grid-toolbar" style="display:flex;align-items:center;gap:8px;margin-top:18px;padding-top:12px;border-top:1px solid var(--border-subtle);">
+    <button type="button" class="secondary" id="grid-edit-btn" onclick="toggleGridEditMode()" style="padding:5px 12px;font-size:0.72rem;">Edit Layout</button>
+    <button type="button" class="secondary" onclick="openWidgetCatalog()" style="padding:5px 12px;font-size:0.72rem;">+ Add Widget</button>
+    <button type="button" class="secondary" onclick="resetDashboardLayout()" id="grid-reset-btn" style="padding:5px 12px;font-size:0.72rem;display:none;">Reset Layout</button>
+  </div>
 
   <!-- Widget Catalog Slide-out Panel -->
   <div id="widget-catalog-overlay" class="catalog-overlay" style="display:none;" onclick="closeWidgetCatalog()">
@@ -1441,6 +1441,9 @@ function obFinish() {
           <select id="ai-history-select" onchange="aiLoadConversation(this.value)" style="padding:5px 10px;font-size:0.75rem;border-radius:var(--radius);border:1px solid var(--border-subtle);background:var(--bg-input);color:var(--text-primary);cursor:pointer;max-width:200px;">
             <option value="">History</option>
           </select>
+          <button id="ai-delete-conv-btn" onclick="aiDeleteConversation()" title="Delete this conversation" style="display:none;padding:4px 7px;font-size:0.72rem;border-radius:var(--radius);border:1px solid var(--border-subtle);background:transparent;color:var(--text-muted);cursor:pointer;line-height:1;">
+            <svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;vertical-align:middle;"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
+          </button>
         </div>
       </div>
       <div id="ai-quick-actions" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">

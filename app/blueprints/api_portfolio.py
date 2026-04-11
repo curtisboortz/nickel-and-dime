@@ -665,31 +665,35 @@ def portfolio_history():
         live_total = 0
 
     if use_intraday:
-        cutoff_dt = _dt.now(timezone.utc) - timedelta(days=range_days[range_param])
-        intraday_rows = (
-            IntradaySnapshot.query
-            .filter(
-                IntradaySnapshot.user_id == current_user.id,
-                IntradaySnapshot.timestamp >= cutoff_dt,
+        try:
+            cutoff_dt = _dt.now(timezone.utc) - timedelta(days=range_days[range_param])
+            intraday_rows = (
+                IntradaySnapshot.query
+                .filter(
+                    IntradaySnapshot.user_id == current_user.id,
+                    IntradaySnapshot.timestamp >= cutoff_dt,
+                )
+                .order_by(IntradaySnapshot.timestamp)
+                .all()
             )
-            .order_by(IntradaySnapshot.timestamp)
-            .all()
-        )
-        all_entries = []
-        for row in intraday_rows:
-            t = _safe(row.total)
-            if not t:
-                continue
-            all_entries.append({
-                "date": row.timestamp.isoformat(),
-                "total": t, "close": t,
-            })
-        if live_total and live_total > 0:
-            all_entries.append({
-                "date": _dt.now(timezone.utc).isoformat(),
-                "total": live_total, "close": live_total,
-            })
-        return jsonify({"history": all_entries, "range": range_param, "intraday": True})
+        except Exception:
+            intraday_rows = []
+        if intraday_rows:
+            all_entries = []
+            for row in intraday_rows:
+                t = _safe(row.total)
+                if not t:
+                    continue
+                all_entries.append({
+                    "date": row.timestamp.isoformat(),
+                    "total": t, "close": t,
+                })
+            if live_total and live_total > 0:
+                all_entries.append({
+                    "date": _dt.now(timezone.utc).isoformat(),
+                    "total": live_total, "close": live_total,
+                })
+            return jsonify({"history": all_entries, "range": range_param, "intraday": True})
 
     query = (PortfolioSnapshot.query
              .filter_by(user_id=current_user.id))

@@ -20,6 +20,26 @@ function _histTimeUnit(range, pointCount) {
   }
 }
 
+function _updateHistPnL() {
+  var el = document.getElementById("hist-pnl-badge");
+  if (!el) return;
+  var data = window.PRICE_HISTORY_DATA;
+  if (!data || data.length < 2) { el.textContent = ""; return; }
+  var first = data[0];
+  var last = data[data.length - 1];
+  var startVal = first.close || first.total;
+  var endVal = last.close || last.total;
+  if (!startVal || !endVal) { el.textContent = ""; return; }
+  var change = endVal - startVal;
+  var pct = (change / startVal) * 100;
+  var sign = change >= 0 ? "+" : "";
+  var _t = ndChartTheme();
+  var color = change >= 0 ? _t.success : _t.danger;
+  el.style.color = color;
+  el.textContent = sign + "$" + Math.abs(change).toLocaleString(undefined, {maximumFractionDigits: 0})
+    + " (" + sign + pct.toFixed(1) + "%)";
+}
+
 function setHistoryChartType(type) {
   _histChartType = type;
   document.getElementById("hist-line-btn").classList.toggle("active", type === "line");
@@ -170,5 +190,5 @@ function buildHistoryChart(metric) {
       }
     });
   }
+  _updateHistPnL();
 }
-

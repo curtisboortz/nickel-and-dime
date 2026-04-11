@@ -13,7 +13,7 @@ var WIDGET_REGISTRY = {};
   var _COMPACT = [
     { label: "S", w: 6, h: 6 },
     { label: "M", w: 6, h: 9 },
-    { label: "L", w: 12, h: 9 }
+    { label: "L", w: 12, h: 12 }
   ];
   var _CHART = [
     { label: "S", w: 6, h: 9 },

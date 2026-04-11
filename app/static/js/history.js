@@ -5,11 +5,46 @@ function _histDateTs(d) {
   return new Date(d).getTime();
 }
 var _histChartType = "line";
+var _histRange = "all";
+
+function _histTimeUnit(range, pointCount) {
+  switch (range) {
+    case "1d": return "hour";
+    case "1w": return pointCount > 14 ? "hour" : "day";
+    case "1m": return "day";
+    case "3m": return pointCount > 90 ? "week" : "day";
+    case "1y": return "week";
+    case "3y": case "5y": return "month";
+    case "all": return pointCount > 365 ? "month" : (pointCount > 90 ? "week" : "day");
+    default: return "day";
+  }
+}
+
 function setHistoryChartType(type) {
   _histChartType = type;
   document.getElementById("hist-line-btn").classList.toggle("active", type === "line");
   document.getElementById("hist-candle-btn").classList.toggle("active", type === "candlestick");
   buildHistoryChart("total");
+}
+
+function setHistoryRange(range) {
+  _histRange = range;
+  var btns = document.querySelectorAll(".chart-range-btn");
+  for (var i = 0; i < btns.length; i++) {
+    btns[i].classList.toggle("active", btns[i].getAttribute("data-range") === range);
+  }
+  var tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+  fetch("/api/portfolio-history?range=" + encodeURIComponent(range) + "&tz=" + encodeURIComponent(tz))
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (d && d.history) {
+        window.PRICE_HISTORY_DATA = d.history;
+        buildHistoryChart("total");
+      }
+    })
+    .catch(function(e) {
+      if (typeof NDDiag !== "undefined") NDDiag.track("history-range", "error", e.message || String(e));
+    });
 }
 function buildHistoryChart(metric) {
   metric = metric || "total";
@@ -82,7 +117,7 @@ function buildHistoryChart(metric) {
           } }
         },
         scales: {
-          x: Object.assign(ndScaleOpts(_t, "x"), { type: "time", time:{ unit:"day", tooltipFormat:"MMM d, yyyy" }, ticks:{ maxTicksLimit:8, color:_t.text, font:{size:10.5, weight:"500"}, padding:6 } }),
+          x: Object.assign(ndScaleOpts(_t, "x"), { type: "time", time:{ unit: _histTimeUnit(_histRange, PRICE_HISTORY_DATA.length), tooltipFormat:"MMM d, yyyy" }, ticks:{ maxTicksLimit:8, color:_t.text, font:{size:10.5, weight:"500"}, padding:6 } }),
           y: Object.assign(ndScaleOpts(_t, "y"), { ticks:{ color:_t.text, font:{size:10.5, weight:"500"}, padding:6, callback: function(v) { return "$" + (v/1000).toFixed(0) + "K"; } } })
         }
       }
@@ -129,7 +164,7 @@ function buildHistoryChart(metric) {
           } }
         },
         scales: {
-          x: Object.assign(ndScaleOpts(_t, "x"), { type: "time", time: { unit: PRICE_HISTORY_DATA.length > 90 ? "week" : "day", tooltipFormat: "yyyy-MM-dd" }, ticks:{ maxTicksLimit:8, color:_t.text, font:{size:10.5, weight:"500"}, padding:6 } }),
+          x: Object.assign(ndScaleOpts(_t, "x"), { type: "time", time: { unit: _histTimeUnit(_histRange, PRICE_HISTORY_DATA.length), tooltipFormat: "yyyy-MM-dd" }, ticks:{ maxTicksLimit:8, color:_t.text, font:{size:10.5, weight:"500"}, padding:6 } }),
           y: Object.assign(ndScaleOpts(_t, "y"), { min: Math.floor((dataMin - padding) / 1000) * 1000, max: Math.ceil((dataMax + padding) / 1000) * 1000, ticks:{ color:_t.text, font:{size:10.5, weight:"500"}, padding:6, callback: function(v) { return "$" + (v/1000).toFixed(0) + "K"; } } })
         }
       }

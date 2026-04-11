@@ -20,7 +20,7 @@ from ..models.portfolio import (
 )
 from ..models.market import PriceCache
 from ..models.settings import UserSettings
-from ..models.snapshot import PortfolioSnapshot
+from ..models.snapshot import PortfolioSnapshot, IntradaySnapshot
 
 api_portfolio_bp = Blueprint("api_portfolio", __name__)
 
@@ -641,7 +641,7 @@ def portfolio_history():
             pass
         return v
 
-    from datetime import date as _date, datetime as _dt
+    from datetime import date as _date, datetime as _dt, timedelta
     from ..services.portfolio_service import compute_portfolio_value
 
     tz_name = flask_request.args.get("tz", "UTC")
@@ -651,10 +651,53 @@ def portfolio_history():
     except Exception:
         today = _date.today()
 
-    snapshots = (PortfolioSnapshot.query
-                 .filter_by(user_id=current_user.id)
-                 .order_by(PortfolioSnapshot.date)
-                 .all())
+    range_param = flask_request.args.get("range", "all").lower()
+    range_days = {
+        "1d": 1, "1w": 7, "1m": 30, "3m": 90,
+        "1y": 365, "3y": 1095, "5y": 1825,
+    }
+    use_intraday = range_param in ("1d", "1w")
+
+    try:
+        pv = compute_portfolio_value(current_user.id)
+        live_total = pv.get("total", 0) if pv else 0
+    except Exception:
+        live_total = 0
+
+    if use_intraday:
+        cutoff_dt = _dt.now(timezone.utc) - timedelta(days=range_days[range_param])
+        intraday_rows = (
+            IntradaySnapshot.query
+            .filter(
+                IntradaySnapshot.user_id == current_user.id,
+                IntradaySnapshot.timestamp >= cutoff_dt,
+            )
+            .order_by(IntradaySnapshot.timestamp)
+            .all()
+        )
+        all_entries = []
+        for row in intraday_rows:
+            t = _safe(row.total)
+            if not t:
+                continue
+            all_entries.append({
+                "date": row.timestamp.isoformat(),
+                "total": t, "close": t,
+            })
+        if live_total and live_total > 0:
+            all_entries.append({
+                "date": _dt.now(timezone.utc).isoformat(),
+                "total": live_total, "close": live_total,
+            })
+        return jsonify({"history": all_entries, "range": range_param, "intraday": True})
+
+    query = (PortfolioSnapshot.query
+             .filter_by(user_id=current_user.id))
+    if range_param in range_days:
+        cutoff = today - timedelta(days=range_days[range_param])
+        query = query.filter(PortfolioSnapshot.date >= cutoff)
+    query = query.order_by(PortfolioSnapshot.date)
+    snapshots = query.all()
 
     all_entries = []
     last_snap_date = None
@@ -672,11 +715,6 @@ def portfolio_history():
             "gold": _safe(s.gold_price), "silver": _safe(s.silver_price),
         })
         last_snap_date = s.date
-    try:
-        pv = compute_portfolio_value(current_user.id)
-        live_total = pv.get("total", 0) if pv else 0
-    except Exception:
-        live_total = 0
     if live_total and live_total > 0:
         if last_snap_date == today and all_entries:
             all_entries[-1]["close"] = live_total
@@ -693,7 +731,7 @@ def portfolio_history():
                 "gold": None, "silver": None,
             })
 
-    if len(all_entries) >= 3:
+    if range_param == "all" and len(all_entries) >= 3:
         latest_val = all_entries[-1]["val"]
         threshold = latest_val * 0.4
         start_idx = 0
@@ -705,7 +743,7 @@ def portfolio_history():
 
     for e in all_entries:
         e.pop("val", None)
-    return jsonify({"history": all_entries})
+    return jsonify({"history": all_entries, "range": range_param})
 
 
 @api_portfolio_bp.route("/physical-metals", methods=["GET", "POST", "DELETE"])

@@ -80,6 +80,12 @@ def init_scheduler(app):
     )
 
     _scheduler.add_job(
+        _run_in_context(app, _prune_intraday),
+        "cron", hour=3, minute=0, timezone="America/New_York",
+        id="prune_intraday", max_instances=1, replace_existing=True,
+    )
+
+    _scheduler.add_job(
         _run_in_context(app, _email_drip),
         "cron", hour=10, minute=0, timezone="America/New_York",
         id="email_drip", max_instances=1, replace_existing=True,
@@ -209,6 +215,14 @@ def _backfill_all():
         log.info("Portfolio backfill completed")
     except Exception as e:
         log.error("Portfolio backfill error: %s", e)
+
+
+def _prune_intraday():
+    from ..services.portfolio_service import prune_intraday_snapshots
+    try:
+        prune_intraday_snapshots(days_to_keep=30)
+    except Exception as e:
+        log.error("Intraday prune error: %s", e)
 
 
 def _email_drip():

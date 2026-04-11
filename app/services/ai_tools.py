@@ -145,7 +145,7 @@ TOOL_DEFINITIONS = [
                 "properties": {
                     "days": {
                         "type": "integer",
-                        "description": "Number of days of history (default 90, max 365)",
+                        "description": "Number of days of history (default 90, 0 for all time)",
                     },
                 },
             },
@@ -351,17 +351,16 @@ def _handle_suggest_rebalance(args, user_id):
 
 
 def _handle_portfolio_history(args, user_id):
-    days = min(args.get("days", 90), 365)
-    cutoff = date.today() - timedelta(days=days)
-    snaps = (
+    days = args.get("days", 90)
+    query = (
         PortfolioSnapshot.query
-        .filter(
-            PortfolioSnapshot.user_id == user_id,
-            PortfolioSnapshot.date >= cutoff,
-        )
-        .order_by(PortfolioSnapshot.date)
-        .all()
+        .filter(PortfolioSnapshot.user_id == user_id)
     )
+    if days and days > 0:
+        cutoff = date.today() - timedelta(days=days)
+        query = query.filter(PortfolioSnapshot.date >= cutoff)
+    snaps = query.order_by(PortfolioSnapshot.date).all()
+
     if not snaps:
         return {"error": "No portfolio history available yet"}
 
@@ -380,8 +379,15 @@ def _handle_portfolio_history(args, user_id):
     growth_pct = ((last_val - first_val) / first_val * 100) if first_val else 0
     max_drawdown_pct = ((trough - peak) / peak * 100) if peak else 0
 
+    max_points = 120
+    sampled = points
+    if len(points) > max_points:
+        step = len(points) / max_points
+        sampled = [points[int(i * step)] for i in range(max_points - 1)]
+        sampled.append(points[-1])
+
     return {
-        "days": days,
+        "days": days if days and days > 0 else (snaps[-1].date - snaps[0].date).days,
         "data_points": len(points),
         "first": points[0] if points else None,
         "last": points[-1] if points else None,
@@ -389,7 +395,7 @@ def _handle_portfolio_history(args, user_id):
         "trough": round(trough, 2),
         "growth_pct": round(growth_pct, 2),
         "max_drawdown_pct": round(max_drawdown_pct, 2),
-        "history": points[-60:],
+        "history": sampled,
     }
 
 

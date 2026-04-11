@@ -9,7 +9,7 @@ from datetime import datetime, date, timedelta, timezone
 from ..extensions import db
 from ..models.portfolio import Holding, CryptoHolding, PhysicalMetal, Account, BlendedAccount
 from ..models.market import PriceCache
-from ..models.snapshot import PortfolioSnapshot
+from ..models.snapshot import PortfolioSnapshot, IntradaySnapshot
 from ..models.settings import UserSettings
 
 log = logging.getLogger("nd")
@@ -144,7 +144,26 @@ def snapshot_portfolio(user_id):
             breakdown=breakdown,
         ))
 
+    if total and total > 0:
+        db.session.add(IntradaySnapshot(
+            user_id=user_id,
+            timestamp=datetime.now(timezone.utc),
+            total=total,
+        ))
+
     db.session.commit()
+
+
+def prune_intraday_snapshots(days_to_keep=30):
+    """Delete intraday snapshots older than the retention window."""
+    cutoff = datetime.now(timezone.utc) - timedelta(days=days_to_keep)
+    deleted = IntradaySnapshot.query.filter(
+        IntradaySnapshot.timestamp < cutoff
+    ).delete(synchronize_session=False)
+    db.session.commit()
+    if deleted:
+        log.info("Pruned %d intraday snapshots older than %d days", deleted, days_to_keep)
+    return deleted
 
 
 def snapshot_all_users():

@@ -25,6 +25,7 @@
   --surface-raised: #1c1c20;
   --radius: 12px;
   --mono: 'JetBrains Mono', monospace;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 .ins-metric-card:hover {
   background: var(--bg-card-hover) !important;
@@ -301,6 +302,7 @@ body {
 }
 .chart-toggle:hover { border-color:var(--border-accent); color:var(--text-secondary); }
 .chart-toggle.active { background:var(--accent-primary); border-color:var(--accent-primary); color:var(--bg-primary); }
+.chart-range-btn { width:auto; padding:0 6px; font-size:0.62rem; font-weight:600; letter-spacing:0.02em; height:22px; font-family:var(--font-sans); }
 /* ── Card ── */
 .card {
   background:var(--bg-card);

@@ -1,4 +1,4 @@
-"""Portfolio snapshot model for historical tracking."""
+"""Portfolio snapshot models for historical tracking."""
 
 from datetime import datetime, timezone
 from ..extensions import db
@@ -25,4 +25,18 @@ class PortfolioSnapshot(db.Model):
     __table_args__ = (
         db.UniqueConstraint("user_id", "date", name="uq_snapshot_user_date"),
         db.Index("ix_snapshot_user_date", "user_id", "date"),
+    )
+
+
+class IntradaySnapshot(db.Model):
+    """Hourly portfolio value for short-range chart granularity."""
+    __tablename__ = "intraday_snapshots"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
+    timestamp = db.Column(db.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
+    total = db.Column(db.Float, nullable=False)
+
+    __table_args__ = (
+        db.Index("ix_intraday_user_ts", "user_id", "timestamp"),
     )

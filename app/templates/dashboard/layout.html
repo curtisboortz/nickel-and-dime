@@ -248,7 +248,19 @@ function obFinish() {
     </div>
     <div class="card hero-chart-card" style="flex:1;min-width:280px;margin:0;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-        <div class="card-title" style="font-size:0.8rem;margin:0;">Portfolio History</div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <div class="card-title" style="font-size:0.8rem;margin:0;">Portfolio History</div>
+          <div class="hist-range-group" style="display:flex;gap:2px;">
+            <button type="button" class="chart-toggle chart-range-btn" data-range="1d" onclick="setHistoryRange('1d')">1D</button>
+            <button type="button" class="chart-toggle chart-range-btn" data-range="1w" onclick="setHistoryRange('1w')">1W</button>
+            <button type="button" class="chart-toggle chart-range-btn" data-range="1m" onclick="setHistoryRange('1m')">1M</button>
+            <button type="button" class="chart-toggle chart-range-btn" data-range="3m" onclick="setHistoryRange('3m')">3M</button>
+            <button type="button" class="chart-toggle chart-range-btn" data-range="1y" onclick="setHistoryRange('1y')">1Y</button>
+            <button type="button" class="chart-toggle chart-range-btn" data-range="3y" onclick="setHistoryRange('3y')">3Y</button>
+            <button type="button" class="chart-toggle chart-range-btn" data-range="5y" onclick="setHistoryRange('5y')">5Y</button>
+            <button type="button" class="chart-toggle chart-range-btn active" data-range="all" onclick="setHistoryRange('all')">All</button>
+          </div>
+        </div>
         <span id="hist-hover-info" style="font-family:'JetBrains Mono',monospace;font-size:0.65rem;color:var(--text-muted);opacity:0;transition:opacity 0.15s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;text-align:center;padding:0 8px;"></span>
         <div style="display:flex;gap:4px;">
           <button type="button" class="chart-toggle active" id="hist-line-btn" onclick="setHistoryChartType('line')" title="Line chart">&#9135;</button>

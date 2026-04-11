@@ -1,6 +1,8 @@
-"""Market data API routes: live prices, sparklines, historical charts."""
+"""Market data API routes: live prices, sparklines, historical charts, watchlist, alerts."""
 
 import threading
+from datetime import datetime, timezone
+
 import yfinance as yf
 from flask import Blueprint, jsonify, request as flask_request, current_app
 from flask_login import login_required, current_user
@@ -95,6 +97,19 @@ def live_data():
             if row:
                 cp[ch.symbol] = row.price
         result["crypto_prices"] = cp
+
+    from ..models.settings import WatchlistItem
+    wl_items = WatchlistItem.query.filter_by(user_id=current_user.id).all()
+    if wl_items:
+        wl_prices = {}
+        for wi in wl_items:
+            resolved = _normalize_ticker(wi.ticker)
+            row = prices.get(resolved) or prices.get(wi.ticker)
+            if row:
+                wl_prices[wi.ticker] = {
+                    "price": row.price, "change_pct": row.change_pct,
+                }
+        result["_watchlist_prices"] = wl_prices
 
     return jsonify(result)
 
@@ -530,3 +545,212 @@ def fx_rate():
         return jsonify({"error": "rate unavailable"}), 502
     except Exception as e:
         return jsonify({"error": str(e)}), 502
+
+
+# ── Watchlist ──────────────────────────────────────────────────────────────
+
+
+@api_market_bp.route("/watchlist")
+@login_required
+def get_watchlist():
+    """Return user's watchlist items enriched with live prices."""
+    from ..models.settings import WatchlistItem, PriceAlert
+
+    items = WatchlistItem.query.filter_by(user_id=current_user.id)\
+        .order_by(WatchlistItem.position).all()
+    alerts = PriceAlert.query.filter_by(user_id=current_user.id, active=True).all()
+    alerts_by_ticker = {}
+    for a in alerts:
+        alerts_by_ticker.setdefault(a.ticker, []).append({
+            "id": a.id, "condition": a.condition,
+            "target_price": a.target_price, "triggered_at": str(a.triggered_at) if a.triggered_at else None,
+        })
+
+    prices = {p.symbol: p for p in PriceCache.query.all()}
+    result = []
+    for item in items:
+        resolved = _normalize_ticker(item.ticker)
+        row = prices.get(resolved) or prices.get(item.ticker)
+        result.append({
+            "id": item.id,
+            "ticker": item.ticker,
+            "label": item.label or item.ticker,
+            "position": item.position,
+            "price": row.price if row else None,
+            "change_pct": row.change_pct if row else None,
+            "prev_close": row.prev_close if row else None,
+            "alerts": alerts_by_ticker.get(item.ticker, []),
+        })
+    return jsonify({"items": result})
+
+
+@api_market_bp.route("/watchlist", methods=["POST"])
+@login_required
+def add_watchlist_item():
+    """Add a ticker to the user's watchlist."""
+    from ..models.settings import WatchlistItem
+
+    data = flask_request.get_json(silent=True) or {}
+    raw_ticker = (data.get("ticker") or "").strip().upper()
+    label = (data.get("label") or "").strip()
+    if not raw_ticker:
+        return jsonify({"error": "Ticker is required"}), 400
+
+    ticker = _normalize_ticker(raw_ticker)
+    if not label:
+        label = raw_ticker
+
+    existing = WatchlistItem.query.filter_by(
+        user_id=current_user.id, ticker=ticker
+    ).first()
+    if existing:
+        return jsonify({"error": f"{raw_ticker} is already on your watchlist"}), 400
+
+    max_pos = db.session.query(db.func.max(WatchlistItem.position)).filter_by(
+        user_id=current_user.id
+    ).scalar() or 0
+    item = WatchlistItem(
+        user_id=current_user.id, ticker=ticker, label=label, position=max_pos + 1
+    )
+    db.session.add(item)
+    db.session.commit()
+
+    row = PriceCache.query.get(_normalize_ticker(ticker))
+    return jsonify({
+        "success": True, "id": item.id, "ticker": ticker, "label": label,
+        "price": row.price if row else None,
+        "change_pct": row.change_pct if row else None,
+    })
+
+
+@api_market_bp.route("/watchlist/<int:item_id>", methods=["DELETE"])
+@login_required
+def remove_watchlist_item(item_id):
+    """Remove a ticker from the user's watchlist."""
+    from ..models.settings import WatchlistItem
+
+    item = WatchlistItem.query.filter_by(id=item_id, user_id=current_user.id).first()
+    if not item:
+        return jsonify({"error": "Not found"}), 404
+    db.session.delete(item)
+    db.session.commit()
+    return jsonify({"success": True})
+
+
+@api_market_bp.route("/watchlist/reorder", methods=["POST"])
+@login_required
+def reorder_watchlist():
+    """Save the display order for watchlist items."""
+    from ..models.settings import WatchlistItem
+
+    data = flask_request.get_json(silent=True) or {}
+    order = data.get("order", [])
+    items = {w.id: w for w in WatchlistItem.query.filter_by(user_id=current_user.id).all()}
+    for pos, wid in enumerate(order):
+        item = items.get(int(wid))
+        if item:
+            item.position = pos
+    db.session.commit()
+    return jsonify({"success": True})
+
+
+# ── Price Alerts ───────────────────────────────────────────────────────────
+
+
+@api_market_bp.route("/price-alerts")
+@login_required
+def get_price_alerts():
+    """Return all price alerts for the current user."""
+    from ..models.settings import PriceAlert
+
+    alerts = PriceAlert.query.filter_by(user_id=current_user.id)\
+        .order_by(PriceAlert.created_at.desc()).all()
+    prices = {p.symbol: p for p in PriceCache.query.all()}
+    result = []
+    for a in alerts:
+        resolved = _normalize_ticker(a.ticker)
+        row = prices.get(resolved) or prices.get(a.ticker)
+        result.append({
+            "id": a.id, "ticker": a.ticker, "condition": a.condition,
+            "target_price": a.target_price, "active": a.active,
+            "triggered_at": str(a.triggered_at) if a.triggered_at else None,
+            "current_price": row.price if row else None,
+        })
+    return jsonify({"alerts": result})
+
+
+@api_market_bp.route("/price-alerts", methods=["POST"])
+@login_required
+def add_price_alert():
+    """Create a new price alert."""
+    from ..models.settings import PriceAlert
+
+    data = flask_request.get_json(silent=True) or {}
+    raw_ticker = (data.get("ticker") or "").strip().upper()
+    condition = (data.get("condition") or "").strip().lower()
+    target_price = data.get("target_price")
+
+    if not raw_ticker:
+        return jsonify({"error": "Ticker is required"}), 400
+    if condition not in ("above", "below"):
+        return jsonify({"error": "Condition must be 'above' or 'below'"}), 400
+    try:
+        target_price = float(target_price)
+    except (TypeError, ValueError):
+        return jsonify({"error": "Target price must be a number"}), 400
+
+    ticker = _normalize_ticker(raw_ticker)
+    alert = PriceAlert(
+        user_id=current_user.id, ticker=ticker,
+        condition=condition, target_price=target_price,
+    )
+    db.session.add(alert)
+    db.session.commit()
+    return jsonify({"success": True, "id": alert.id, "ticker": ticker})
+
+
+@api_market_bp.route("/price-alerts/<int:alert_id>", methods=["DELETE"])
+@login_required
+def delete_price_alert(alert_id):
+    """Delete a price alert."""
+    from ..models.settings import PriceAlert
+
+    alert = PriceAlert.query.filter_by(id=alert_id, user_id=current_user.id).first()
+    if not alert:
+        return jsonify({"error": "Not found"}), 404
+    db.session.delete(alert)
+    db.session.commit()
+    return jsonify({"success": True})
+
+
+@api_market_bp.route("/price-alerts/<int:alert_id>", methods=["PATCH"])
+@login_required
+def toggle_price_alert(alert_id):
+    """Toggle an alert active/inactive or update fields."""
+    from ..models.settings import PriceAlert
+
+    alert = PriceAlert.query.filter_by(id=alert_id, user_id=current_user.id).first()
+    if not alert:
+        return jsonify({"error": "Not found"}), 404
+    data = flask_request.get_json(silent=True) or {}
+    if "active" in data:
+        alert.active = bool(data["active"])
+        if alert.active:
+            alert.triggered_at = None
+    db.session.commit()
+    return jsonify({"success": True, "active": alert.active})
+
+
+@api_market_bp.route("/price-alerts/<int:alert_id>/trigger", methods=["POST"])
+@login_required
+def trigger_price_alert(alert_id):
+    """Record that an alert has been triggered."""
+    from ..models.settings import PriceAlert
+
+    alert = PriceAlert.query.filter_by(id=alert_id, user_id=current_user.id).first()
+    if not alert:
+        return jsonify({"error": "Not found"}), 404
+    alert.triggered_at = datetime.now(timezone.utc)
+    alert.active = False
+    db.session.commit()
+    return jsonify({"success": True})

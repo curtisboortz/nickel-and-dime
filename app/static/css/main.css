@@ -1286,3 +1286,131 @@ textarea:focus-visible,
   .amort-input-grid { grid-template-columns: 1fr 1fr; }
   .amort-summary-grid { grid-template-columns: 1fr 1fr; }
 }
+
+/* ── Watchlist & Price Alerts ── */
+.watchlist-table {
+  width:100%; border-collapse:collapse; font-size:0.82rem;
+}
+.watchlist-table th {
+  text-align:left; padding:6px 8px; font-size:0.68rem;
+  text-transform:uppercase; letter-spacing:0.06em;
+  color:var(--text-muted); border-bottom:1px solid var(--border-subtle);
+  font-weight:600; white-space:nowrap;
+}
+.watchlist-table td {
+  padding:7px 8px; border-bottom:1px solid rgba(255,255,255,0.03);
+  vertical-align:middle; white-space:nowrap;
+}
+.watchlist-table tbody tr { transition:background 0.12s ease; }
+.watchlist-table tbody tr:hover { background:rgba(255,255,255,0.02); }
+html.light .watchlist-table tbody tr:hover { background:rgba(0,0,0,0.02); }
+.watchlist-table .wl-ticker {
+  font-family:var(--mono); font-weight:600; color:var(--text-primary);
+}
+.watchlist-table .wl-label {
+  font-size:0.7rem; color:var(--text-muted); margin-left:6px;
+}
+.watchlist-table .wl-price {
+  font-family:var(--mono); text-align:right;
+}
+.watchlist-table .wl-change {
+  font-family:var(--mono); text-align:right; font-size:0.78rem;
+}
+.wl-change.up { color:var(--success); }
+.wl-change.down { color:var(--danger); }
+.wl-change.flat { color:var(--text-muted); }
+.wl-spark-cell { padding:4px 6px; width:60px; }
+.wl-actions { display:flex; gap:4px; align-items:center; justify-content:flex-end; }
+.wl-btn {
+  background:none; border:none; cursor:pointer; padding:3px 5px;
+  border-radius:4px; color:var(--text-muted); font-size:0.82rem;
+  transition:color 0.12s, background 0.12s; line-height:1;
+}
+.wl-btn:hover { color:var(--accent-primary); background:rgba(212,160,23,0.08); }
+.wl-btn.has-alert { color:var(--accent-primary); }
+.wl-btn.remove:hover { color:var(--danger); background:rgba(239,68,68,0.08); }
+.wl-empty {
+  text-align:center; padding:28px 16px; color:var(--text-muted);
+  font-size:0.82rem;
+}
+.wl-add-row {
+  display:flex; gap:8px; margin-top:10px; align-items:center;
+}
+.wl-add-row input {
+  flex:1; font-size:0.85rem; padding:7px 10px;
+}
+.wl-add-row button {
+  padding:7px 14px; font-size:0.8rem; white-space:nowrap;
+}
+
+/* Alert badges inline in watchlist rows */
+.wl-alert-badges { display:flex; gap:3px; margin-top:2px; }
+.wl-alert-badge {
+  font-size:0.6rem; font-family:var(--mono); padding:1px 5px;
+  border-radius:3px; line-height:1.4;
+  background:rgba(212,160,23,0.1); color:var(--accent-primary);
+  border:1px solid rgba(212,160,23,0.2);
+}
+.wl-alert-badge.triggered {
+  background:rgba(239,68,68,0.1); color:var(--danger);
+  border-color:rgba(239,68,68,0.2); text-decoration:line-through;
+}
+
+/* Alert form inline */
+.wl-alert-form {
+  display:flex; gap:6px; align-items:center; flex-wrap:wrap;
+  padding:10px 12px; margin-top:8px;
+  background:var(--bg-input); border-radius:var(--radius);
+  font-size:0.82rem;
+}
+.wl-alert-form select, .wl-alert-form input[type="number"] {
+  padding:5px 8px; font-size:0.82rem; border-radius:4px;
+  border:1px solid var(--border-subtle);
+  background:var(--bg-card); color:var(--text-primary);
+}
+.wl-alert-form input[type="number"] { width:100px; }
+
+/* Alerts section */
+.wl-alerts-section { margin-top:12px; }
+.wl-alerts-title {
+  font-size:0.72rem; text-transform:uppercase; letter-spacing:0.06em;
+  color:var(--text-muted); font-weight:600; margin-bottom:6px;
+}
+.wl-alert-row {
+  display:flex; align-items:center; gap:8px; padding:5px 0;
+  font-size:0.8rem; border-bottom:1px solid rgba(255,255,255,0.03);
+}
+.wl-alert-row .wl-alert-ticker { font-family:var(--mono); font-weight:600; min-width:60px; }
+.wl-alert-row .wl-alert-cond { color:var(--text-muted); }
+.wl-alert-row .wl-alert-target { font-family:var(--mono); color:var(--accent-primary); }
+.wl-alert-row .wl-alert-current { font-family:var(--mono); color:var(--text-secondary); margin-left:auto; }
+.wl-alert-row .wl-btn { flex-shrink:0; }
+
+/* Pulse chart modal watchlist/alert buttons */
+.pcm-wl-actions {
+  display:flex; gap:6px; margin-top:8px;
+}
+.pcm-wl-btn {
+  padding:5px 12px; font-size:0.75rem; border-radius:6px;
+  border:1px solid var(--border-subtle); background:var(--bg-input);
+  color:var(--text-secondary); cursor:pointer;
+  transition:all 0.15s ease;
+}
+.pcm-wl-btn:hover {
+  border-color:var(--accent-primary); color:var(--accent-primary);
+}
+.pcm-wl-btn.active {
+  background:rgba(212,160,23,0.1); border-color:var(--accent-primary);
+  color:var(--accent-primary);
+}
+
+/* Light mode overrides */
+html.light .watchlist-table td { border-bottom:1px solid rgba(0,0,0,0.04); }
+html.light .wl-alert-badge { background:rgba(180,120,0,0.08); border-color:rgba(180,120,0,0.15); }
+html.light .wl-alert-row { border-bottom:1px solid rgba(0,0,0,0.04); }
+
+@media (max-width: 768px) {
+  .wl-spark-cell { display:none; }
+  .wl-label { display:none; }
+  .watchlist-table { font-size:0.78rem; }
+}

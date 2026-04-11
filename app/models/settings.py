@@ -70,6 +70,22 @@ class PriceAlert(db.Model):
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
 
+class WatchlistItem(db.Model):
+    """User's watchlist ticker for tracking prices."""
+    __tablename__ = "watchlist_items"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
+    ticker = db.Column(db.String(20), nullable=False)
+    label = db.Column(db.String(50), default="")
+    position = db.Column(db.Integer, default=0)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+
+    __table_args__ = (
+        db.UniqueConstraint("user_id", "ticker", name="uq_watchlist_user_ticker"),
+    )
+
+
 class FinancialGoal(db.Model):
     """Savings / investment goals."""
     __tablename__ = "financial_goals"

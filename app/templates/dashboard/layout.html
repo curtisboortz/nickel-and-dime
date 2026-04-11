@@ -486,6 +486,54 @@ function obFinish() {
           <p class="hint" style="margin-top:6px;">Type amounts and categories to quickly update contributions. Separate multiple with commas.</p>
         </div>
       </div>
+      <!-- Watchlist & Price Alerts -->
+      <div class="card widget-card" draggable="true" data-widget="watchlist">
+        <div class="card-header">
+          <div class="card-title"><span class="drag-handle" title="Drag to reorder">&#x2630;</span> Watchlist</div>
+          <button type="button" class="secondary" style="padding:4px 10px;font-size:0.7rem;" id="wl-toggle-add" onclick="wlToggleAdd()">+ Add</button>
+        </div>
+        <div id="wl-add-form" style="display:none;" class="wl-add-row">
+          <input type="text" id="wl-add-ticker" placeholder="Ticker (e.g. AAPL)" style="text-transform:uppercase;">
+          <input type="text" id="wl-add-label" placeholder="Label (optional)" style="max-width:120px;">
+          <button type="button" onclick="wlAddItem()">Add</button>
+        </div>
+        <div id="wl-content">
+          <div class="wl-empty" id="wl-empty">
+            <svg viewBox="0 0 24 24" style="width:28px;height:28px;margin-bottom:8px;fill:none;stroke:var(--text-muted);stroke-width:1.5;display:inline-block;"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+            <div>No tickers on your watchlist yet.</div>
+            <div style="margin-top:4px;font-size:0.75rem;">Click <strong>+ Add</strong> above or use the pulse chart modal.</div>
+          </div>
+          <table class="watchlist-table" id="wl-table" style="display:none;">
+            <thead>
+              <tr>
+                <th>Symbol</th>
+                <th style="text-align:right">Price</th>
+                <th style="text-align:right">Change</th>
+                <th class="wl-spark-cell">Spark</th>
+                <th style="text-align:right">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="wl-tbody"></tbody>
+          </table>
+        </div>
+        <!-- Inline alert form (shown when bell is clicked) -->
+        <div id="wl-alert-form" style="display:none;" class="wl-alert-form">
+          <span style="font-weight:600;" id="wl-alert-form-ticker"></span>
+          <select id="wl-alert-cond">
+            <option value="above">above</option>
+            <option value="below">below</option>
+          </select>
+          <span>$</span>
+          <input type="number" id="wl-alert-price" step="0.01" placeholder="0.00">
+          <button type="button" onclick="wlSubmitAlert()" style="padding:5px 12px;font-size:0.78rem;">Set Alert</button>
+          <button type="button" class="secondary" onclick="wlHideAlertForm()" style="padding:5px 10px;font-size:0.78rem;">Cancel</button>
+        </div>
+        <!-- Active alerts list -->
+        <div id="wl-alerts-section" class="wl-alerts-section" style="display:none;">
+          <div class="wl-alerts-title">Active Alerts</div>
+          <div id="wl-alerts-list"></div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -1432,6 +1480,21 @@ function obFinish() {
       <button type="button" class="pcm-pill" data-pcm-p="max" data-pcm-i="1mo">Max</button>
       <button type="button" class="pcm-type-toggle" id="pcm-type-toggle" onclick="togglePcmChartType()">Candlestick</button>
     </div>
+    <div class="pcm-wl-actions" id="pcm-wl-actions">
+      <button type="button" class="pcm-wl-btn" id="pcm-wl-add" onclick="pcmAddToWatchlist()" title="Add to Watchlist">&#9734; Watchlist</button>
+      <button type="button" class="pcm-wl-btn" id="pcm-alert-btn" onclick="pcmShowAlertForm()" title="Set Price Alert">&#128276; Alert</button>
+    </div>
+    <div id="pcm-alert-form-inline" class="wl-alert-form" style="display:none;">
+      <span style="font-weight:600;" id="pcm-alert-ticker-label"></span>
+      <select id="pcm-alert-cond-sel">
+        <option value="above">above</option>
+        <option value="below">below</option>
+      </select>
+      <span>$</span>
+      <input type="number" id="pcm-alert-price-input" step="0.01" placeholder="0.00">
+      <button type="button" onclick="pcmSubmitAlert()" style="padding:5px 12px;font-size:0.78rem;">Set</button>
+      <button type="button" class="secondary" onclick="document.getElementById('pcm-alert-form-inline').style.display='none'" style="padding:5px 10px;font-size:0.78rem;">Cancel</button>
+    </div>
     <div class="pcm-body">
       <canvas id="pcm-canvas"></canvas>
       <div class="pcm-spinner" id="pcm-spinner"></div>
@@ -1773,6 +1836,7 @@ document.addEventListener("keydown", function(e) {
 <script src="{{ url_for('static', filename='js/amortization.js') }}?v={{ v }}"></script>
 <script src="{{ url_for('static', filename='js/economics.js') }}?v={{ v }}"></script>
 <script src="{{ url_for('static', filename='js/portfolio.js') }}?v={{ v }}"></script>
+<script src="{{ url_for('static', filename='js/watchlist.js') }}?v={{ v }}"></script>
 <script src="{{ url_for('static', filename='js/sentiment.js') }}?v={{ v }}"></script>
 <script src="{{ url_for('static', filename='js/balances.js') }}?v={{ v }}"></script>
 <script src="{{ url_for('static', filename='js/holdings.js') }}?v={{ v }}"></script>

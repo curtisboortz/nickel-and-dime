@@ -24,14 +24,15 @@ def refresh_all_prices(symbols=None):
     ]
 
     if symbols is None:
-        # Build union from all users' holdings + custom pulse cards
+        # Build union from all users' holdings + custom pulse cards + watchlist
         from ..models.portfolio import Holding
-        from ..models.settings import CustomPulseCard
+        from ..models.settings import CustomPulseCard, WatchlistItem
         user_tickers = db.session.query(Holding.ticker).distinct().all()
         custom_tickers = db.session.query(CustomPulseCard.ticker).distinct().all()
+        watchlist_tickers = db.session.query(WatchlistItem.ticker).distinct().all()
         from ..blueprints.api_market import _normalize_ticker
         custom_syms = []
-        for t in custom_tickers:
+        for t in list(custom_tickers) + list(watchlist_tickers):
             if not t[0]:
                 continue
             tk = t[0]

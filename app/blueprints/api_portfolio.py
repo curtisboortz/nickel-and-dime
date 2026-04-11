@@ -665,8 +665,11 @@ def portfolio_history():
         live_total = 0
 
     if use_intraday:
+        days = range_days[range_param]
+        cutoff_dt = _dt.now(timezone.utc) - timedelta(days=days)
+        cutoff_date = today - timedelta(days=days)
+
         try:
-            cutoff_dt = _dt.now(timezone.utc) - timedelta(days=range_days[range_param])
             intraday_rows = (
                 IntradaySnapshot.query
                 .filter(
@@ -678,22 +681,59 @@ def portfolio_history():
             )
         except Exception:
             intraday_rows = []
-        if intraday_rows:
-            all_entries = []
-            for row in intraday_rows:
-                t = _safe(row.total)
-                if not t:
-                    continue
-                all_entries.append({
-                    "date": row.timestamp.isoformat(),
-                    "total": t, "close": t,
-                })
-            if live_total and live_total > 0:
-                all_entries.append({
-                    "date": _dt.now(timezone.utc).isoformat(),
-                    "total": live_total, "close": live_total,
-                })
-            return jsonify({"history": all_entries, "range": range_param, "intraday": True})
+
+        daily_anchor = (
+            PortfolioSnapshot.query
+            .filter(
+                PortfolioSnapshot.user_id == current_user.id,
+                PortfolioSnapshot.date >= cutoff_date,
+            )
+            .order_by(PortfolioSnapshot.date)
+            .all()
+        )
+
+        if not daily_anchor or daily_anchor[0].date > cutoff_date:
+            prev_snap = (
+                PortfolioSnapshot.query
+                .filter(
+                    PortfolioSnapshot.user_id == current_user.id,
+                    PortfolioSnapshot.date < cutoff_date,
+                )
+                .order_by(PortfolioSnapshot.date.desc())
+                .first()
+            )
+            if prev_snap:
+                daily_anchor = [prev_snap] + list(daily_anchor)
+
+        all_entries = []
+
+        for snap in daily_anchor:
+            val = _safe(snap.close) or _safe(snap.total)
+            if not val:
+                continue
+            ts = _dt.combine(snap.date, _dt.min.time()).isoformat()
+            all_entries.append({
+                "date": ts, "total": val, "close": val,
+            })
+
+        for row in intraday_rows:
+            t = _safe(row.total)
+            if not t:
+                continue
+            all_entries.append({
+                "date": row.timestamp.isoformat(),
+                "total": t, "close": t,
+            })
+
+        if live_total and live_total > 0:
+            all_entries.append({
+                "date": _dt.now(timezone.utc).isoformat(),
+                "total": live_total, "close": live_total,
+            })
+
+        all_entries.sort(key=lambda e: e["date"])
+
+        return jsonify({"history": all_entries, "range": range_param, "intraday": True})
 
     query = (PortfolioSnapshot.query
              .filter_by(user_id=current_user.id))

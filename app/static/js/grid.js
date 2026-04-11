@@ -123,13 +123,19 @@ var DEFAULT_LAYOUT = [
     if (!container || _grid) return;
 
     fetch("/api/dashboard-layout")
-      .then(function(r) { return r.json(); })
+      .then(function(r) {
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        return r.json();
+      })
       .then(function(d) {
         var layout = d.layout;
-        if (!layout || !layout.length) layout = DEFAULT_LAYOUT;
+        if (!layout || !layout.length) {
+          layout = DEFAULT_LAYOUT;
+        }
         _bootGrid(container, layout);
       })
-      .catch(function() {
+      .catch(function(e) {
+        console.warn("Dashboard layout load failed, using defaults:", e);
         _bootGrid(container, DEFAULT_LAYOUT);
       });
   };
@@ -181,13 +187,17 @@ var DEFAULT_LAYOUT = [
     var layout = [];
     items.forEach(function(el) {
       var node = el.gridstackNode;
-      if (!node) return;
+      var gid = el.getAttribute("gs-id");
+      if (!gid) return;
       layout.push({
-        id: node.id || el.getAttribute("gs-id"),
-        x: node.x, y: node.y,
-        w: node.w, h: node.h
+        id: gid,
+        x: node ? node.x : 0,
+        y: node ? node.y : 0,
+        w: node ? node.w : parseInt(el.getAttribute("gs-w")) || 6,
+        h: node ? node.h : parseInt(el.getAttribute("gs-h")) || 9
       });
     });
+    if (!layout.length) return;
     var csrf = document.querySelector('meta[name="csrf-token"]');
     fetch("/api/dashboard-layout", {
       method: "POST",
@@ -196,7 +206,11 @@ var DEFAULT_LAYOUT = [
         "X-CSRFToken": csrf ? csrf.content : ""
       },
       body: JSON.stringify({ layout: layout })
-    }).catch(function() {});
+    }).then(function(r) {
+      if (!r.ok) console.warn("Dashboard layout save failed:", r.status);
+    }).catch(function(e) {
+      console.warn("Dashboard layout save error:", e);
+    });
   };
 
   window.setWidgetSize = function(widgetId, sizeIdx) {

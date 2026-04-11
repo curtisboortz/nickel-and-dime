@@ -265,9 +265,12 @@ def dashboard_page(tab="summary"):
 def get_dashboard_layout():
     """Return the user's saved grid layout, or an empty list for defaults."""
     from ..models.settings import UserSettings
-    us = UserSettings.query.filter_by(user_id=current_user.id).first()
-    layout = (us.dashboard_layout if us and us.dashboard_layout else None)
-    return jsonify({"layout": layout})
+    try:
+        us = UserSettings.query.filter_by(user_id=current_user.id).first()
+        layout = (us.dashboard_layout if us and us.dashboard_layout else None)
+        return jsonify({"layout": layout})
+    except Exception:
+        return jsonify({"layout": None})
 
 
 @pages_bp.route("/api/dashboard-layout", methods=["POST"])
@@ -278,13 +281,19 @@ def save_dashboard_layout():
     from ..models.settings import UserSettings
     data = flask_request.get_json(silent=True) or {}
     layout = data.get("layout", [])
-    us = UserSettings.query.filter_by(user_id=current_user.id).first()
-    if not us:
-        us = UserSettings(user_id=current_user.id)
-        db.session.add(us)
-    us.dashboard_layout = layout
-    db.session.commit()
-    return jsonify({"ok": True})
+    try:
+        us = UserSettings.query.filter_by(user_id=current_user.id).first()
+        if not us:
+            us = UserSettings(user_id=current_user.id)
+            db.session.add(us)
+        us.dashboard_layout = layout
+        db.session.commit()
+        return jsonify({"ok": True})
+    except Exception as e:
+        db.session.rollback()
+        import traceback
+        traceback.print_exc()
+        return jsonify({"ok": False, "error": str(e)}), 500
 
 
 @pages_bp.route("/api/tab-content/<tab_name>")

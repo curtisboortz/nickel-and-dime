@@ -12,7 +12,7 @@ var _gridWidgetIds = [];
 var DEFAULT_LAYOUT = [
   { id: "allocation-donut",    x: 0, y: 0,  w: 6, h: 9  },
   { id: "allocation-table",    x: 6, y: 0,  w: 6, h: 9  },
-  { id: "monthly-investments", x: 0, y: 9,  w: 6, h: 9  },
+  { id: "monthly-investments", x: 0, y: 9,  w: 6, h: 12 },
   { id: "watchlist",           x: 6, y: 9,  w: 6, h: 6  },
   { id: "financial-goals",     x: 6, y: 15, w: 6, h: 6  }
 ];

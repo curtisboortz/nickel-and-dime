@@ -192,7 +192,6 @@ body {
 .main-content {
   margin-left:var(--sidebar-w);
   flex:1; padding:28px 36px;
-  max-width:1400px;
   min-height:100vh;
 }
 .tab { display:none; animation:fadeIn 0.25s ease; }

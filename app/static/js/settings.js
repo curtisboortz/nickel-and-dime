@@ -436,6 +436,43 @@ function redeemReferral() {
     });
 }
 
+/* ── Digest preferences ── */
+(function _initDigestUI() {
+  var freq = document.getElementById("digest-frequency");
+  var dayGrp = document.getElementById("digest-day-group");
+  if (!freq || !dayGrp) return;
+  function toggle() { dayGrp.style.display = freq.value === "weekly" ? "" : "none"; }
+  freq.addEventListener("change", toggle);
+  toggle();
+})();
+
+function saveDigestPrefs() {
+  var enabled = document.getElementById("digest-enabled");
+  var freq = document.getElementById("digest-frequency");
+  var day = document.getElementById("digest-day");
+  if (!enabled) return;
+  fetch("/api/settings/digest", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      enabled: enabled.checked,
+      frequency: freq ? freq.value : "weekly",
+      day: day ? day.value : "monday"
+    })
+  })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (d.ok) {
+        var t = document.createElement("div");
+        t.className = "toast";
+        t.textContent = "Digest preferences saved";
+        document.body.appendChild(t);
+        setTimeout(function() { t.remove(); }, 3000);
+      }
+    })
+    .catch(function() {});
+}
+
 (function _autoInitTab() {
   var tab = window.ACTIVE_TAB;
   if (tab === "holdings" && !_holdingsLoaded) {

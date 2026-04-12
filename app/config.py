@@ -17,6 +17,7 @@ class Config:
     # External API keys
     FRED_API_KEY = os.environ.get("FRED_API_KEY", "")
     OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
+    OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-5.4")
 
     # Mail (for email verification / password reset)
     MAIL_SERVER = os.environ.get("MAIL_SERVER", "smtp.gmail.com")

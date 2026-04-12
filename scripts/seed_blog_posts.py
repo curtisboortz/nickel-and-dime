@@ -120,7 +120,7 @@ Cons: $150/year is steep for individuals. No economic data integration. Designed
 <p>Mint shut down in early 2024. If you were a Mint user, you're likely still looking for a replacement that combines budgeting with portfolio tracking.</p>
 
 <h3>Nickel & Dime</h3>
-<p>Pros: Portfolio tracking + macro data in one dashboard. Live prices for stocks, ETFs, crypto, and physical metals. FRED economic data, sentiment gauges, yield curves, FedWatch probabilities. AI advisor. Budget manager. $12/month with a free tier.<br>
+<p>Pros: Portfolio tracking + macro data in one dashboard. Live prices for stocks, ETFs, crypto, and physical metals. FRED economic data, sentiment gauges, yield curves, FedWatch probabilities. AI advisor. Budget manager. $15/month with a free tier.<br>
 Cons: Newer product, smaller user base. No real estate or vehicle tracking (yet).</p>
 
 <h2>The Right Approach</h2>

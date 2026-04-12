@@ -44,14 +44,15 @@ def get_ai_advice(user_id, overrides=None):
     portfolio_context = _build_context(insights)
 
     client = OpenAI(api_key=api_key)
+    model = current_app.config.get("OPENAI_MODEL", "gpt-5.4")
     response = client.chat.completions.create(
-        model="gpt-4o-mini",
+        model=model,
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": portfolio_context},
         ],
         temperature=0.6,
-        max_tokens=800,
+        max_tokens=2048,
     )
 
     advice_text = response.choices[0].message.content.strip()

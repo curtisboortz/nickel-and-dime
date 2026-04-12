@@ -1,5 +1,11 @@
 <div class="card">
   <div class="card-title">US Economics &amp; Fiscal Data</div>
+  {% if not is_pro %}
+  <div class="pro-teaser-banner">
+    You have access to 3 of 12 macro data groups (Debt &amp; Fiscal, CPI/PCE, Monetary Policy).
+    <a href="{{ url_for('pages.pricing') }}">Upgrade to Pro</a> for yield curves, credit spreads, real yields, labor market, housing, and more.
+  </div>
+  {% endif %}
   <div id="fred-load-status" class="hint" style="margin-bottom:12px;"></div>
 
   <!-- Economic Calendar -->
@@ -85,7 +91,7 @@
   <!-- Credit Stress -->
   <div id="fred-section-credit" class="card" style="margin-top:16px;padding:16px;">
     <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px;">
-      <div class="card-title" style="margin:0;">Credit Stress (High Yield Spreads)</div>
+      <div class="card-title" style="margin:0;">Credit Stress (High Yield Spreads){% if not is_pro %}<span class="pro-section-lock"><svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>PRO</span>{% endif %}</div>
       <select class="fred-period-select" data-section="credit" style="padding:4px 8px;font-size:0.8rem;">
         <option value="1y">1 year</option><option value="5y">5 years</option><option value="max">Max (~15y)</option>
       </select>
@@ -98,7 +104,7 @@
   <!-- Real Yields -->
   <div id="fred-section-realyields" class="card" style="margin-top:16px;padding:16px;">
     <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px;">
-      <div class="card-title" style="margin:0;">Real Yields &amp; Inflation Expectations</div>
+      <div class="card-title" style="margin:0;">Real Yields &amp; Inflation Expectations{% if not is_pro %}<span class="pro-section-lock"><svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>PRO</span>{% endif %}</div>
       <select class="fred-period-select" data-section="realyields" style="padding:4px 8px;font-size:0.8rem;">
         <option value="1y">1 year</option><option value="5y">5 years</option><option value="max">Max (~15y)</option>
       </select>
@@ -114,7 +120,7 @@
   <!-- Fed Balance Sheet -->
   <div id="fred-section-fedbs" class="card" style="margin-top:16px;padding:16px;">
     <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px;">
-      <div class="card-title" style="margin:0;">Fed Balance Sheet</div>
+      <div class="card-title" style="margin:0;">Fed Balance Sheet{% if not is_pro %}<span class="pro-section-lock"><svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>PRO</span>{% endif %}</div>
       <select class="fred-period-select" data-section="fedbs" style="padding:4px 8px;font-size:0.8rem;">
         <option value="1y">1 year</option><option value="5y">5 years</option><option value="max">Max (~15y)</option>
       </select>
@@ -126,7 +132,7 @@
 
   <!-- Sahm Rule -->
   <div id="fred-section-sahm" class="card" style="margin-top:16px;padding:16px;">
-    <div class="card-title" style="margin-bottom:12px;">Sahm Rule Recession Indicator</div>
+    <div class="card-title" style="margin-bottom:12px;">Sahm Rule Recession Indicator{% if not is_pro %}<span class="pro-section-lock"><svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>PRO</span>{% endif %}</div>
     <div id="fred-sahm-stats" class="pulse-bar" style="flex-wrap:wrap;gap:12px;margin-bottom:16px;"></div>
     <div style="position:relative;height:220px;"><canvas id="fred-chart-sahm"></canvas></div>
     <p class="hint" style="margin-top:8px;">Crosses 0.50 = recession signal. Based on 3-month moving average of unemployment rate vs 12-month low.</p>
@@ -134,7 +140,7 @@
 
   <!-- Labor Market -->
   <div id="fred-section-labor" class="card" style="margin-top:16px;padding:16px;">
-    <div class="card-title" style="margin-bottom:12px;">Labor Market (Unemployment, Jobless Claims)</div>
+    <div class="card-title" style="margin-bottom:12px;">Labor Market (Unemployment, Jobless Claims){% if not is_pro %}<span class="pro-section-lock"><svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>PRO</span>{% endif %}</div>
     <div id="fred-labor-stats" class="pulse-bar" style="flex-wrap:wrap;gap:12px;margin-bottom:16px;"></div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(300px, 1fr));gap:16px;">
       <div><div style="position:relative;height:200px;"><canvas id="fred-chart-unemployment"></canvas></div></div>
@@ -146,7 +152,7 @@
   <!-- Growth & Sentiment -->
   <div id="fred-section-growth" class="card" style="margin-top:16px;padding:16px;">
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
-      <div class="card-title" style="margin:0;">Growth &amp; Sentiment (Real GDP Growth, Consumer Sentiment)</div>
+      <div class="card-title" style="margin:0;">Growth &amp; Sentiment (Real GDP Growth, Consumer Sentiment){% if not is_pro %}<span class="pro-section-lock"><svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>PRO</span>{% endif %}</div>
       <select class="fred-period-select" data-section="growth" style="padding:4px 8px;font-size:0.8rem;">
         <option value="1y">1 year</option><option value="5y">5 years</option><option value="max">Max</option>
       </select>
@@ -161,7 +167,7 @@
 
   <!-- CAPE -->
   <div id="fred-section-cape" class="card" style="margin-top:16px;padding:16px;overflow:hidden;">
-    <div class="card-title" style="margin-bottom:12px;">Market Valuation (Shiller CAPE Ratio)</div>
+    <div class="card-title" style="margin-bottom:12px;">Market Valuation (Shiller CAPE Ratio){% if not is_pro %}<span class="pro-section-lock"><svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>PRO</span>{% endif %}</div>
     <div id="cape-stats" class="pulse-bar" style="flex-wrap:wrap;gap:12px;margin-bottom:16px;overflow:hidden;"></div>
     <div style="position:relative;height:240px;"><canvas id="cape-chart"></canvas></div>
     <p class="hint" style="margin-top:8px;word-wrap:break-word;overflow-wrap:break-word;">Cyclically-adjusted P/E (CAPE) smooths earnings over 10 years. Long-term median ~16.8. Above 25 = historically expensive. Below 15 = historically cheap.</p>
@@ -169,7 +175,7 @@
 
   <!-- Buffett Indicator -->
   <div id="fred-section-buffett" class="card" style="margin-top:16px;padding:16px;overflow:hidden;">
-    <div class="card-title" style="margin-bottom:12px;">Buffett Indicator (Total Market Cap / GDP)</div>
+    <div class="card-title" style="margin-bottom:12px;">Buffett Indicator (Total Market Cap / GDP){% if not is_pro %}<span class="pro-section-lock"><svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>PRO</span>{% endif %}</div>
     <div id="buffett-stats" class="pulse-bar" style="flex-wrap:wrap;gap:12px;margin-bottom:16px;overflow:hidden;"></div>
     <div style="position:relative;height:240px;"><canvas id="buffett-chart"></canvas></div>
     <p class="hint" style="margin-top:8px;word-wrap:break-word;overflow-wrap:break-word;">Warren Buffett&#39;s &ldquo;best single measure of valuations.&rdquo; Compares total US market cap to GDP. Long-term average ~120%. Above 140% = overvalued territory.</p>
@@ -177,7 +183,7 @@
 
   <!-- World Uncertainty Index -->
   <div id="fred-section-wui" class="card" style="margin-top:16px;padding:16px;overflow:hidden;">
-    <div class="card-title" style="margin-bottom:12px;">World Uncertainty Index (GDP-Weighted)</div>
+    <div class="card-title" style="margin-bottom:12px;">World Uncertainty Index (GDP-Weighted){% if not is_pro %}<span class="pro-section-lock"><svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>PRO</span>{% endif %}</div>
     <div id="fred-wui-stats" class="pulse-bar" style="flex-wrap:wrap;gap:12px;margin-bottom:16px;overflow:hidden;"></div>
     <div style="position:relative;height:220px;"><canvas id="fred-chart-wui"></canvas></div>
     <p class="hint" style="margin-top:8px;word-wrap:break-word;overflow-wrap:break-word;">Measures global uncertainty by counting &ldquo;uncertainty&rdquo; mentions in EIU country reports, GDP-weighted across 143 countries.</p>
@@ -185,7 +191,7 @@
 
   <!-- Housing -->
   <div id="fred-section-housing" class="card" style="margin-top:16px;padding:16px;overflow:hidden;">
-    <div class="card-title" style="margin-bottom:12px;">Housing (Case-Shiller Home Price Index, 30Y Mortgage Rate)</div>
+    <div class="card-title" style="margin-bottom:12px;">Housing (Case-Shiller Home Price Index, 30Y Mortgage Rate){% if not is_pro %}<span class="pro-section-lock"><svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>PRO</span>{% endif %}</div>
     <div id="fred-housing-stats" class="pulse-bar" style="flex-wrap:wrap;gap:12px;margin-bottom:16px;overflow:hidden;"></div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(300px, 1fr));gap:16px;">
       <div><div style="position:relative;height:200px;"><canvas id="fred-chart-housing"></canvas></div></div>

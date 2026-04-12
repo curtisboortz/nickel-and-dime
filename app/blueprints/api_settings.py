@@ -156,6 +156,29 @@ def save_category_colors():
     return jsonify({"success": True})
 
 
+@api_settings_bp.route("/settings/digest", methods=["POST"])
+@login_required
+@requires_pro
+def save_digest_prefs():
+    """Save email digest preferences."""
+    data = flask_request.get_json(silent=True) or {}
+    settings = UserSettings.query.filter_by(user_id=current_user.id).first()
+    if not settings:
+        settings = UserSettings(user_id=current_user.id)
+        db.session.add(settings)
+    settings.digest_enabled = bool(data.get("enabled", False))
+    freq = data.get("frequency", "weekly")
+    if freq not in ("daily", "weekly", "monthly"):
+        freq = "weekly"
+    settings.digest_frequency = freq
+    day = data.get("day", "monday")
+    if day not in ("monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"):
+        day = "monday"
+    settings.digest_day = day
+    db.session.commit()
+    return jsonify({"ok": True})
+
+
 @api_settings_bp.route(
     "/settings/onboarding-complete", methods=["POST"]
 )

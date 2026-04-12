@@ -91,6 +91,12 @@ def init_scheduler(app):
         id="email_drip", max_instances=1, replace_existing=True,
     )
 
+    _scheduler.add_job(
+        _run_in_context(app, _portfolio_digest),
+        "cron", hour=7, minute=30, timezone="America/New_York",
+        id="portfolio_digest", max_instances=1, replace_existing=True,
+    )
+
     # Run initial refreshes shortly after startup to let gunicorn boot fully
     from datetime import datetime, timedelta
     _scheduler.add_job(
@@ -223,6 +229,14 @@ def _prune_intraday():
         prune_intraday_snapshots(days_to_keep=30)
     except Exception as e:
         log.error("Intraday prune error: %s", e)
+
+
+def _portfolio_digest():
+    from ..services.digest_service import run_digest_job
+    try:
+        run_digest_job()
+    except Exception as e:
+        log.error("Portfolio digest error: %s", e)
 
 
 def _email_drip():

@@ -1,0 +1,22 @@
+Nickel&Dime — {{ frequency|capitalize }} Portfolio Digest
+
+Hi {{ user.name or 'there' }},
+
+Here's your portfolio snapshot as of {{ date }}.
+
+TOTAL PORTFOLIO VALUE: ${{ total }}
+{% if change_pct is not none %}Change: {{ '+' if change_pct >= 0 else '' }}{{ change_pct }}% since last digest{% endif %}
+
+{% if allocations %}ALLOCATION:
+{% for alloc in allocations %}- {{ alloc.name }}: {{ alloc.pct }}% (${{ alloc.value }})
+{% endfor %}{% endif %}
+{% if risk_score is not none %}RISK SCORE: {{ risk_score }}/100 ({{ risk_label }}){% endif %}
+
+{% if movers %}NOTABLE MOVERS:
+{% for m in movers %}- {{ m.name }}: {{ '+' if m.change >= 0 else '' }}{{ m.change }}%
+{% endfor %}{% endif %}
+View your full dashboard: https://nickelanddime.io/dashboard
+
+—
+You're receiving this because you enabled portfolio digests.
+Manage preferences at https://nickelanddime.io/dashboard

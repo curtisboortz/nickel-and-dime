@@ -257,6 +257,7 @@ def dashboard_page(tab="summary"):
         pulse_order=pulse_order,
         custom_pulse_cards=custom_cards,
         show_onboarding=show_onboarding,
+        user_settings=us,
     )
 
 

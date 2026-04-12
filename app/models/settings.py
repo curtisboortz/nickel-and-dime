@@ -45,6 +45,12 @@ class UserSettings(db.Model):
     coinbase_private_key = db.Column(db.Text, nullable=True)
     goldapi_key = db.Column(db.String(255), nullable=True)
 
+    # Email digest preferences (Pro only)
+    digest_enabled = db.Column(db.Boolean, default=False)
+    digest_frequency = db.Column(db.String(10), default="weekly")  # daily | weekly | monthly
+    digest_day = db.Column(db.String(10), default="monday")  # day of week for weekly
+    last_digest_sent = db.Column(db.DateTime, nullable=True)
+
     updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
 

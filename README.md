@@ -52,7 +52,7 @@ A full-stack personal finance platform built with Python/Flask and PostgreSQL. T
 
 ### Account & Billing
 - Free tier with core dashboard features
-- Pro tier ($12/month) for Technical Analysis, Coinbase sync, and more
+- Pro tier ($15/month) with GPT-5.4 AI, full FRED data, portfolio digests, and more
 - Stripe-powered subscriptions with automatic 2-week trial
 - Password reset via email (Resend/SMTP)
 

@@ -68,11 +68,11 @@ def ai_chat():
 
             for _ in range(max_tool_rounds):
                 stream = client.chat.completions.create(
-                    model="gpt-4o-mini",
+                    model=current_app.config["OPENAI_MODEL"],
                     messages=messages,
                     tools=TOOL_DEFINITIONS,
                     temperature=0.6,
-                    max_tokens=1500,
+                    max_tokens=4096,
                     stream=True,
                 )
 

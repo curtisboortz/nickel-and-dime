@@ -202,7 +202,7 @@
       method: "POST",
       headers: {"Content-Type": "application/json"},
       body: JSON.stringify({ticker: _alertFormTicker, condition: condition, target_price: parseFloat(price)})
-    }).then(function(r) {
+    }).then(ndCheckProResponse).then(function(r) {
       if (r.status === 400) return r.json().then(function(d) { throw d; });
       return r.json();
     }).then(function(d) {
@@ -231,7 +231,7 @@
   // ── Alerts list ──
 
   function loadAlertsList() {
-    fetch("/api/price-alerts").then(function(r) { return r.json(); }).then(function(d) {
+    fetch("/api/price-alerts").then(ndCheckProResponse).then(function(r) { return r.json(); }).then(function(d) {
       var alerts = d.alerts || [];
       var section = document.getElementById("wl-alerts-section");
       var list = document.getElementById("wl-alerts-list");
@@ -260,7 +260,7 @@
   }
 
   window.wlDeleteAlert = function(id) {
-    fetch("/api/price-alerts/" + id, {method: "DELETE"}).then(function(r) { return r.json(); }).then(function(d) {
+    fetch("/api/price-alerts/" + id, {method: "DELETE"}).then(ndCheckProResponse).then(function(r) { return r.json(); }).then(function(d) {
       if (d.success) loadWatchlist();
     }).catch(function() {});
   };
@@ -438,7 +438,7 @@
       method: "POST",
       headers: {"Content-Type": "application/json"},
       body: JSON.stringify({ticker: ticker, condition: condition, target_price: parseFloat(price)})
-    }).then(function(r) {
+    }).then(ndCheckProResponse).then(function(r) {
       if (r.status === 400) return r.json().then(function(d) { throw d; });
       return r.json();
     }).then(function(d) {

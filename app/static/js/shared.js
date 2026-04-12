@@ -1,6 +1,25 @@
 /* Nickel&Dime - Shared utilities, diagnostics, currency, globals */
-/* Nickel&Dime — Dashboard JavaScript */
 /* Core chart building, data fetching, and UI interactions */
+
+/* ── Pro-gate helper ── */
+function ndCheckProResponse(response) {
+  if (response.status === 403) {
+    return response.json().then(function(d) {
+      if (d && d.upgrade) {
+        var t = document.createElement("div");
+        t.className = "toast";
+        t.style.background = "rgba(212,160,23,0.15)";
+        t.style.color = "var(--accent-primary)";
+        t.style.borderColor = "rgba(212,160,23,0.3)";
+        t.innerHTML = 'This feature requires <strong>Pro</strong>. <a href="/billing/pricing" style="color:var(--accent-primary);text-decoration:underline;margin-left:6px;">Upgrade</a>';
+        document.body.appendChild(t);
+        setTimeout(function() { t.remove(); }, 6000);
+      }
+      return Promise.reject(d);
+    });
+  }
+  return response;
+}
 
 /* ── Diagnostic Logger ── */
 var NDDiag = (function() {

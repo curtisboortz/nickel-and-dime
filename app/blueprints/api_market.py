@@ -9,6 +9,7 @@ from flask_login import login_required, current_user
 
 from ..extensions import db
 from ..models.market import PriceCache
+from ..utils.auth import requires_pro
 
 api_market_bp = Blueprint("api_market", __name__)
 
@@ -366,8 +367,7 @@ def _historical_ratio(ratio_ticker, period, interval, label):
 
 
 @api_market_bp.route("/pulse-order", methods=["POST"])
-@login_required
-
+@requires_pro
 def save_pulse_order():
     """Persist the user's pulse card order."""
     from ..models.settings import UserSettings
@@ -409,8 +409,7 @@ def _normalize_ticker(raw):
 
 
 @api_market_bp.route("/pulse-cards", methods=["POST"])
-@login_required
-
+@requires_pro
 def add_pulse_card():
     """Add a custom ticker to the pulse bar."""
     from ..models.settings import CustomPulseCard
@@ -439,8 +438,7 @@ def add_pulse_card():
 
 
 @api_market_bp.route("/pulse-cards/<card_id>", methods=["DELETE"])
-@login_required
-
+@requires_pro
 def remove_pulse_card(card_id):
     """Remove a pulse card (custom or hide a default)."""
     from ..models.settings import CustomPulseCard, UserSettings
@@ -466,8 +464,7 @@ def remove_pulse_card(card_id):
 
 
 @api_market_bp.route("/pulse-cards/restore-all", methods=["POST"])
-@login_required
-
+@requires_pro
 def restore_all_pulse_cards():
     """Restore all hidden default pulse cards."""
     from ..models.settings import UserSettings
@@ -481,8 +478,7 @@ def restore_all_pulse_cards():
 
 
 @api_market_bp.route("/pulse-size", methods=["POST"])
-@login_required
-
+@requires_pro
 def save_pulse_size():
     """Save the user's preferred pulse card size."""
     from ..models.settings import UserSettings
@@ -658,7 +654,7 @@ def reorder_watchlist():
 
 
 @api_market_bp.route("/price-alerts")
-@login_required
+@requires_pro
 def get_price_alerts():
     """Return all price alerts for the current user."""
     from ..models.settings import PriceAlert
@@ -680,7 +676,7 @@ def get_price_alerts():
 
 
 @api_market_bp.route("/price-alerts", methods=["POST"])
-@login_required
+@requires_pro
 def add_price_alert():
     """Create a new price alert."""
     from ..models.settings import PriceAlert
@@ -710,7 +706,7 @@ def add_price_alert():
 
 
 @api_market_bp.route("/price-alerts/<int:alert_id>", methods=["DELETE"])
-@login_required
+@requires_pro
 def delete_price_alert(alert_id):
     """Delete a price alert."""
     from ..models.settings import PriceAlert
@@ -724,7 +720,7 @@ def delete_price_alert(alert_id):
 
 
 @api_market_bp.route("/price-alerts/<int:alert_id>", methods=["PATCH"])
-@login_required
+@requires_pro
 def toggle_price_alert(alert_id):
     """Toggle an alert active/inactive or update fields."""
     from ..models.settings import PriceAlert
@@ -742,7 +738,7 @@ def toggle_price_alert(alert_id):
 
 
 @api_market_bp.route("/price-alerts/<int:alert_id>/trigger", methods=["POST"])
-@login_required
+@requires_pro
 def trigger_price_alert(alert_id):
     """Record that an alert has been triggered."""
     from ..models.settings import PriceAlert

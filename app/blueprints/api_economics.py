@@ -3,18 +3,21 @@
 import logging
 
 from flask import Blueprint, jsonify, request as flask_request
-from flask_login import login_required
+from flask_login import login_required, current_user
 
 log = logging.getLogger(__name__)
 
 from ..extensions import db, cache
 from ..models.market import FredCache, EconCalendarCache, SentimentCache
+from ..services.fred_service import SERIES_GROUPS
 
 api_economics_bp = Blueprint("api_economics", __name__)
 
 
-# Free-tier FRED groups (available to all users)
 FREE_FRED_GROUPS = {"debt_fiscal", "cpi_pce", "monetary_policy"}
+_FREE_SERIES_IDS = set()
+for _grp in FREE_FRED_GROUPS:
+    _FREE_SERIES_IDS.update(SERIES_GROUPS.get(_grp, []))
 
 
 @api_economics_bp.route("/fred-data")
@@ -37,6 +40,8 @@ def fred_data():
 
     requested = [s.strip() for s in series_ids_raw.split(",") if s.strip()] if series_ids_raw else None
 
+    is_free = getattr(current_user, "plan", "pro") == "free"
+
     if horizon == "max":
         max_pts = 3780
     elif horizon == "5y":
@@ -49,7 +54,8 @@ def fred_data():
         from ..services.fred_service import refresh_fred_data
         refresh_fred_data(os.environ.get("FRED_API_KEY", ""))
 
-    cache_key = f"fred:{horizon}:{series_ids_raw or 'all'}"
+    tier_tag = "free" if is_free else "pro"
+    cache_key = f"fred:{tier_tag}:{horizon}:{series_ids_raw or 'all'}"
     if not refresh:
         cached = cache.get(cache_key)
         if cached is not None:
@@ -60,11 +66,15 @@ def fred_data():
     for c in all_cache:
         if not isinstance(c.data, dict):
             continue
+        if is_free and c.series_group not in FREE_FRED_GROUPS:
+            continue
         for sid, points in c.data.items():
             series_pool[sid] = points
 
     result = {}
     targets = requested if requested else list(series_pool.keys())
+    if is_free:
+        targets = [s for s in targets if s in _FREE_SERIES_IDS]
     for sid in targets[:50]:
         raw = series_pool.get(sid)
         if not raw:

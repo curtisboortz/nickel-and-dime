@@ -19,7 +19,7 @@ from ..models.portfolio import (
     InvestmentTransaction, TaxLot,
 )
 from ..models.market import PriceCache
-from ..models.settings import UserSettings
+from ..models.settings import UserSettings, FinancialGoal
 from ..models.snapshot import PortfolioSnapshot, IntradaySnapshot
 
 api_portfolio_bp = Blueprint("api_portfolio", __name__)
@@ -965,7 +965,7 @@ DEFAULT_TA_TICKERS = ["SPY", "GC=F", "SI=F", "BTC-USD", "DX=F", "^TNX"]
 
 
 @api_portfolio_bp.route("/ta-tickers")
-@login_required
+@requires_pro
 def get_ta_tickers():
     """Return the user's TA quick-access tickers, auto-seeded from holdings."""
     settings = UserSettings.query.filter_by(user_id=current_user.id).first()
@@ -1133,8 +1133,7 @@ def perf_attribution():
 
 
 @api_portfolio_bp.route("/ta-tickers", methods=["POST"])
-@login_required
-
+@requires_pro
 def save_ta_tickers():
     """Save the user's TA quick-access ticker list."""
     data = flask_request.get_json(silent=True) or {}
@@ -1404,3 +1403,121 @@ def download_pdf_report():
             "Content-Disposition": f"attachment; filename={fname}"
         },
     )
+
+
+# ── Financial Goals ────────────────────────────────────────────────────────
+
+
+@api_portfolio_bp.route("/goals")
+@login_required
+def get_goals():
+    """Return all financial goals for the current user."""
+    goals = FinancialGoal.query.filter_by(user_id=current_user.id)\
+        .order_by(FinancialGoal.created_at).all()
+    result = []
+    for g in goals:
+        result.append({
+            "id": g.id,
+            "name": g.name,
+            "target_amount": g.target_amount,
+            "current_amount": g.current_amount,
+            "target_date": g.target_date.isoformat() if g.target_date else None,
+            "category": g.category,
+        })
+    return jsonify({"ok": True, "goals": result})
+
+
+@api_portfolio_bp.route("/goals", methods=["POST"])
+@login_required
+def create_goal():
+    """Create a new financial goal."""
+    data = flask_request.get_json(silent=True) or {}
+    name = (data.get("name") or "").strip()
+    target = data.get("target") or data.get("target_amount")
+    current = data.get("current") or data.get("current_amount") or 0
+    target_date_str = data.get("target_date") or None
+    category = data.get("category", "general")
+
+    if not name:
+        return jsonify({"error": "Name is required"}), 400
+    try:
+        target = float(target)
+    except (TypeError, ValueError):
+        return jsonify({"error": "Valid target amount is required"}), 400
+    if target <= 0:
+        return jsonify({"error": "Target must be greater than 0"}), 400
+
+    target_date = None
+    if target_date_str:
+        try:
+            from datetime import date as _date
+            target_date = _date.fromisoformat(target_date_str)
+        except (ValueError, TypeError):
+            pass
+
+    goal = FinancialGoal(
+        user_id=current_user.id,
+        name=name,
+        target_amount=target,
+        current_amount=float(current),
+        target_date=target_date,
+        category=category,
+    )
+    db.session.add(goal)
+    db.session.commit()
+    return jsonify({"ok": True, "id": goal.id})
+
+
+@api_portfolio_bp.route("/goals/<int:goal_id>", methods=["PUT"])
+@login_required
+def update_goal(goal_id):
+    """Update an existing financial goal."""
+    goal = FinancialGoal.query.filter_by(
+        id=goal_id, user_id=current_user.id
+    ).first()
+    if not goal:
+        return jsonify({"error": "Goal not found"}), 404
+
+    data = flask_request.get_json(silent=True) or {}
+
+    if "name" in data:
+        goal.name = (data["name"] or "").strip() or goal.name
+    if "target_amount" in data or "target" in data:
+        try:
+            goal.target_amount = float(data.get("target_amount") or data.get("target"))
+        except (TypeError, ValueError):
+            pass
+    if "current_amount" in data or "current" in data:
+        try:
+            goal.current_amount = float(data.get("current_amount") or data.get("current"))
+        except (TypeError, ValueError):
+            pass
+    if "target_date" in data:
+        td = data["target_date"]
+        if td:
+            try:
+                from datetime import date as _date
+                goal.target_date = _date.fromisoformat(td)
+            except (ValueError, TypeError):
+                pass
+        else:
+            goal.target_date = None
+    if "category" in data:
+        goal.category = data["category"] or "general"
+
+    db.session.commit()
+    return jsonify({"ok": True})
+
+
+@api_portfolio_bp.route("/goals/<int:goal_id>", methods=["DELETE"])
+@login_required
+def delete_goal(goal_id):
+    """Delete a financial goal."""
+    goal = FinancialGoal.query.filter_by(
+        id=goal_id, user_id=current_user.id
+    ).first()
+    if not goal:
+        return jsonify({"error": "Goal not found"}), 404
+    db.session.delete(goal)
+    db.session.commit()
+    return jsonify({"ok": True})

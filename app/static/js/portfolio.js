@@ -196,7 +196,7 @@ var TA_TICKERS = [];
 function initTechnicalTab() {
   if (!_tvInitDone) {
     _tvInitDone = true;
-    fetch("/api/ta-tickers").then(function(r) { return r.json(); }).then(function(d) {
+    fetch("/api/ta-tickers").then(ndCheckProResponse).then(function(r) { return r.json(); }).then(function(d) {
       TA_TICKERS = d.tickers || [];
       _buildTATickerButtons();
     }).catch(function() {
@@ -312,7 +312,7 @@ function _saveTATickers() {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ tickers: TA_TICKERS })
-  }).catch(function() {});
+  }).then(ndCheckProResponse).catch(function() {});
 }
 
 /* ── Phase 3: Price Alerts ── */
@@ -700,11 +700,60 @@ buildDivChart();
 })();
 
 /* ── Goal Tracking ── */
-var GOALS = window.GOALS || [];
+var GOALS = [];
+
+function loadGoals() {
+  fetch("/api/goals")
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      GOALS = d.goals || [];
+      _renderGoals();
+    })
+    .catch(function() {});
+}
+
+function _renderGoals() {
+  var container = document.getElementById("goals-container");
+  if (!container) return;
+  if (GOALS.length === 0) {
+    container.innerHTML = '<p class="hint">No goals set. Click + Add Goal to start tracking.</p>';
+    return;
+  }
+  var html = "";
+  GOALS.forEach(function(g) {
+    var pct = g.target_amount > 0 ? Math.min(100, (g.current_amount / g.target_amount) * 100) : 0;
+    var pctStr = pct.toFixed(1);
+    var barColor = pct >= 100 ? "var(--success)" : "var(--accent-primary)";
+    var dateStr = g.target_date || "";
+    var fmt = function(v) { return "$" + v.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 }); };
+
+    html += '<div class="goal-card" style="padding:14px;background:var(--bg-input);border-radius:var(--radius);margin-bottom:10px;">';
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">';
+    html += '<strong style="font-size:0.88rem;">' + _esc(g.name) + '</strong>';
+    html += '<div style="display:flex;gap:6px;">';
+    html += '<button type="button" style="padding:2px 8px;font-size:0.7rem;border:1px solid var(--border-subtle);border-radius:var(--radius);background:transparent;color:var(--text-secondary);cursor:pointer;" onclick="updateGoalAmount(' + g.id + ')">Update</button>';
+    html += '<button type="button" style="padding:2px 8px;font-size:0.7rem;border:1px solid var(--border-subtle);border-radius:var(--radius);background:transparent;color:var(--danger);cursor:pointer;" onclick="deleteGoal(' + g.id + ')">&times;</button>';
+    html += '</div></div>';
+    html += '<div style="display:flex;justify-content:space-between;font-size:0.8rem;color:var(--text-secondary);margin-bottom:4px;">';
+    html += '<span class="mono">' + fmt(g.current_amount) + ' / ' + fmt(g.target_amount) + '</span>';
+    html += '<span class="mono">' + pctStr + '%</span>';
+    html += '</div>';
+    html += '<div style="height:6px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden;">';
+    html += '<div style="height:100%;width:' + pctStr + '%;background:' + barColor + ';border-radius:3px;transition:width 0.3s;"></div>';
+    html += '</div>';
+    if (dateStr) {
+      html += '<div class="hint" style="margin-top:4px;font-size:0.72rem;">Target: ' + dateStr + '</div>';
+    }
+    html += '</div>';
+  });
+  container.innerHTML = html;
+}
+
 function showGoalForm() {
   var f = document.getElementById("goal-form");
   f.style.display = f.style.display === "none" ? "block" : "none";
 }
+
 function saveGoal() {
   var name = document.getElementById("goal-name").value.trim();
   var target = parseFloat(document.getElementById("goal-target").value) || 0;
@@ -716,28 +765,41 @@ function saveGoal() {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ name: name, target: target, current: current, target_date: date })
   }).then(function(r) { return r.json(); }).then(function(d) {
-    if (d.ok) ndSoftReload();
+    if (d.ok) {
+      document.getElementById("goal-name").value = "";
+      document.getElementById("goal-target").value = "";
+      document.getElementById("goal-current").value = "";
+      document.getElementById("goal-date").value = "";
+      document.getElementById("goal-form").style.display = "none";
+      loadGoals();
+    } else {
+      alert(d.error || "Error saving goal.");
+    }
   }).catch(function() { alert("Error saving goal."); });
 }
-function deleteGoal(idx) {
+
+function deleteGoal(goalId) {
   if (!confirm("Remove this goal?")) return;
-  fetch("/api/goals?idx=" + idx, { method: "DELETE" })
+  fetch("/api/goals/" + goalId, { method: "DELETE" })
     .then(function(r) { return r.json(); })
-    .then(function(d) { if (d.ok) ndSoftReload(); });
+    .then(function(d) { if (d.ok) loadGoals(); });
 }
-function updateGoalAmount(idx) {
+
+function updateGoalAmount(goalId) {
   var val = prompt("Enter current amount for this goal:");
   if (val === null) return;
   var amount = parseFloat(val);
   if (isNaN(amount)) return;
-  fetch("/api/goals/update", {
-    method: "POST",
+  fetch("/api/goals/" + goalId, {
+    method: "PUT",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ idx: idx, current: amount })
+    body: JSON.stringify({ current_amount: amount })
   }).then(function(r) { return r.json(); }).then(function(d) {
-    if (d.ok) ndSoftReload();
+    if (d.ok) loadGoals();
   });
 }
+
+loadGoals();
 
 /* ── Monte Carlo Simulation ── */
 

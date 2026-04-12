@@ -353,7 +353,7 @@ if (_investInput) _investInput.addEventListener("keydown", function(e) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ order: order })
-    });
+    }).then(ndCheckProResponse).catch(function() {});
   }
 
   setupPulseDrag();
@@ -378,7 +378,7 @@ function addPulseCard() {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ ticker: ticker, label: label })
-  }).then(function(r) { return r.json(); }).then(function(d) {
+  }).then(ndCheckProResponse).then(function(r) { return r.json(); }).then(function(d) {
     if (d.success) {
       hideAddPulseCard();
       var displayLabel = label || ticker;
@@ -419,8 +419,10 @@ function removePulseCard(id) {
     || document.querySelector('[data-pulse-id="custom-' + id + '"]');
   if (el) { el.style.opacity = "0"; el.style.transition = "opacity 0.2s"; }
   fetch("/api/pulse-cards/" + encodeURIComponent(id), { method: "DELETE" })
+    .then(ndCheckProResponse)
     .then(function(r) { return r.json(); })
-    .then(function(d) { if (d.success && el) el.remove(); });
+    .then(function(d) { if (d.success && el) el.remove(); })
+    .catch(function() {});
 }
 function setPulseSize(size) {
   var bar = document.getElementById("pulse-bar");
@@ -434,13 +436,14 @@ function setPulseSize(size) {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ size: size })
-  }).catch(function() {});
+  }).then(ndCheckProResponse).catch(function() {});
   setTimeout(loadAllSparklines, 200);
 }
 
 function restoreAllPulseCards() {
   if (!confirm("Restore all hidden pulse cards?")) return;
   fetch("/api/pulse-cards/restore-all", { method: "POST" })
+    .then(ndCheckProResponse)
     .then(function(r) { return r.json(); })
     .then(function(d) { if (d.success) ndSoftReload(); });
 }

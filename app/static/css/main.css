@@ -1095,6 +1095,45 @@ html.light .trial-urgent { background:rgba(220,38,38,0.06); border-color:rgba(22
   box-shadow: 0 0 0 2px var(--accent-glow);
 }
 
+/* AI History custom dropdown */
+.ai-hist-dropdown { position:relative; }
+.ai-hist-toggle {
+  padding:5px 10px; font-size:0.75rem; border-radius:var(--radius);
+  border:1px solid var(--border-subtle); background:var(--bg-input);
+  color:var(--text-primary); cursor:pointer; white-space:nowrap;
+}
+.ai-hist-panel {
+  position:absolute; top:100%; right:0; margin-top:4px;
+  width:280px; max-height:320px; overflow-y:auto;
+  background:var(--bg-card); border:1px solid var(--border-subtle);
+  border-radius:var(--radius); box-shadow:0 8px 24px rgba(0,0,0,0.3);
+  z-index:100;
+}
+.ai-hist-list { padding:4px 0; }
+.ai-hist-item {
+  display:flex; align-items:center; gap:6px; padding:7px 12px;
+  font-size:0.78rem; cursor:pointer; transition:background 0.1s;
+  color:var(--text-primary);
+}
+.ai-hist-item:hover { background:var(--bg-input); }
+.ai-hist-item.active { color:var(--accent-primary); font-weight:600; }
+.ai-hist-item-title { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ai-hist-delete {
+  flex:0 0 auto; background:none; border:none; cursor:pointer;
+  color:var(--text-muted); padding:2px; line-height:1; transition:color 0.15s;
+  opacity:0;
+}
+.ai-hist-item:hover .ai-hist-delete { opacity:1; }
+.ai-hist-delete:hover { color:var(--danger); }
+.ai-hist-clear {
+  display:block; width:100%; padding:8px 12px; font-size:0.72rem;
+  border:none; border-top:1px solid var(--border-subtle); background:transparent;
+  color:var(--danger); cursor:pointer; text-align:left; transition:background 0.1s;
+}
+.ai-hist-clear:hover { background:rgba(248,113,113,0.08); }
+.ai-hist-empty { padding:12px; font-size:0.78rem; color:var(--text-muted); text-align:center; }
+html.light .ai-hist-panel { box-shadow:0 8px 24px rgba(0,0,0,0.1); }
+
 /* ── View Transitions ── */
 ::view-transition-old(root) {
   animation: vt-fade-out 120ms ease-out;

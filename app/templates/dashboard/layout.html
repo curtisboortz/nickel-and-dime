@@ -1430,12 +1430,14 @@ function obFinish() {
         <span style="font-size:0.65rem;padding:2px 8px;border-radius:9999px;background:var(--accent-primary);color:#09090b;font-weight:600;">PRO</span>
         <div style="margin-left:auto;display:flex;align-items:center;gap:8px;">
           <button id="ai-new-chat-btn" onclick="aiNewChat()" style="padding:5px 12px;font-size:0.75rem;border-radius:var(--radius);border:1px solid var(--border-subtle);background:transparent;color:var(--text-primary);cursor:pointer;">New chat</button>
-          <select id="ai-history-select" onchange="aiLoadConversation(this.value)" style="padding:5px 10px;font-size:0.75rem;border-radius:var(--radius);border:1px solid var(--border-subtle);background:var(--bg-input);color:var(--text-primary);cursor:pointer;max-width:200px;">
-            <option value="">History</option>
-          </select>
-          <button id="ai-delete-conv-btn" onclick="aiDeleteConversation()" title="Delete this conversation" style="display:none;padding:5px 10px;font-size:0.75rem;border-radius:var(--radius);border:1px solid var(--border-subtle);background:transparent;color:var(--danger);cursor:pointer;transition:all .15s;" onmouseover="this.style.background='var(--danger)';this.style.color='#fff';this.style.borderColor='var(--danger)'" onmouseout="this.style.background='transparent';this.style.color='var(--danger)';this.style.borderColor='var(--border-subtle)'">
-            <svg viewBox="0 0 24 24" style="width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:2;vertical-align:-2px;margin-right:4px;"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>Delete
-          </button>
+          <div id="ai-history-dropdown" class="ai-hist-dropdown">
+            <button type="button" id="ai-history-toggle" class="ai-hist-toggle" onclick="aiToggleHistory()">
+              History <svg viewBox="0 0 24 24" style="width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:2;vertical-align:-1px;margin-left:2px;"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div id="ai-history-panel" class="ai-hist-panel" style="display:none;">
+              <div id="ai-history-list" class="ai-hist-list"></div>
+            </div>
+          </div>
         </div>
       </div>
       <div id="ai-quick-actions" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">

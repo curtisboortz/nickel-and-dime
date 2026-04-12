@@ -193,6 +193,7 @@ body {
   margin-left:var(--sidebar-w);
   flex:1; padding:28px 36px;
   min-height:100vh;
+  overflow-x:hidden;
 }
 .tab { display:none; animation:fadeIn 0.25s ease; }
 .tab.active { display:block; }

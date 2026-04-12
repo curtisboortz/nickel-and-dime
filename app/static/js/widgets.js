@@ -135,9 +135,10 @@ var WIDGET_REGISTRY = {};
     name: "Economic Calendar",
     category: "Economics",
     init: function() {
-      _ensureEconLoaded();
-      var section = document.getElementById("fred-section-econcal");
-      if (section) _ensureCard("economic-calendar", "Economic Calendar").appendChild(section);
+      _ensureEconLoaded().then(function() {
+        var section = document.getElementById("fred-section-econcal");
+        if (section) _ensureCard("economic-calendar", "Economic Calendar").appendChild(section);
+      });
     },
     destroy: _noop
   };
@@ -146,9 +147,10 @@ var WIDGET_REGISTRY = {};
     name: "FedWatch Tool",
     category: "Economics",
     init: function() {
-      _ensureEconLoaded();
-      var section = document.getElementById("fred-section-fedwatch");
-      if (section) _ensureCard("fedwatch", "FedWatch Tool").appendChild(section);
+      _ensureEconLoaded().then(function() {
+        var section = document.getElementById("fred-section-fedwatch");
+        if (section) _ensureCard("fedwatch", "FedWatch Tool").appendChild(section);
+      });
     },
     destroy: _noop
   };
@@ -157,12 +159,13 @@ var WIDGET_REGISTRY = {};
     name: "CAPE & Buffett Indicator",
     category: "Economics",
     init: function() {
-      _ensureEconLoaded();
-      var cape = document.getElementById("fred-section-cape");
-      var buff = document.getElementById("fred-section-buffett");
-      var card = _ensureCard("cape-buffett", "CAPE & Buffett Indicator");
-      if (cape) card.appendChild(cape);
-      if (buff) card.appendChild(buff);
+      _ensureEconLoaded().then(function() {
+        var cape = document.getElementById("fred-section-cape");
+        var buff = document.getElementById("fred-section-buffett");
+        var card = _ensureCard("cape-buffett", "CAPE & Buffett Indicator");
+        if (cape) card.appendChild(cape);
+        if (buff) card.appendChild(buff);
+      });
     },
     destroy: _noop
   };
@@ -171,9 +174,10 @@ var WIDGET_REGISTRY = {};
     name: "Macro Charts",
     category: "Economics",
     init: function() {
-      _ensureEconLoaded();
-      var section = document.getElementById("fred-section-debt");
-      if (section) _ensureCard("macro-charts", "Macro Charts").appendChild(section);
+      _ensureEconLoaded().then(function() {
+        var section = document.getElementById("fred-section-debt");
+        if (section) _ensureCard("macro-charts", "Macro Charts").appendChild(section);
+      });
     },
     destroy: _noop
   };
@@ -182,19 +186,20 @@ var WIDGET_REGISTRY = {};
     name: "World Uncertainty Index",
     category: "Economics",
     init: function() {
-      _ensureEconLoaded();
-      var section = document.getElementById("fred-section-wui");
-      if (section) _ensureCard("world-uncertainty", "World Uncertainty Index").appendChild(section);
+      _ensureEconLoaded().then(function() {
+        var section = document.getElementById("fred-section-wui");
+        if (section) _ensureCard("world-uncertainty", "World Uncertainty Index").appendChild(section);
+      });
     },
     destroy: _noop
   };
 
   var _econLoadPromise = null;
   function _ensureEconLoaded() {
-    if (document.getElementById("fred-section-econcal")) return;
-    if (_econLoadPromise) return;
+    if (document.getElementById("fred-section-econcal")) return Promise.resolve();
+    if (_econLoadPromise) return _econLoadPromise;
     var tab = document.getElementById("tab-economics");
-    if (!tab) return;
+    if (!tab) return Promise.resolve();
     _econLoadPromise = fetch("/api/tab-content/economics")
       .then(function(r) { return r.text(); })
       .then(function(html) {
@@ -204,6 +209,7 @@ var WIDGET_REGISTRY = {};
         if (typeof loadFredData === "function") loadFredData();
       })
       .catch(function() {});
+    return _econLoadPromise;
   }
 
   // ─── Budget widgets ───────────────────────────────────────────

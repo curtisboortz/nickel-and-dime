@@ -538,25 +538,24 @@ function obFinish() {
           <div id="wl-alerts-list"></div>
         </div>
       </div>
-    </div>
-  </div>
-
-  <!-- Goal Tracking -->
-  <div class="card" id="goals-card" data-widget="financial-goals" style="display:none">
-    <div class="card-header">
-      <div class="card-title">Financial Goals</div>
-      <button type="button" class="secondary" style="padding:5px 10px;font-size:0.75rem;" onclick="showGoalForm()">+ Add Goal</button>
-    </div>
-    <div id="goal-form" style="display:none;margin-bottom:14px;padding:14px;background:var(--bg-input);border-radius:var(--radius);">
-      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:end;">
-        <div class="ctrl-group"><span class="label">Goal Name</span><input type="text" id="goal-name" placeholder="Emergency Fund" style="width:180px;"></div>
-        <div class="ctrl-group"><span class="label">Target ($)</span><input type="number" id="goal-target" class="num" step="100"></div>
-        <div class="ctrl-group"><span class="label">Current ($)</span><input type="number" id="goal-current" class="num" step="100" value="0"></div>
-        <div class="ctrl-group"><span class="label">Target Date</span><input type="date" id="goal-date"></div>
-        <button type="button" onclick="saveGoal()" style="padding:8px 14px;font-size:0.8rem;">Save</button>
+      <!-- Goal Tracking -->
+      <div class="card widget-card" id="goals-card" data-widget="financial-goals" draggable="true" style="display:none">
+        <div class="card-header">
+          <div class="card-title"><span class="drag-handle" title="Drag to reorder">&#x2630;</span> Financial Goals</div>
+          <button type="button" class="secondary" style="padding:5px 10px;font-size:0.75rem;" onclick="showGoalForm()">+ Add Goal</button>
+        </div>
+        <div id="goal-form" style="display:none;margin-bottom:14px;padding:14px;background:var(--bg-input);border-radius:var(--radius);">
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:end;">
+            <div class="ctrl-group"><span class="label">Goal Name</span><input type="text" id="goal-name" placeholder="Emergency Fund" style="width:180px;"></div>
+            <div class="ctrl-group"><span class="label">Target ($)</span><input type="number" id="goal-target" class="num" step="100"></div>
+            <div class="ctrl-group"><span class="label">Current ($)</span><input type="number" id="goal-current" class="num" step="100" value="0"></div>
+            <div class="ctrl-group"><span class="label">Target Date</span><input type="date" id="goal-date"></div>
+            <button type="button" onclick="saveGoal()" style="padding:8px 14px;font-size:0.8rem;">Save</button>
+          </div>
+        </div>
+        <div class="goals-grid" id="goals-container"><p class="hint">No goals set. Click + Add Goal to start tracking.</p></div>
       </div>
     </div>
-    <div class="goals-grid" id="goals-container"><p class="hint">No goals set. Click + Add Goal to start tracking.</p></div>
   </div>
 
   </div><!-- /widget-staging -->

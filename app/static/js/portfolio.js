@@ -591,49 +591,72 @@ function buildDivChart() {
 }
 buildDivChart();
 
-/* ── Drag-to-Reorder Dashboard Widgets ── */
+/* ── Drag-to-Reorder Dashboard Widgets ──
+ * Uses event delegation so dynamically added cards also work. */
 (function() {
   var dragSrc = null;
-  function setupDrag() {
-    document.querySelectorAll(".widget-card").forEach(function(card) {
-      card.addEventListener("dragstart", function(e) {
-        dragSrc = card;
-        card.classList.add("dragging");
-        e.dataTransfer.effectAllowed = "move";
-        e.dataTransfer.setData("text/plain", card.dataset.widget);
-      });
-      card.addEventListener("dragend", function() {
-        card.classList.remove("dragging");
-        document.querySelectorAll(".drag-over").forEach(function(el) { el.classList.remove("drag-over"); });
-        dragSrc = null;
-      });
-      card.addEventListener("dragover", function(e) {
-        e.preventDefault();
-        e.dataTransfer.dropEffect = "move";
-        if (card !== dragSrc) card.classList.add("drag-over");
-      });
-      card.addEventListener("dragleave", function() {
-        card.classList.remove("drag-over");
-      });
-      card.addEventListener("drop", function(e) {
-        e.preventDefault();
-        card.classList.remove("drag-over");
-        if (!dragSrc || dragSrc === card) return;
-        // Swap positions
-        var parent = card.parentNode;
-        var srcParent = dragSrc.parentNode;
-        var srcNext = dragSrc.nextElementSibling;
-        if (srcNext === card) {
-          parent.insertBefore(dragSrc, card.nextElementSibling);
-        } else {
-          var cardNext = card.nextElementSibling;
-          srcParent.insertBefore(card, srcNext);
-          parent.insertBefore(dragSrc, cardNext);
-        }
-        saveWidgetOrder();
-      });
-    });
-  }
+
+  var staging = document.getElementById("widget-staging") || document.body;
+
+  staging.addEventListener("dragstart", function(e) {
+    var card = e.target.closest(".widget-card");
+    if (!card) return;
+    dragSrc = card;
+    card.classList.add("dragging");
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", card.dataset.widget || "");
+  });
+
+  staging.addEventListener("dragend", function(e) {
+    var card = e.target.closest(".widget-card");
+    if (card) card.classList.remove("dragging");
+    document.querySelectorAll(".drag-over").forEach(function(el) { el.classList.remove("drag-over"); });
+    dragSrc = null;
+  });
+
+  staging.addEventListener("dragover", function(e) {
+    if (!dragSrc) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    var card = e.target.closest(".widget-card");
+    if (card && card !== dragSrc) card.classList.add("drag-over");
+    var col = e.target.closest(".widget-col");
+    if (col) col.classList.add("drag-over");
+  });
+
+  staging.addEventListener("dragleave", function(e) {
+    var card = e.target.closest(".widget-card");
+    if (card) card.classList.remove("drag-over");
+    var col = e.target.closest(".widget-col");
+    if (col && !col.contains(e.relatedTarget)) col.classList.remove("drag-over");
+  });
+
+  staging.addEventListener("drop", function(e) {
+    e.preventDefault();
+    document.querySelectorAll(".drag-over").forEach(function(el) { el.classList.remove("drag-over"); });
+    if (!dragSrc) return;
+
+    var card = e.target.closest(".widget-card");
+    if (card && card !== dragSrc) {
+      var parent = card.parentNode;
+      var srcParent = dragSrc.parentNode;
+      var srcNext = dragSrc.nextElementSibling;
+      if (srcNext === card) {
+        parent.insertBefore(dragSrc, card.nextElementSibling);
+      } else {
+        var cardNext = card.nextElementSibling;
+        srcParent.insertBefore(card, srcNext);
+        parent.insertBefore(dragSrc, cardNext);
+      }
+    } else {
+      var col = e.target.closest(".widget-col");
+      if (col && col !== dragSrc.parentNode) {
+        col.appendChild(dragSrc);
+      }
+    }
+    saveWidgetOrder();
+  });
+
   function saveWidgetOrder() {
     var order = {};
     document.querySelectorAll(".widget-col").forEach(function(col) {
@@ -645,18 +668,16 @@ buildDivChart();
       order[colId] = widgets;
     });
     localStorage.setItem("wos-widget-order", JSON.stringify(order));
-    // Also persist to server
     fetch("/api/widget-order", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(order)
     }).catch(function() {});
   }
+
   function restoreWidgetOrder() {
-    // Try localStorage first (faster), fall back to server-saved order
     var saved = localStorage.getItem("wos-widget-order");
     if (!saved) {
-      // Try from server-rendered config
       var serverOrder = window.WIDGET_ORDER || null;
       if (serverOrder && Object.keys(serverOrder).length > 0) {
         saved = JSON.stringify(serverOrder);
@@ -676,7 +697,6 @@ buildDivChart();
     } catch(e) {}
   }
   restoreWidgetOrder();
-  setupDrag();
 })();
 
 /* ── Goal Tracking ── */

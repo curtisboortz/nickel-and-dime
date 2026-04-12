@@ -153,6 +153,13 @@ function updateProjectionTimelineLabel() {
       crosshair.style.display = "block";
       label.textContent = "Year " + year + ": $" + (val || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
       label.style.display = "block";
+      var wrap = document.getElementById("projection-chart-wrap");
+      var wrapW = wrap ? wrap.offsetWidth : 600;
+      var labelW = label.offsetWidth;
+      var lbl = left - labelW / 2;
+      if (lbl < 4) lbl = 4;
+      if (lbl + labelW > wrapW - 4) lbl = wrapW - labelW - 4;
+      label.style.left = lbl + "px";
     }
   }
   updateProjectionSummary();
@@ -668,10 +675,8 @@ buildDivChart();
       }
     } catch(e) {}
   }
-  if (!document.getElementById("dashboard-grid")) {
-    restoreWidgetOrder();
-    setupDrag();
-  }
+  restoreWidgetOrder();
+  setupDrag();
 })();
 
 /* ── Goal Tracking ── */

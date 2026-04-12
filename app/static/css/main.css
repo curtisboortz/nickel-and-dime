@@ -1415,138 +1415,10 @@ html.light .wl-alert-row { border-bottom:1px solid rgba(0,0,0,0.04); }
   .watchlist-table { font-size:0.78rem; }
 }
 
-/* ═══ Dashboard Grid (gridstack) — 8-col square cells ═══ */
-.grid-stack {
-  min-height: 100px;
-}
-.grid-stack-item-content {
-  background: transparent;
-  overflow: hidden;
-  border-radius: var(--radius);
-}
-.grid-stack-item-content > .card,
-.grid-stack-item-content > .widget-card {
-  margin: 0;
-  box-sizing: border-box;
-}
-
-/* Expandable widgets: allow overflow measurement */
-.gs-expandable .grid-stack-item-content {
-  overflow: visible;
-}
-.gs-expandable .gs-widget-body {
-  overflow: visible;
-}
-
-/* Widget header (visible in edit mode) */
-.gs-widget-header {
-  display: none;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 8px;
-  background: var(--bg-input);
-  border-bottom: 1px solid var(--border-subtle);
-  border-radius: var(--radius) var(--radius) 0 0;
-  font-size: 0.72rem;
-  color: var(--text-muted);
-  user-select: none;
-}
-.gs-widget-drag {
-  cursor: grab;
-  font-size: 0.9rem;
-  padding: 0 4px;
-  color: var(--text-muted);
-}
-.gs-widget-title {
-  flex: 1;
-  font-weight: 600;
-  color: var(--text-secondary);
-}
-.gs-widget-remove {
-  background: none;
-  border: none;
-  color: var(--text-muted);
-  cursor: pointer;
-  font-size: 1.1rem;
-  padding: 0 4px;
-  line-height: 1;
-  transition: color 0.15s;
-}
-.gs-widget-remove:hover { color: #f44; }
-.gs-size-btns {
-  display: flex;
-  gap: 2px;
-  margin: 0 4px;
-}
-.gs-size-btn {
-  background: transparent;
-  border: 1px solid var(--border-subtle);
-  border-radius: 3px;
-  color: var(--text-muted);
-  font-size: 0.62rem;
-  font-weight: 600;
-  padding: 1px 6px;
-  cursor: pointer;
-  line-height: 1.3;
-  transition: all 0.15s;
-}
-.gs-size-btn:hover {
-  border-color: var(--accent-primary);
-  color: var(--accent-primary);
-}
-.gs-size-btn.active {
-  background: rgba(212,160,23,0.2);
-  border-color: var(--accent-primary);
-  color: var(--accent-primary);
-}
-.gs-widget-body {
-  height: calc(100% - 0px);
-  overflow: hidden;
-}
-.gs-edit-mode .gs-widget-body {
-  height: calc(100% - 28px);
-}
-.gs-edit-mode .gs-widget-header {
-  display: flex;
-}
-.gs-edit-mode .grid-stack-item-content {
-  border: 1px dashed var(--border-accent);
-}
-.ui-resizable-handle { display: none !important; }
-
-/* Override inner max-height/scroll when inside grid widgets */
-.gs-widget-body [style*="max-height"],
-.gs-widget-body [style*="overflow-y"] {
-  max-height: none !important;
-  overflow-y: visible !important;
-}
-.gs-widget-body > :first-child {
-  margin-top: 0 !important;
-}
-
-/* Size-aware content: hide secondary UI at S size */
-.gs-size-s .card-header .secondary,
-.gs-size-s .drag-handle,
-.gs-size-s .rebalance-ctrl,
-.gs-size-s #invest-rebalance-ctrl,
-.gs-size-s #add-category-form,
-.gs-size-s .invest-table tfoot {
-  display: none !important;
-}
-
-/* Grid toolbar */
+/* ═══ Dashboard Widget Toolbar & Catalog ═══ */
 .grid-toolbar {
   position: relative;
   z-index: 10;
-}
-#grid-edit-btn.active {
-  background: rgba(212,160,23,0.15);
-  border-color: var(--accent-primary);
-  color: var(--accent-primary);
-}
-.gs-edit-mode ~ .grid-toolbar #grid-reset-btn,
-#dashboard-grid.gs-edit-mode ~ #grid-reset-btn {
-  display: inline-block;
 }
 
 /* Widget catalog slide-out */
@@ -1649,11 +1521,8 @@ html.light .wl-alert-row { border-bottom:1px solid rgba(0,0,0,0.04); }
   background: rgba(212,160,23,0.08);
 }
 
-/* Mobile responsive: single column */
+/* Mobile responsive */
 @media (max-width: 768px) {
-  .grid-stack {
-    min-height: 100px;
-  }
   .grid-toolbar {
     flex-wrap: wrap;
   }
@@ -1663,8 +1532,5 @@ html.light .wl-alert-row { border-bottom:1px solid rgba(0,0,0,0.04); }
   }
 }
 
-/* Light mode gridstack overrides */
-html.light .gs-widget-header { background: rgba(0,0,0,0.03); }
-html.light .gs-size-btn.active { background: rgba(212,160,23,0.12); }
-html.light .gs-edit-mode .grid-stack-item-content { border-color: rgba(0,0,0,0.15); }
+/* Light mode catalog override */
 html.light .catalog-panel { box-shadow: -4px 0 24px rgba(0,0,0,0.1); }

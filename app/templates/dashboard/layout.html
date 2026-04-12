@@ -10,10 +10,7 @@ function _skeletonRows(r,c){var h="";for(var i=0;i<(r||5);i++){h+="<tr>";for(var
 {% if is_pro %}
 <script src="https://cdn.plaid.com/link/v2/stable/link-initialize.js"></script>
 {% endif %}
-<!-- Gridstack.js for configurable dashboard -->
-<link href="https://cdn.jsdelivr.net/npm/gridstack@10.3.1/dist/gridstack.min.css" rel="stylesheet">
-<link href="https://cdn.jsdelivr.net/npm/gridstack@10.3.1/dist/gridstack-extra.min.css" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/gridstack@10.3.1/dist/gridstack-all.js"></script>
+<!-- Widget visibility controller (no gridstack) -->
 <!-- Chart.js + Luxon + Financial charts + Zoom -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/luxon@3.4.4/build/global/luxon.min.js"></script>
@@ -390,17 +387,14 @@ function obFinish() {
     </div>
   </div>
 
-  <!-- Configurable Dashboard Grid (below pulse bar) -->
-  <div id="dashboard-grid" class="grid-stack"></div>
-
-  <!-- Staging area: existing DOM elements are moved into grid widgets by JS -->
-  <div id="widget-staging" style="display:none;">
+  <!-- Dashboard widgets (JS toggles visibility based on user config) -->
+  <div id="widget-staging">
 
   <!-- Two Column Grid -->
   <div class="summary-grid" id="summary-widgets">
     <div class="widget-col" id="widget-col-left">
       <!-- Allocation Donut -->
-      <div class="card widget-card" draggable="true" data-widget="allocation-donut">
+      <div class="card widget-card" draggable="true" data-widget="allocation-donut" style="display:none">
         <div class="card-title"><span class="drag-handle" title="Drag to reorder">&#x2630;</span> Portfolio Allocation</div>
         <div style="display:flex;align-items:flex-start;gap:16px;min-height:280px;">
           <div style="position:relative;flex:0 0 220px;height:220px;margin:auto 0;">
@@ -414,7 +408,7 @@ function obFinish() {
         </div>
       </div>
       <!-- Allocation Table -->
-      <div class="card widget-card" draggable="true" data-widget="allocation-table">
+      <div class="card widget-card" draggable="true" data-widget="allocation-table" style="display:none">
         <div class="card-header">
           <div class="card-title"><span class="drag-handle" title="Drag to reorder">&#x2630;</span> Allocation vs Target</div>
           <button type="button" class="secondary" style="padding:4px 10px;font-size:0.7rem;" id="edit-targets-btn" onclick="toggleEditTargets()">Edit Targets</button>
@@ -433,7 +427,7 @@ function obFinish() {
     </div>
     <div class="widget-col" id="widget-col-right">
       <!-- Monthly Investments -->
-      <div class="card widget-card" draggable="true" data-widget="monthly-investments">
+      <div class="card widget-card" draggable="true" data-widget="monthly-investments" style="display:none">
         <div class="card-header">
           <div>
             <div class="card-title"><span class="drag-handle" title="Drag to reorder">&#x2630;</span> Monthly Investments</div>
@@ -497,7 +491,7 @@ function obFinish() {
         </div>
       </div>
       <!-- Watchlist & Price Alerts -->
-      <div class="card widget-card" draggable="true" data-widget="watchlist">
+      <div class="card widget-card" draggable="true" data-widget="watchlist" style="display:none">
         <div class="card-header">
           <div class="card-title"><span class="drag-handle" title="Drag to reorder">&#x2630;</span> Watchlist</div>
           <button type="button" class="secondary" style="padding:4px 10px;font-size:0.7rem;" id="wl-toggle-add" onclick="wlToggleAdd()">+ Add</button>
@@ -548,7 +542,7 @@ function obFinish() {
   </div>
 
   <!-- Goal Tracking -->
-  <div class="card" id="goals-card">
+  <div class="card" id="goals-card" data-widget="financial-goals" style="display:none">
     <div class="card-header">
       <div class="card-title">Financial Goals</div>
       <button type="button" class="secondary" style="padding:5px 10px;font-size:0.75rem;" onclick="showGoalForm()">+ Add Goal</button>
@@ -567,11 +561,10 @@ function obFinish() {
 
   </div><!-- /widget-staging -->
 
-  <!-- Dashboard Grid Toolbar (bottom of page) -->
+  <!-- Dashboard Widget Toolbar -->
   <div class="grid-toolbar" style="display:flex;align-items:center;gap:8px;margin-top:8px;padding-top:8px;">
-    <button type="button" class="secondary" id="grid-edit-btn" onclick="toggleGridEditMode()" style="padding:5px 12px;font-size:0.72rem;">Edit Layout</button>
     <button type="button" class="secondary" onclick="openWidgetCatalog()" style="padding:5px 12px;font-size:0.72rem;">+ Add Widget</button>
-    <button type="button" class="secondary" onclick="resetDashboardLayout()" id="grid-reset-btn" style="padding:5px 12px;font-size:0.72rem;display:none;">Reset Layout</button>
+    <button type="button" class="secondary" onclick="resetDashboardLayout()" style="padding:5px 12px;font-size:0.72rem;">Reset Layout</button>
   </div>
 
   <!-- Widget Catalog Slide-out Panel -->
@@ -1204,7 +1197,7 @@ function obFinish() {
     <div id="projection-chart-wrap" style="position:relative;height:300px;">
       <canvas id="projection-chart"></canvas>
       <div id="projection-crosshair" style="position:absolute;top:0;bottom:0;width:2px;background:var(--accent-primary);pointer-events:none;display:none;"></div>
-      <div id="projection-crosshair-label" style="position:absolute;top:8px;left:50%;transform:translateX(-50%);background:var(--bg-card);border:1px solid var(--border-accent);padding:6px 12px;border-radius:8px;font-family:var(--mono);font-size:0.85rem;pointer-events:none;display:none;"></div>
+      <div id="projection-crosshair-label" style="position:absolute;top:8px;background:var(--bg-card);border:1px solid var(--border-accent);padding:6px 12px;border-radius:8px;font-family:var(--mono);font-size:0.85rem;white-space:nowrap;pointer-events:none;display:none;z-index:10;"></div>
     </div>
     <div class="ctrl-group" style="margin-top:12px;">
       <span class="label">Timeline</span>

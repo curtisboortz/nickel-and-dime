@@ -1,8 +1,9 @@
 /* Nickel&Dime — Widget registry for the configurable dashboard grid.
  *
- * Each widget has: name, category, size presets (S/M/L), default size index,
- * and init/destroy lifecycle hooks.
- * init(el) receives the .gs-widget-body inner div.
+ * 8-column square grid. Size presets:
+ *   _WIDE  → S=2x2, M=4x4, L=8x4  (charts, compact cards)
+ *   _TALL  → S=2x4, M=4x4, L=4x8  (tables, lists with many rows)
+ * Widgets with expandable:true auto-grow by 2 rows when content overflows.
  */
 
 var WIDGET_REGISTRY = {};
@@ -10,30 +11,31 @@ var WIDGET_REGISTRY = {};
 (function() {
   "use strict";
 
-  var _COMPACT = [
-    { label: "S", w: 6, h: 6 },
-    { label: "M", w: 6, h: 9 },
-    { label: "L", w: 12, h: 12 }
+  var _WIDE = [
+    { label: "S", w: 2, h: 2 },
+    { label: "M", w: 4, h: 4 },
+    { label: "L", w: 8, h: 4 }
   ];
-  var _CHART = [
-    { label: "S", w: 6, h: 9 },
-    { label: "M", w: 6, h: 12 },
-    { label: "L", w: 12, h: 12 }
+  var _TALL = [
+    { label: "S", w: 2, h: 4 },
+    { label: "M", w: 4, h: 4 },
+    { label: "L", w: 4, h: 8 }
   ];
-  var _LARGE = [
-    { label: "S", w: 6, h: 12 },
-    { label: "M", w: 12, h: 12 },
-    { label: "L", w: 12, h: 16 }
-  ];
+
+  function _fromStaging(selector) {
+    var staging = document.getElementById("widget-staging");
+    if (!staging) return document.querySelector(selector);
+    return staging.querySelector(selector) || document.querySelector(selector);
+  }
 
   // ─── Summary widgets ─────────────────────────────────────────
 
   WIDGET_REGISTRY["allocation-donut"] = {
     name: "Portfolio Allocation",
     category: "Summary",
-    sizes: _CHART, defaultSize: 1,
+    sizes: _WIDE, defaultSize: 1,
     init: function(el) {
-      var card = document.querySelector('[data-widget="allocation-donut"]');
+      var card = _fromStaging('[data-widget="allocation-donut"]');
       if (card) el.appendChild(card);
     },
     destroy: function(el) {}
@@ -42,9 +44,10 @@ var WIDGET_REGISTRY = {};
   WIDGET_REGISTRY["allocation-table"] = {
     name: "Allocation vs Target",
     category: "Summary",
-    sizes: _COMPACT, defaultSize: 1,
+    sizes: _TALL, defaultSize: 1,
+    expandable: true,
     init: function(el) {
-      var card = document.querySelector('[data-widget="allocation-table"]');
+      var card = _fromStaging('[data-widget="allocation-table"]');
       if (card) el.appendChild(card);
     },
     destroy: function(el) {}
@@ -53,9 +56,10 @@ var WIDGET_REGISTRY = {};
   WIDGET_REGISTRY["monthly-investments"] = {
     name: "Monthly Investments",
     category: "Summary",
-    sizes: _CHART, defaultSize: 1,
+    sizes: _TALL, defaultSize: 2,
+    expandable: true,
     init: function(el) {
-      var card = document.querySelector('[data-widget="monthly-investments"]');
+      var card = _fromStaging('[data-widget="monthly-investments"]');
       if (card) el.appendChild(card);
     },
     destroy: function(el) {}
@@ -64,9 +68,10 @@ var WIDGET_REGISTRY = {};
   WIDGET_REGISTRY["watchlist"] = {
     name: "Watchlist & Alerts",
     category: "Summary",
-    sizes: _COMPACT, defaultSize: 1,
+    sizes: _TALL, defaultSize: 1,
+    expandable: true,
     init: function(el) {
-      var card = document.querySelector('[data-widget="watchlist"]');
+      var card = _fromStaging('[data-widget="watchlist"]');
       if (card) el.appendChild(card);
     },
     destroy: function(el) {}
@@ -75,7 +80,7 @@ var WIDGET_REGISTRY = {};
   WIDGET_REGISTRY["financial-goals"] = {
     name: "Financial Goals",
     category: "Summary",
-    sizes: _COMPACT, defaultSize: 1,
+    sizes: _WIDE, defaultSize: 1,
     init: function(el) {
       var card = document.getElementById("goals-card");
       if (!card) {
@@ -100,7 +105,7 @@ var WIDGET_REGISTRY = {};
   WIDGET_REGISTRY["sentiment-gauges"] = {
     name: "Market Sentiment",
     category: "Portfolio",
-    sizes: _LARGE, defaultSize: 1,
+    sizes: _WIDE, defaultSize: 2,
     init: function(el) {
       var section = document.getElementById("sentiment-section");
       if (section) el.appendChild(section);
@@ -112,7 +117,7 @@ var WIDGET_REGISTRY = {};
   WIDGET_REGISTRY["projected-growth"] = {
     name: "Projected Growth",
     category: "Portfolio",
-    sizes: _CHART, defaultSize: 1,
+    sizes: _WIDE, defaultSize: 1,
     init: function(el) {
       var section = document.getElementById("projection-section");
       if (section) el.appendChild(section);
@@ -126,7 +131,7 @@ var WIDGET_REGISTRY = {};
   WIDGET_REGISTRY["monte-carlo"] = {
     name: "Monte Carlo Simulation",
     category: "Portfolio",
-    sizes: _CHART, defaultSize: 1,
+    sizes: _WIDE, defaultSize: 1,
     init: function(el) {
       var section = document.getElementById("monte-carlo-section");
       if (section) el.appendChild(section);
@@ -140,7 +145,7 @@ var WIDGET_REGISTRY = {};
   WIDGET_REGISTRY["drawdown"] = {
     name: "Drawdown Analysis",
     category: "Portfolio",
-    sizes: _CHART, defaultSize: 1,
+    sizes: _WIDE, defaultSize: 1,
     init: function(el) {
       var section = document.getElementById("drawdown-section");
       if (section) el.appendChild(section);
@@ -154,7 +159,7 @@ var WIDGET_REGISTRY = {};
   WIDGET_REGISTRY["perf-attribution"] = {
     name: "Performance Attribution",
     category: "Portfolio",
-    sizes: _CHART, defaultSize: 1,
+    sizes: _WIDE, defaultSize: 1,
     init: function(el) {
       var section = document.getElementById("perf-attribution-section");
       if (section) el.appendChild(section);
@@ -168,7 +173,8 @@ var WIDGET_REGISTRY = {};
   WIDGET_REGISTRY["portfolio-insights"] = {
     name: "Portfolio Insights",
     category: "Portfolio",
-    sizes: _COMPACT, defaultSize: 1,
+    sizes: _TALL, defaultSize: 1,
+    expandable: true,
     init: function(el) {
       var section = document.getElementById("insights-section");
       if (section) el.appendChild(section);
@@ -179,7 +185,7 @@ var WIDGET_REGISTRY = {};
   WIDGET_REGISTRY["allocation-templates"] = {
     name: "Allocation Templates",
     category: "Portfolio",
-    sizes: _COMPACT, defaultSize: 1,
+    sizes: _WIDE, defaultSize: 1,
     init: function(el) {
       var section = document.getElementById("templates-section");
       if (section) el.appendChild(section);
@@ -192,7 +198,8 @@ var WIDGET_REGISTRY = {};
   WIDGET_REGISTRY["economic-calendar"] = {
     name: "Economic Calendar",
     category: "Economics",
-    sizes: _LARGE, defaultSize: 1,
+    sizes: _TALL, defaultSize: 2,
+    expandable: true,
     init: function(el) {
       _ensureEconLoaded();
       var section = document.getElementById("fred-section-econcal");
@@ -204,7 +211,7 @@ var WIDGET_REGISTRY = {};
   WIDGET_REGISTRY["fedwatch"] = {
     name: "FedWatch Tool",
     category: "Economics",
-    sizes: _CHART, defaultSize: 1,
+    sizes: _WIDE, defaultSize: 1,
     init: function(el) {
       _ensureEconLoaded();
       var section = document.getElementById("fred-section-fedwatch");
@@ -216,7 +223,7 @@ var WIDGET_REGISTRY = {};
   WIDGET_REGISTRY["cape-buffett"] = {
     name: "CAPE & Buffett Indicator",
     category: "Economics",
-    sizes: _LARGE, defaultSize: 1,
+    sizes: _WIDE, defaultSize: 2,
     init: function(el) {
       _ensureEconLoaded();
       var cape = document.getElementById("fred-section-cape");
@@ -230,7 +237,7 @@ var WIDGET_REGISTRY = {};
   WIDGET_REGISTRY["macro-charts"] = {
     name: "Macro Charts",
     category: "Economics",
-    sizes: _LARGE, defaultSize: 2,
+    sizes: _WIDE, defaultSize: 2,
     init: function(el) {
       _ensureEconLoaded();
       var section = document.getElementById("fred-section-debt");
@@ -242,7 +249,7 @@ var WIDGET_REGISTRY = {};
   WIDGET_REGISTRY["world-uncertainty"] = {
     name: "World Uncertainty Index",
     category: "Economics",
-    sizes: _CHART, defaultSize: 1,
+    sizes: _WIDE, defaultSize: 1,
     init: function(el) {
       _ensureEconLoaded();
       var section = document.getElementById("fred-section-wui");
@@ -273,7 +280,7 @@ var WIDGET_REGISTRY = {};
   WIDGET_REGISTRY["monthly-budget"] = {
     name: "Monthly Budget",
     category: "Budget",
-    sizes: _CHART, defaultSize: 1,
+    sizes: _WIDE, defaultSize: 1,
     init: function(el) {
       var section = document.getElementById("budget-section");
       if (section) el.appendChild(section);
@@ -285,7 +292,7 @@ var WIDGET_REGISTRY = {};
   WIDGET_REGISTRY["spending-chart"] = {
     name: "Spending vs Budget",
     category: "Budget",
-    sizes: _CHART, defaultSize: 1,
+    sizes: _WIDE, defaultSize: 1,
     init: function(el) {
       var section = document.getElementById("spending-chart-section");
       if (section) el.appendChild(section);
@@ -296,7 +303,7 @@ var WIDGET_REGISTRY = {};
   WIDGET_REGISTRY["spending-trends"] = {
     name: "Spending Trends",
     category: "Budget",
-    sizes: _CHART, defaultSize: 1,
+    sizes: _WIDE, defaultSize: 1,
     init: function(el) {
       var section = document.getElementById("spending-trends-section");
       if (section) el.appendChild(section);
@@ -307,7 +314,7 @@ var WIDGET_REGISTRY = {};
   WIDGET_REGISTRY["debt-tracker"] = {
     name: "Debt Tracker",
     category: "Budget",
-    sizes: _COMPACT, defaultSize: 1,
+    sizes: _WIDE, defaultSize: 1,
     init: function(el) {
       var section = document.getElementById("debt-tracker-section");
       if (section) el.appendChild(section);
@@ -318,7 +325,8 @@ var WIDGET_REGISTRY = {};
   WIDGET_REGISTRY["amortization"] = {
     name: "Loan Amortization",
     category: "Budget",
-    sizes: _LARGE, defaultSize: 2,
+    sizes: _TALL, defaultSize: 2,
+    expandable: true,
     init: function(el) {
       var section = document.getElementById("amortization-section");
       if (section) el.appendChild(section);
@@ -329,7 +337,8 @@ var WIDGET_REGISTRY = {};
   WIDGET_REGISTRY["transaction-log"] = {
     name: "Transaction Log",
     category: "Budget",
-    sizes: _LARGE, defaultSize: 1,
+    sizes: _TALL, defaultSize: 2,
+    expandable: true,
     init: function(el) {
       var section = document.getElementById("transaction-log-section");
       if (section) el.appendChild(section);
@@ -342,7 +351,8 @@ var WIDGET_REGISTRY = {};
   WIDGET_REGISTRY["brokerage-holdings"] = {
     name: "Brokerage Holdings",
     category: "Holdings",
-    sizes: _LARGE, defaultSize: 2,
+    sizes: _TALL, defaultSize: 2,
+    expandable: true,
     init: function(el) {
       var section = document.getElementById("holdings-section");
       if (section) el.appendChild(section);
@@ -354,7 +364,8 @@ var WIDGET_REGISTRY = {};
   WIDGET_REGISTRY["crypto-holdings"] = {
     name: "Crypto Holdings",
     category: "Holdings",
-    sizes: _CHART, defaultSize: 1,
+    sizes: _TALL, defaultSize: 1,
+    expandable: true,
     init: function(el) {
       var section = document.getElementById("crypto-section");
       if (section) el.appendChild(section);
@@ -365,7 +376,7 @@ var WIDGET_REGISTRY = {};
   WIDGET_REGISTRY["physical-metals"] = {
     name: "Physical Metals",
     category: "Holdings",
-    sizes: _COMPACT, defaultSize: 1,
+    sizes: _WIDE, defaultSize: 1,
     init: function(el) {
       var section = document.getElementById("metals-section");
       if (section) el.appendChild(section);
@@ -376,7 +387,7 @@ var WIDGET_REGISTRY = {};
   WIDGET_REGISTRY["dividends-fees"] = {
     name: "Dividends & Fees",
     category: "Holdings",
-    sizes: _CHART, defaultSize: 1,
+    sizes: _WIDE, defaultSize: 1,
     init: function(el) {
       var section = document.getElementById("dividends-section");
       if (section) el.appendChild(section);
@@ -389,7 +400,8 @@ var WIDGET_REGISTRY = {};
   WIDGET_REGISTRY["account-balances"] = {
     name: "Account Balances",
     category: "Balances",
-    sizes: _COMPACT, defaultSize: 1,
+    sizes: _TALL, defaultSize: 1,
+    expandable: true,
     init: function(el) {
       var section = document.getElementById("balances-section");
       if (section) el.appendChild(section);

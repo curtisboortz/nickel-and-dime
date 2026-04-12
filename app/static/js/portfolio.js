@@ -668,8 +668,10 @@ buildDivChart();
       }
     } catch(e) {}
   }
-  restoreWidgetOrder();
-  setupDrag();
+  if (!document.getElementById("dashboard-grid")) {
+    restoreWidgetOrder();
+    setupDrag();
+  }
 })();
 
 /* ── Goal Tracking ── */

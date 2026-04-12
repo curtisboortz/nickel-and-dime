@@ -1,8 +1,10 @@
 /* Nickel&Dime — Dashboard grid controller (gridstack.js).
  *
- * Manages the configurable widget grid on the Summary tab.
- * Loads layout from server, initializes widgets, saves on change.
- * Widgets use preset S/M/L sizes instead of freeform resize.
+ * 8-column square-cell grid.  cellHeight = containerWidth / 8 so every
+ * cell is a perfect square (~120 px on a typical 960 px container).
+ *
+ * Size presets live in widgets.js (_WIDE / _TALL).
+ * Widgets flagged expandable:true auto-grow by 2 rows when content overflows.
  */
 
 var _grid = null;
@@ -10,17 +12,24 @@ var _gridEditMode = false;
 var _gridWidgetIds = [];
 
 var DEFAULT_LAYOUT = [
-  { id: "allocation-donut",    x: 0, y: 0,  w: 6, h: 9  },
-  { id: "allocation-table",    x: 6, y: 0,  w: 6, h: 9  },
-  { id: "monthly-investments", x: 0, y: 9,  w: 6, h: 12 },
-  { id: "watchlist",           x: 6, y: 9,  w: 6, h: 6  },
-  { id: "financial-goals",     x: 6, y: 15, w: 6, h: 6  }
+  { id: "allocation-donut",    x: 0, y: 0, w: 4, h: 4 },
+  { id: "allocation-table",    x: 4, y: 0, w: 4, h: 4 },
+  { id: "monthly-investments", x: 0, y: 4, w: 4, h: 8 },
+  { id: "watchlist",           x: 4, y: 4, w: 4, h: 4 },
+  { id: "financial-goals",     x: 4, y: 8, w: 4, h: 4 }
 ];
 
 (function() {
   "use strict";
 
   var _saveTimer = null;
+  var COLS = 8;
+  var MARGIN = 4;
+
+  function _calcCellH(container) {
+    var w = container.offsetWidth;
+    return Math.round((w - (COLS - 1) * MARGIN) / COLS);
+  }
 
   function _debounceSave() {
     if (_saveTimer) clearTimeout(_saveTimer);
@@ -59,8 +68,7 @@ var DEFAULT_LAYOUT = [
     var idx = _activeSizeIdx(widgetId, w, h);
     var reg = WIDGET_REGISTRY[widgetId];
     if (idx >= 0 && reg && reg.sizes[idx]) {
-      var label = reg.sizes[idx].label.toLowerCase();
-      el.classList.add("gs-size-" + label);
+      el.classList.add("gs-size-" + reg.sizes[idx].label.toLowerCase());
     } else {
       el.classList.add("gs-size-m");
     }
@@ -75,7 +83,7 @@ var DEFAULT_LAYOUT = [
       var active = (s.w === currentW && s.h === currentH) ? " active" : "";
       html += '<button class="gs-size-btn' + active + '" ' +
         'onclick="setWidgetSize(\'' + widgetId + '\',' + i + ')" ' +
-        'title="' + s.w + '×' + s.h + '">' + s.label + '</button>';
+        'title="' + s.w + '\u00d7' + s.h + '">' + s.label + '</button>';
     }
     html += '</div>';
     return html;
@@ -97,6 +105,8 @@ var DEFAULT_LAYOUT = [
     wrapper.setAttribute("gs-x", opts.x != null ? opts.x : "");
     wrapper.setAttribute("gs-y", opts.y != null ? opts.y : "");
 
+    if (reg.expandable) wrapper.classList.add("gs-expandable");
+
     var content = document.createElement("div");
     content.className = "grid-stack-item-content";
 
@@ -117,6 +127,31 @@ var DEFAULT_LAYOUT = [
     _applySizeClass(wrapper, widgetId, w, h);
     return { wrapper: wrapper, body: body };
   }
+
+  /* ── 2-block expansion for expandable widgets ── */
+
+  function _expandIfNeeded(wrapper, body, widgetId) {
+    var reg = WIDGET_REGISTRY[widgetId];
+    if (!reg || !reg.expandable) return;
+    setTimeout(function() {
+      var contentH = body.scrollHeight;
+      var visibleH = body.clientHeight;
+      if (contentH > visibleH + 10) {
+        var node = wrapper.gridstackNode;
+        if (!node) return;
+        var cellH = _grid.getCellHeight();
+        if (!cellH || cellH <= 0) return;
+        var needed = Math.ceil(contentH / cellH);
+        var extra = needed - node.h;
+        if (extra > 0) {
+          extra = Math.ceil(extra / 2) * 2;
+          _grid.update(wrapper, { h: node.h + extra });
+        }
+      }
+    }, 300);
+  }
+
+  /* ── Grid boot ── */
 
   window.initDashboardGrid = function() {
     var container = document.getElementById("dashboard-grid");
@@ -141,10 +176,12 @@ var DEFAULT_LAYOUT = [
   };
 
   function _bootGrid(container, layout) {
+    var cellH = _calcCellH(container);
+
     _grid = GridStack.init({
-      column: 12,
-      cellHeight: 40,
-      margin: 4,
+      column: COLS,
+      cellHeight: cellH,
+      margin: MARGIN,
       animate: true,
       float: false,
       draggable: { handle: ".gs-widget-drag" },
@@ -172,13 +209,27 @@ var DEFAULT_LAYOUT = [
       } catch (e) {
         built.body.innerHTML = '<div style="padding:16px;color:var(--text-muted);font-size:0.82rem;">Widget failed to load.</div>';
       }
+      _expandIfNeeded(built.wrapper, built.body, item.id);
     }
     _grid.commit();
 
     _grid.on("change", _debounceSave);
 
+    window.addEventListener("resize", _onResize);
+
     _updateCatalogStates();
     _applyEditState();
+  }
+
+  var _resizeTimer = null;
+  function _onResize() {
+    if (_resizeTimer) clearTimeout(_resizeTimer);
+    _resizeTimer = setTimeout(function() {
+      if (!_grid) return;
+      var container = document.getElementById("dashboard-grid");
+      if (!container) return;
+      _grid.cellHeight(_calcCellH(container));
+    }, 150);
   }
 
   window.saveDashboardLayout = function() {
@@ -193,8 +244,8 @@ var DEFAULT_LAYOUT = [
         id: gid,
         x: node ? node.x : 0,
         y: node ? node.y : 0,
-        w: node ? node.w : parseInt(el.getAttribute("gs-w")) || 6,
-        h: node ? node.h : parseInt(el.getAttribute("gs-h")) || 9
+        w: node ? node.w : parseInt(el.getAttribute("gs-w")) || 4,
+        h: node ? node.h : parseInt(el.getAttribute("gs-h")) || 4
       });
     });
     if (!layout.length) return;
@@ -228,6 +279,8 @@ var DEFAULT_LAYOUT = [
         for (var j = 0; j < btns.length; j++) {
           btns[j].classList.toggle("active", j === sizeIdx);
         }
+        var body = items[i].querySelector(".gs-widget-body");
+        if (body) _expandIfNeeded(items[i], body, widgetId);
         _debounceSave();
         return;
       }
@@ -253,6 +306,7 @@ var DEFAULT_LAYOUT = [
     } catch (e) {
       built.body.innerHTML = '<div style="padding:16px;color:var(--text-muted);">Widget failed to load.</div>';
     }
+    _expandIfNeeded(built.wrapper, built.body, widgetId);
     saveDashboardLayout();
     _updateCatalogStates();
   };
@@ -318,6 +372,7 @@ var DEFAULT_LAYOUT = [
       _grid.addWidget(built.wrapper);
       _gridWidgetIds.push(item.id);
       try { WIDGET_REGISTRY[item.id].init(built.body); } catch(e) {}
+      _expandIfNeeded(built.wrapper, built.body, item.id);
     }
     _grid.commit();
     saveDashboardLayout();

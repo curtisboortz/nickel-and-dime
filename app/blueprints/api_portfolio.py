@@ -656,7 +656,7 @@ def portfolio_history():
         "1d": 1, "1w": 7, "1m": 30, "3m": 90,
         "1y": 365, "3y": 1095, "5y": 1825,
     }
-    use_intraday = range_param in ("1d", "1w")
+    use_intraday = range_param == "1d"
 
     try:
         pv = compute_portfolio_value(current_user.id)

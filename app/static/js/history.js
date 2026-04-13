@@ -8,11 +8,8 @@ var _histChartType = "line";
 var _histRange = "all";
 
 function _histAggregateOHLC(data, range) {
-  var bucketMs;
-  if (range === "1d") bucketMs = 3600000;       // 1 hour
-  else if (range === "1w") bucketMs = 86400000;  // 1 day
-  else if (range === "1m") bucketMs = 86400000;
-  else return null;
+  if (range !== "1d") return null;
+  var bucketMs = 3600000; // 1-hour candles
 
   var buckets = {};
   for (var i = 0; i < data.length; i++) {
@@ -31,13 +28,20 @@ function _histAggregateOHLC(data, range) {
     }
   }
   var keys = Object.keys(buckets).sort(function(a, b) { return +a - +b; });
-  return keys.map(function(k) { return buckets[k]; });
+  var result = keys.map(function(k) { return buckets[k]; });
+
+  for (var j = 1; j < result.length; j++) {
+    result[j].o = result[j - 1].c;
+    result[j].l = Math.min(result[j].l, result[j].o);
+    result[j].h = Math.max(result[j].h, result[j].o);
+  }
+  return result;
 }
 
 function _histTimeUnit(range, pointCount) {
   switch (range) {
     case "1d": return "hour";
-    case "1w": return pointCount > 14 ? "hour" : "day";
+    case "1w": return "day";
     case "1m": return "day";
     case "3m": return pointCount > 90 ? "week" : "day";
     case "1y": return "week";
@@ -133,6 +137,11 @@ function buildHistoryChart(metric) {
           c: r.close || r.total,
         };
       });
+      for (var ci = 1; ci < ohlcData.length; ci++) {
+        ohlcData[ci].o = ohlcData[ci - 1].c;
+        ohlcData[ci].l = Math.min(ohlcData[ci].l, ohlcData[ci].o);
+        ohlcData[ci].h = Math.max(ohlcData[ci].h, ohlcData[ci].o);
+      }
     }
     var _t = ndChartTheme();
     window.historyChart = new Chart(ctx, {
@@ -159,7 +168,7 @@ function buildHistoryChart(metric) {
             var d = dp.raw;
             var dt = new Date(d.x);
             var dStr = dt.toLocaleDateString(undefined, {month:"short", day:"numeric", year:"numeric"});
-            if (_histRange === "1d" || _histRange === "1w" || _histRange === "1m") {
+            if (_histRange === "1d") {
               dStr += "  " + dt.toLocaleTimeString(undefined, {hour:"numeric", minute:"2-digit"});
             }
             var f = function(v) { return "$" + v.toLocaleString(undefined, {maximumFractionDigits:0}); };
@@ -210,7 +219,7 @@ function buildHistoryChart(metric) {
             try {
               var _dt = new Date(dp.raw.x);
               dStr = _dt.toLocaleDateString(undefined, {month:"short", day:"numeric", year:"numeric"});
-              if (_histRange === "1d" || _histRange === "1w" || _histRange === "1m") {
+              if (_histRange === "1d") {
                 dStr += "  " + _dt.toLocaleTimeString(undefined, {hour:"numeric", minute:"2-digit"});
               }
             } catch(e){}

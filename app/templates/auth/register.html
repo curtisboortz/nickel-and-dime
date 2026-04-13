@@ -28,7 +28,11 @@
   <div class="auth-form-panel">
     <div class="auth-form-wrap">
       <h1>Create your account</h1>
+      {% if request.args.get('promo') %}
+      <p class="auth-form-sub" style="color:var(--accent-primary)">You've got an invite! Enter the promo code below to unlock your extended trial.</p>
+      {% else %}
       <p class="auth-form-sub">14-day Pro trial starts immediately</p>
+      {% endif %}
 
       {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
@@ -49,6 +53,11 @@
 
         <label class="auth-label" for="password2">Confirm password</label>
         <input type="password" id="password2" name="password2" class="auth-input" required minlength="8" placeholder="Confirm password">
+
+        <div style="margin-top:6px">
+          <label class="auth-label" for="promo_code">Promo code <span style="opacity:.5;font-weight:400">(optional)</span></label>
+          <input type="text" id="promo_code" name="promo_code" class="auth-input" placeholder="Enter promo code" value="{{ request.args.get('promo','') }}" style="text-transform:uppercase">
+        </div>
 
         <button type="submit" class="auth-btn">Start Free Trial</button>
       </form>

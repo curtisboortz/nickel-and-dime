@@ -3,7 +3,7 @@
 Import all models here so Alembic / Flask-Migrate can discover them.
 """
 
-from .user import User, Subscription  # noqa: F401
+from .user import User, Subscription, PromoCode  # noqa: F401
 from .portfolio import (  # noqa: F401
     Holding, CryptoHolding, PhysicalMetal, Account, BlendedAccount,
     InvestmentTransaction, TaxLot,

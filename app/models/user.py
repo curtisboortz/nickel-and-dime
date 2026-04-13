@@ -53,6 +53,35 @@ class User(UserMixin, db.Model):
         return f"<User {self.email} ({self.plan})>"
 
 
+class PromoCode(db.Model):
+    __tablename__ = "promo_codes"
+
+    id = db.Column(db.Integer, primary_key=True)
+    code = db.Column(db.String(50), unique=True, nullable=False, index=True)
+    trial_days = db.Column(db.Integer, nullable=False, default=14)
+    max_uses = db.Column(db.Integer, nullable=True)
+    times_used = db.Column(db.Integer, nullable=False, default=0)
+    expires_at = db.Column(db.DateTime, nullable=True)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    active = db.Column(db.Boolean, default=True)
+    note = db.Column(db.String(255), nullable=True)
+
+    @property
+    def is_valid(self):
+        if not self.active:
+            return False
+        if self.max_uses and self.times_used >= self.max_uses:
+            return False
+        if self.expires_at:
+            exp = self.expires_at if self.expires_at.tzinfo else self.expires_at.replace(tzinfo=timezone.utc)
+            if exp < datetime.now(timezone.utc):
+                return False
+        return True
+
+    def __repr__(self):
+        return f"<PromoCode {self.code} ({self.trial_days}d)>"
+
+
 class Subscription(db.Model):
     __tablename__ = "subscriptions"
 

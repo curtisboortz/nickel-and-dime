@@ -8,7 +8,7 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_user, logout_user, login_required, current_user
 
 from ..extensions import db, bcrypt, limiter
-from ..models.user import User, Subscription
+from ..models.user import User, Subscription, PromoCode
 from ..models.settings import UserSettings
 
 auth_bp = Blueprint("auth", __name__)
@@ -37,6 +37,16 @@ def register():
             flash("An account with that email already exists.", "error")
             return render_template("auth/register.html")
 
+        promo_code_str = request.form.get("promo_code", "").strip().upper()
+        trial_days = 14
+        promo = None
+        if promo_code_str:
+            promo = PromoCode.query.filter_by(code=promo_code_str).first()
+            if not promo or not promo.is_valid:
+                flash("Invalid or expired promo code.", "error")
+                return render_template("auth/register.html")
+            trial_days = promo.trial_days
+
         user = User(email=email, name=name or email.split("@")[0], plan="pro")
         user.set_password(password)
 
@@ -48,12 +58,15 @@ def register():
         settings = UserSettings(user=user)
         db.session.add(settings)
 
-        trial_end = datetime.now(timezone.utc) + timedelta(days=14)
+        trial_end = datetime.now(timezone.utc) + timedelta(days=trial_days)
         sub = Subscription(
             user=user, plan="pro", status="trialing",
             current_period_end=trial_end,
         )
         db.session.add(sub)
+
+        if promo:
+            promo.times_used += 1
 
         db.session.commit()
 
@@ -62,8 +75,9 @@ def register():
         send_welcome(user)
 
         login_user(user)
+        trial_label = f"{trial_days}-day" if trial_days != 90 else "3-month"
         flash(
-            "Welcome! Your 14-day Pro trial is active. "
+            f"Welcome! Your {trial_label} Pro trial is active. "
             "Check your email to verify your address.",
             "success",
         )

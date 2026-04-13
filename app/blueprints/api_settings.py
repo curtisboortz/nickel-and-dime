@@ -210,3 +210,69 @@ def mark_onboarding_complete():
     settings.onboarding_completed = True
     db.session.commit()
     return jsonify({"success": True})
+
+
+# ── Admin: Promo Codes ──────────────────────────────────────────────
+
+@api_settings_bp.route("/admin/promo-codes", methods=["GET"])
+@login_required
+def list_promo_codes():
+    if not getattr(current_user, "is_admin", False):
+        return jsonify({"error": "forbidden"}), 403
+    from ..models.user import PromoCode
+    codes = PromoCode.query.order_by(PromoCode.created_at.desc()).all()
+    return jsonify({"codes": [
+        {
+            "id": c.id, "code": c.code, "trial_days": c.trial_days,
+            "max_uses": c.max_uses, "times_used": c.times_used,
+            "expires_at": c.expires_at.isoformat() if c.expires_at else None,
+            "active": c.active, "is_valid": c.is_valid, "note": c.note,
+        } for c in codes
+    ]})
+
+
+@api_settings_bp.route("/admin/promo-codes", methods=["POST"])
+@login_required
+def create_promo_code():
+    if not getattr(current_user, "is_admin", False):
+        return jsonify({"error": "forbidden"}), 403
+    from datetime import datetime as _dt, timezone as _tz
+    from ..models.user import PromoCode
+
+    data = flask_request.get_json(silent=True) or {}
+    code = (data.get("code") or "").strip().upper()
+    if not code:
+        return jsonify({"error": "code is required"}), 400
+    if PromoCode.query.filter_by(code=code).first():
+        return jsonify({"error": "code already exists"}), 409
+
+    trial_days = int(data.get("trial_days", 14))
+    max_uses = data.get("max_uses")
+    expires_at = None
+    if data.get("expires_at"):
+        try:
+            expires_at = _dt.fromisoformat(data["expires_at"]).replace(tzinfo=_tz.utc)
+        except (ValueError, TypeError):
+            pass
+
+    promo = PromoCode(
+        code=code, trial_days=trial_days,
+        max_uses=int(max_uses) if max_uses else None,
+        expires_at=expires_at, active=True,
+        note=data.get("note", ""),
+    )
+    db.session.add(promo)
+    db.session.commit()
+    return jsonify({"ok": True, "id": promo.id, "code": promo.code}), 201
+
+
+@api_settings_bp.route("/admin/promo-codes/<int:promo_id>", methods=["DELETE"])
+@login_required
+def deactivate_promo_code(promo_id):
+    if not getattr(current_user, "is_admin", False):
+        return jsonify({"error": "forbidden"}), 403
+    from ..models.user import PromoCode
+    promo = PromoCode.query.get_or_404(promo_id)
+    promo.active = False
+    db.session.commit()
+    return jsonify({"ok": True})

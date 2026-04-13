@@ -58,7 +58,7 @@ def create_checkout():
     if billing_cycle == "annual":
         price_id = current_app.config.get("STRIPE_PRO_ANNUAL_PRICE_ID")
     else:
-        price_id = current_app.config.get("STRIPE_PRO_PRICE_ID")
+        price_id = current_app.config.get("STRIPE_PRO_MONTHLY_PRICE_ID")
 
     if not price_id:
         return jsonify({"error": "No Pro price configured."}), 503

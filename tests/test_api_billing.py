@@ -35,7 +35,7 @@ class TestCheckout:
 
     def test_checkout_already_pro(self, pro_client, app):
         app.config["STRIPE_SECRET_KEY"] = "sk_test_fake"
-        app.config["STRIPE_PRO_PRICE_ID"] = "price_fake"
+        app.config["STRIPE_PRO_MONTHLY_PRICE_ID"] = "price_fake"
         resp = pro_client.post("/api/create-checkout")
         assert resp.status_code == 400
 

@@ -52,7 +52,7 @@ def get_ai_advice(user_id, overrides=None):
             {"role": "user", "content": portfolio_context},
         ],
         temperature=0.6,
-        max_tokens=2048,
+        max_completion_tokens=2048,
     )
 
     advice_text = response.choices[0].message.content.strip()

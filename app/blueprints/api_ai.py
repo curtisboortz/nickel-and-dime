@@ -72,7 +72,7 @@ def ai_chat():
                     messages=messages,
                     tools=TOOL_DEFINITIONS,
                     temperature=0.6,
-                    max_tokens=4096,
+                    max_completion_tokens=4096,
                     stream=True,
                 )
 

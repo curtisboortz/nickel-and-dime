@@ -112,9 +112,21 @@
         }
       }
     }
+    _updateAlertCurrentPrices();
     checkAndFireAlerts();
   }
   window.updateWatchlistPrices = updateWatchlistPrices;
+
+  function _updateAlertCurrentPrices() {
+    var els = document.querySelectorAll("[data-alert-price]");
+    for (var i = 0; i < els.length; i++) {
+      var ticker = els[i].getAttribute("data-alert-price");
+      var price = _wlPriceForTicker(ticker);
+      if (price != null) {
+        els[i].textContent = "current: " + _formatPrice(price);
+      }
+    }
+  }
 
   // ── Add item ──
 
@@ -230,6 +242,18 @@
 
   // ── Alerts list ──
 
+  function _formatPrice(val) {
+    if (val == null) return "--";
+    return "$" + Number(val).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
+  }
+
+  function _wlPriceForTicker(ticker) {
+    for (var i = 0; i < _wlData.length; i++) {
+      if (_wlData[i].ticker === ticker) return _wlData[i].price;
+    }
+    return null;
+  }
+
   function loadAlertsList() {
     fetch("/api/price-alerts").then(ndCheckProResponse).then(function(r) { return r.json(); }).then(function(d) {
       var alerts = d.alerts || [];
@@ -244,14 +268,13 @@
       var html = "";
       for (var i = 0; i < active.length; i++) {
         var a = active[i];
-        var curStr = a.current_price != null
-          ? "$" + Number(a.current_price).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})
-          : "--";
+        var wlPrice = _wlPriceForTicker(a.ticker);
+        var bestPrice = wlPrice != null ? wlPrice : a.current_price;
         html += '<div class="wl-alert-row">';
         html += '<span class="wl-alert-ticker">' + a.ticker + '</span>';
         html += '<span class="wl-alert-cond">' + a.condition + '</span>';
         html += '<span class="wl-alert-target">$' + a.target_price + '</span>';
-        html += '<span class="wl-alert-current">current: ' + curStr + '</span>';
+        html += '<span class="wl-alert-current" data-alert-price="' + a.ticker + '">current: ' + _formatPrice(bestPrice) + '</span>';
         html += '<button class="wl-btn remove" onclick="wlDeleteAlert(' + a.id + ')" title="Remove">&times;</button>';
         html += '</div>';
       }

@@ -179,6 +179,23 @@ def save_digest_prefs():
     return jsonify({"ok": True})
 
 
+@api_settings_bp.route("/settings/digest/test", methods=["POST"])
+@login_required
+@requires_pro
+def test_digest():
+    """Send a test portfolio digest email to the current user."""
+    from ..services.digest_service import send_digest
+    settings = UserSettings.query.filter_by(user_id=current_user.id).first()
+    if not settings:
+        settings = UserSettings(user_id=current_user.id)
+        db.session.add(settings)
+        db.session.commit()
+    ok = send_digest(current_user, settings)
+    if ok:
+        return jsonify({"ok": True, "message": "Test digest sent to " + current_user.email})
+    return jsonify({"ok": False, "error": "Failed to send digest. Check email config."}), 500
+
+
 @api_settings_bp.route(
     "/settings/onboarding-complete", methods=["POST"]
 )

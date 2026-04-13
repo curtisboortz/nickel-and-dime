@@ -1393,7 +1393,9 @@ html.light .watchlist-table tbody tr:hover { background:rgba(0,0,0,0.02); }
   transition:color 0.12s, background 0.12s; line-height:1;
 }
 .wl-btn:hover { color:var(--accent-primary); background:rgba(212,160,23,0.08); }
+.wl-btn .wl-bell-icon { fill:currentColor; display:block; }
 .wl-btn.has-alert { color:var(--accent-primary); }
+.pcm-wl-btn .wl-bell-icon { fill:currentColor; display:inline-block; }
 .wl-btn.remove:hover { color:var(--danger); background:rgba(239,68,68,0.08); }
 .wl-empty {
   text-align:center; padding:28px 16px; color:var(--text-muted);

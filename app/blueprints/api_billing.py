@@ -52,7 +52,14 @@ def create_checkout():
     if not stripe:
         return jsonify({"error": "Billing is not configured yet."}), 503
 
-    price_id = current_app.config.get("STRIPE_PRO_PRICE_ID")
+    data = flask_request.get_json(silent=True) or {}
+    billing_cycle = data.get("plan", "monthly")
+
+    if billing_cycle == "annual":
+        price_id = current_app.config.get("STRIPE_PRO_ANNUAL_PRICE_ID")
+    else:
+        price_id = current_app.config.get("STRIPE_PRO_PRICE_ID")
+
     if not price_id:
         return jsonify({"error": "No Pro price configured."}), 503
 

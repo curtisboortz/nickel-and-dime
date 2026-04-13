@@ -446,6 +446,27 @@ function redeemReferral() {
   toggle();
 })();
 
+function sendTestDigest() {
+  var btn = document.getElementById("test-digest-btn");
+  if (btn) { btn.disabled = true; btn.textContent = "Sending..."; }
+  fetch("/api/settings/digest/test", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" }
+  })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      var t = document.createElement("div");
+      t.className = "toast";
+      t.textContent = d.ok ? (d.message || "Test digest sent!") : (d.error || "Failed to send");
+      document.body.appendChild(t);
+      setTimeout(function() { t.remove(); }, 4000);
+    })
+    .catch(function() {})
+    .finally(function() {
+      if (btn) { btn.disabled = false; btn.textContent = "Send Test"; }
+    });
+}
+
 function saveDigestPrefs() {
   var enabled = document.getElementById("digest-enabled");
   var freq = document.getElementById("digest-frequency");

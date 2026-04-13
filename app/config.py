@@ -13,6 +13,7 @@ class Config:
     STRIPE_PUBLISHABLE_KEY = os.environ.get("STRIPE_PUBLISHABLE_KEY", "")
     STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
     STRIPE_PRO_PRICE_ID = os.environ.get("STRIPE_PRO_PRICE_ID", "")
+    STRIPE_PRO_ANNUAL_PRICE_ID = os.environ.get("STRIPE_PRO_ANNUAL_PRICE_ID", "")
 
     # External API keys
     FRED_API_KEY = os.environ.get("FRED_API_KEY", "")

@@ -26,6 +26,16 @@
   <p class="landing-section-label">Pricing</p>
   <h2 class="landing-section-title">Choose your plan</h2>
 
+  <!-- Billing toggle -->
+  <div style="display:flex;justify-content:center;margin-bottom:32px;">
+    <div id="billing-toggle" style="display:inline-flex;background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:10px;padding:4px;gap:2px;">
+      <button type="button" class="billing-opt active" data-plan="monthly" onclick="setBilling('monthly')" style="padding:8px 20px;border-radius:8px;font-size:0.85rem;font-weight:600;border:none;cursor:pointer;transition:all 0.2s;">Monthly</button>
+      <button type="button" class="billing-opt" data-plan="annual" onclick="setBilling('annual')" style="padding:8px 20px;border-radius:8px;font-size:0.85rem;font-weight:600;border:none;cursor:pointer;transition:all 0.2s;">
+        Annual <span style="font-size:0.7rem;font-weight:700;color:#34d399;margin-left:4px;">2 months free</span>
+      </button>
+    </div>
+  </div>
+
   {% if user and user.plan == 'pro' %}
   <div style="text-align:center;margin-bottom:32px;padding:16px;background:rgba(52,211,153,0.1);border:1px solid rgba(52,211,153,0.2);border-radius:12px;">
     <p style="color:var(--success);font-weight:600;">You're on the Pro plan</p>
@@ -64,7 +74,8 @@
       <div class="price-badge">Most Popular</div>
       <h3>Pro</h3>
       <p class="price-desc">For serious self-directed investors</p>
-      <div class="price-amount">$15<span>/mo</span></div>
+      <div class="price-amount" id="pro-price">$15<span>/mo</span></div>
+      <div id="pro-annual-note" style="display:none;font-size:0.8rem;color:var(--text-muted);margin-top:-4px;margin-bottom:8px;">$144/year &middot; saves $36</div>
       <ul class="price-features">
         <li>Everything in Free</li>
         <li>AI Advisor powered by GPT-5.4</li>
@@ -82,14 +93,47 @@
       <span class="price-cta primary" style="text-align:center;cursor:default;">Current Plan</span>
       {% else %}
       <button class="price-cta primary" onclick="startCheckout()">Start 14-Day Free Trial</button>
+      <p id="pro-guarantee" style="font-size:0.72rem;color:var(--text-muted);text-align:center;margin-top:8px;">Cancel anytime. No commitment.</p>
       {% endif %}
     </div>
   </div>
 </div>
 
 <script>
+var _billingPlan = "monthly";
+
+function setBilling(plan) {
+  _billingPlan = plan;
+  var price = document.getElementById("pro-price");
+  var note = document.getElementById("pro-annual-note");
+  var opts = document.querySelectorAll(".billing-opt");
+  opts.forEach(function(b) {
+    if (b.dataset.plan === plan) {
+      b.classList.add("active");
+      b.style.background = "var(--accent-primary)";
+      b.style.color = "#09090b";
+    } else {
+      b.classList.remove("active");
+      b.style.background = "transparent";
+      b.style.color = "var(--text-secondary)";
+    }
+  });
+  if (plan === "annual") {
+    price.innerHTML = '$12<span>/mo</span>';
+    note.style.display = "";
+  } else {
+    price.innerHTML = '$15<span>/mo</span>';
+    note.style.display = "none";
+  }
+}
+setBilling("monthly");
+
 function startCheckout() {
-  fetch("/api/create-checkout", { method: "POST", headers: { "Content-Type": "application/json" } })
+  fetch("/api/create-checkout", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ plan: _billingPlan })
+  })
     .then(function(r) { return r.json(); })
     .then(function(d) {
       if (d.url) window.location.href = d.url;

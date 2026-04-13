@@ -1515,7 +1515,7 @@ function obFinish() {
     </div>
     <div class="pcm-wl-actions" id="pcm-wl-actions">
       <button type="button" class="pcm-wl-btn" id="pcm-wl-add" onclick="pcmAddToWatchlist()" title="Add to Watchlist">&#9734; Watchlist</button>
-      <button type="button" class="pcm-wl-btn" id="pcm-alert-btn" onclick="pcmShowAlertForm()" title="Set Price Alert">&#128276; Alert</button>
+      <button type="button" class="pcm-wl-btn" id="pcm-alert-btn" onclick="pcmShowAlertForm()" title="Set Price Alert"><svg class="wl-bell-icon" viewBox="0 0 24 24" width="13" height="13" style="vertical-align:-1px;margin-right:3px;"><path d="M12 2C10.9 2 10 2.9 10 4c0 .3.1.6.2.9C7.7 5.6 6 7.6 6 10v5l-2 2v1h16v-1l-2-2v-5c0-2.4-1.7-4.4-4.2-5.1.1-.3.2-.6.2-.9 0-1.1-.9-2-2-2zm-2 18c0 1.1.9 2 2 2s2-.9 2-2h-4z"/></svg>Alert</button>
     </div>
     <div id="pcm-alert-form-inline" class="wl-alert-form" style="display:none;">
       <span style="font-weight:600;" id="pcm-alert-ticker-label"></span>
@@ -1680,7 +1680,8 @@ function obFinish() {
             </select>
           </div>
         </div>
-        <div style="display:flex;justify-content:flex-end;margin-top:4px;">
+        <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:4px;">
+          <button type="button" class="secondary" onclick="sendTestDigest()" id="test-digest-btn" style="padding:8px 14px;font-size:0.82rem;">Send Test</button>
           <button type="button" onclick="saveDigestPrefs()" style="padding:8px 18px;font-size:0.82rem;">Save Preferences</button>
         </div>
       </div>

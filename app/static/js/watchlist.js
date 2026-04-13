@@ -61,7 +61,7 @@
       html += '<td class="wl-change ' + chgClass + '" data-wl-change="' + item.ticker + '">' + chgStr + '</td>';
       html += '<td class="wl-spark-cell"><canvas class="pulse-spark" id="wl-spark-' + item.id + '" width="60" height="24"></canvas></td>';
       html += '<td><div class="wl-actions">';
-      html += '<button class="wl-btn' + (hasAlert ? " has-alert" : "") + '" onclick="wlShowAlertForm(\'' + item.ticker + '\')" title="Set alert">&#128276;</button>';
+      html += '<button class="wl-btn' + (hasAlert ? " has-alert" : "") + '" onclick="wlShowAlertForm(\'' + item.ticker + '\')" title="Set alert"><svg class="wl-bell-icon" viewBox="0 0 24 24" width="14" height="14"><path d="M12 2C10.9 2 10 2.9 10 4c0 .3.1.6.2.9C7.7 5.6 6 7.6 6 10v5l-2 2v1h16v-1l-2-2v-5c0-2.4-1.7-4.4-4.2-5.1.1-.3.2-.6.2-.9 0-1.1-.9-2-2-2zm-2 18c0 1.1.9 2 2 2s2-.9 2-2h-4z"/></svg></button>';
       html += '<button class="wl-btn remove" onclick="wlRemoveItem(' + item.id + ')" title="Remove">&times;</button>';
       html += '</div></td>';
       html += '</tr>';
@@ -251,7 +251,7 @@
         html += '<span class="wl-alert-ticker">' + a.ticker + '</span>';
         html += '<span class="wl-alert-cond">' + a.condition + '</span>';
         html += '<span class="wl-alert-target">$' + a.target_price + '</span>';
-        html += '<span class="wl-alert-current">now ' + curStr + '</span>';
+        html += '<span class="wl-alert-current">current: ' + curStr + '</span>';
         html += '<button class="wl-btn remove" onclick="wlDeleteAlert(' + a.id + ')" title="Remove">&times;</button>';
         html += '</div>';
       }

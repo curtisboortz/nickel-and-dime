@@ -7,6 +7,33 @@ function _histDateTs(d) {
 var _histChartType = "line";
 var _histRange = "all";
 
+function _histAggregateOHLC(data, range) {
+  var bucketMs;
+  if (range === "1d") bucketMs = 3600000;       // 1 hour
+  else if (range === "1w") bucketMs = 86400000;  // 1 day
+  else if (range === "1m") bucketMs = 86400000;
+  else return null;
+
+  var buckets = {};
+  for (var i = 0; i < data.length; i++) {
+    var r = data[i];
+    var val = r.close || r.total;
+    if (!val) continue;
+    var ts = _histDateTs(r.date);
+    var key = Math.floor(ts / bucketMs) * bucketMs;
+    if (!buckets[key]) {
+      buckets[key] = { o: val, h: val, l: val, c: val, x: key };
+    } else {
+      var b = buckets[key];
+      b.h = Math.max(b.h, val);
+      b.l = Math.min(b.l, val);
+      b.c = val;
+    }
+  }
+  var keys = Object.keys(buckets).sort(function(a, b) { return +a - +b; });
+  return keys.map(function(k) { return buckets[k]; });
+}
+
 function _histTimeUnit(range, pointCount) {
   switch (range) {
     case "1d": return "hour";
@@ -92,16 +119,21 @@ function buildHistoryChart(metric) {
   var labels = PRICE_HISTORY_DATA.map(function(r) { return r.date; });
 
   if (_histChartType === "candlestick" && PRICE_HISTORY_DATA.length >= 2) {
-    // Candlestick mode using OHLC data with timestamps
-    var ohlcData = PRICE_HISTORY_DATA.map(function(r) {
-      return {
-        x: _histDateTs(r.date),
-        o: r.open || r.total,
-        h: r.high || r.total,
-        l: r.low || r.total,
-        c: r.close || r.total,
-      };
-    });
+    var aggregated = _histAggregateOHLC(PRICE_HISTORY_DATA, _histRange);
+    var ohlcData;
+    if (aggregated && aggregated.length >= 2) {
+      ohlcData = aggregated;
+    } else {
+      ohlcData = PRICE_HISTORY_DATA.map(function(r) {
+        return {
+          x: _histDateTs(r.date),
+          o: r.open || r.total,
+          h: r.high || r.total,
+          l: r.low || r.total,
+          c: r.close || r.total,
+        };
+      });
+    }
     var _t = ndChartTheme();
     window.historyChart = new Chart(ctx, {
       type: "candlestick",
@@ -127,6 +159,9 @@ function buildHistoryChart(metric) {
             var d = dp.raw;
             var dt = new Date(d.x);
             var dStr = dt.toLocaleDateString(undefined, {month:"short", day:"numeric", year:"numeric"});
+            if (_histRange === "1d" || _histRange === "1w" || _histRange === "1m") {
+              dStr += "  " + dt.toLocaleTimeString(undefined, {hour:"numeric", minute:"2-digit"});
+            }
             var f = function(v) { return "$" + v.toLocaleString(undefined, {maximumFractionDigits:0}); };
             var chg = d.c - d.o;
             var color = chg >= 0 ? _t.success : _t.danger;
@@ -172,7 +207,13 @@ function buildHistoryChart(metric) {
             var val = dp.raw.y;
             var r = PRICE_HISTORY_DATA[dp.dataIndex];
             var dStr = dp.raw.x;
-            try { dStr = new Date(dp.raw.x).toLocaleDateString(undefined, {month:"short", day:"numeric", year:"numeric"}); } catch(e){}
+            try {
+              var _dt = new Date(dp.raw.x);
+              dStr = _dt.toLocaleDateString(undefined, {month:"short", day:"numeric", year:"numeric"});
+              if (_histRange === "1d" || _histRange === "1w" || _histRange === "1m") {
+                dStr += "  " + _dt.toLocaleTimeString(undefined, {hour:"numeric", minute:"2-digit"});
+              }
+            } catch(e){}
             if (r && r.open) {
               el.innerHTML = '<span style="color:' + _t.textBright + '">' + dStr + '</span>'
                 + '&ensp;' + fmt(val)

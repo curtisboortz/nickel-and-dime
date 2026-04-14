@@ -86,6 +86,7 @@ def _init_extensions(app):
                 "'unsafe-inline'",
                 "https://js.stripe.com",
                 "https://cdn.jsdelivr.net",
+                "https://cdn.plaid.com",
                 "https://js.hcaptcha.com",
                 "https://newassets.hcaptcha.com",
             ],
@@ -111,6 +112,7 @@ def _init_extensions(app):
                 "https://production.plaid.com",
                 "https://sandbox.plaid.com",
                 "https://api.hcaptcha.com",
+                "https://cdn.jsdelivr.net",
             ],
             "frame-src": [
                 "'self'",
@@ -125,7 +127,6 @@ def _init_extensions(app):
             app,
             force_https=False,
             content_security_policy=csp,
-            content_security_policy_nonce_in=["script-src"],
             session_cookie_secure=not app.debug,
             strict_transport_security=not app.debug,
             strict_transport_security_max_age=31536000,

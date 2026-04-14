@@ -43,7 +43,6 @@ class UserSettings(db.Model):
     # Encrypted API keys for optional user-provided integrations
     coinbase_key_name = db.Column(db.String(255), nullable=True)
     coinbase_private_key = db.Column(db.Text, nullable=True)
-    goldapi_key = db.Column(db.String(255), nullable=True)
 
     # Email digest preferences (Pro only)
     digest_enabled = db.Column(db.Boolean, default=False)

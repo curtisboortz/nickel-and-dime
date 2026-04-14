@@ -4,22 +4,114 @@ Link token creation, public token exchange, account listing,
 manual sync, disconnect, and webhook receiver.
 """
 
+import hashlib
+import hmac
+import json
 import logging
+import os
+import time
 
+import requests as http_requests
 from flask import Blueprint, jsonify, request as flask_request
 from flask_login import login_required, current_user
 
 from ..extensions import csrf, db
 from ..models.plaid import PlaidItem
-from ..utils.auth import requires_pro
+from ..utils.auth import requires_pro, requires_mfa_recent
+from ..utils.audit import log_event
 
 api_plaid_bp = Blueprint("api_plaid", __name__)
 log = logging.getLogger(__name__)
+
+_jwk_cache: dict = {}
+
+
+def _verify_plaid_webhook(request) -> bool:
+    """Verify Plaid webhook signature using JWK-based JWT verification.
+
+    Returns True if verification passes or if Plaid credentials are not
+    configured (allows local/sandbox development without verification).
+    Returns False if verification fails.
+    """
+    from jose import jwt as jose_jwt, JWTError
+
+    client_id = os.environ.get("PLAID_CLIENT_ID", "")
+    secret = os.environ.get("PLAID_SECRET", "")
+    if not client_id or not secret:
+        return True
+
+    signed_jwt = request.headers.get("Plaid-Verification")
+    if not signed_jwt:
+        log.warning("Plaid webhook missing Plaid-Verification header")
+        return False
+
+    try:
+        unverified_header = jose_jwt.get_unverified_header(signed_jwt)
+    except JWTError:
+        log.warning("Plaid webhook: invalid JWT header")
+        return False
+
+    kid = unverified_header.get("kid")
+    if not kid:
+        log.warning("Plaid webhook: JWT header missing kid")
+        return False
+
+    if kid not in _jwk_cache or (
+        _jwk_cache[kid].get("expired_at") is not None
+    ):
+        env_name = os.environ.get("PLAID_ENV", "sandbox").lower()
+        base_urls = {
+            "sandbox": "https://sandbox.plaid.com",
+            "development": "https://development.plaid.com",
+            "production": "https://production.plaid.com",
+        }
+        base_url = base_urls.get(env_name, "https://sandbox.plaid.com")
+        try:
+            resp = http_requests.post(
+                f"{base_url}/webhook_verification_key/get",
+                json={"client_id": client_id, "secret": secret, "key_id": kid},
+                timeout=10,
+            )
+            if resp.status_code != 200:
+                log.warning("Plaid JWK fetch failed: %s", resp.status_code)
+                return False
+            key_data = resp.json().get("key", {})
+            _jwk_cache[kid] = key_data
+        except Exception:
+            log.exception("Plaid JWK fetch error")
+            return False
+
+    key = _jwk_cache.get(kid)
+    if not key:
+        return False
+
+    if key.get("expired_at") is not None:
+        log.warning("Plaid webhook: JWK key %s is expired", kid)
+        return False
+
+    try:
+        claims = jose_jwt.decode(signed_jwt, key, algorithms=["ES256"])
+    except JWTError:
+        log.warning("Plaid webhook: JWT signature verification failed")
+        return False
+
+    if claims.get("iat", 0) < time.time() - 5 * 60:
+        log.warning("Plaid webhook: JWT is too old (iat=%s)", claims.get("iat"))
+        return False
+
+    body_hash = hashlib.sha256(request.get_data()).hexdigest()
+    claimed_hash = claims.get("request_body_sha256", "")
+    if not hmac.compare_digest(body_hash, claimed_hash):
+        log.warning("Plaid webhook: body hash mismatch")
+        return False
+
+    return True
 
 
 @api_plaid_bp.route("/plaid/link-token", methods=["POST"])
 @login_required
 @requires_pro
+@requires_mfa_recent
 def create_link_token():
     """Create a Plaid Link token for the current user."""
     from ..services.plaid_service import create_link_token as _create
@@ -27,8 +119,9 @@ def create_link_token():
     try:
         result = _create(current_user.id)
         return jsonify({"link_token": result.get("link_token")})
-    except RuntimeError as e:
-        return jsonify({"error": str(e)}), 500
+    except RuntimeError:
+        log.exception("Link token creation failed (config error)")
+        return jsonify({"error": "Failed to create link token"}), 500
     except Exception as e:
         log.error("Link token creation failed: %s", e)
         return jsonify({"error": "Failed to create link token"}), 500
@@ -37,6 +130,7 @@ def create_link_token():
 @api_plaid_bp.route("/plaid/exchange-token", methods=["POST"])
 @login_required
 @requires_pro
+@requires_mfa_recent
 def exchange_token():
     """Exchange a Plaid public token for an access token and start initial sync."""
     from ..services.plaid_service import exchange_public_token, sync_plaid_item
@@ -51,6 +145,7 @@ def exchange_token():
     try:
         item = exchange_public_token(current_user.id, public_token, metadata)
         result = sync_plaid_item(current_user.id, item)
+        log_event("plaid_linked", detail={"institution": item.institution_name})
         return jsonify({
             "success": True,
             "item_id": item.id,
@@ -126,6 +221,7 @@ def disconnect_account(item_id):
 
     try:
         remove_item(item)
+        log_event("plaid_unlinked", detail={"institution": item.institution_name})
         return jsonify({"success": True})
     except Exception as e:
         log.error("Plaid disconnect failed for item %d: %s", item_id, e)
@@ -135,11 +231,10 @@ def disconnect_account(item_id):
 @api_plaid_bp.route("/plaid/webhook", methods=["POST"])
 @csrf.exempt
 def plaid_webhook():
-    """Receive Plaid webhooks for item status and data updates.
+    """Receive Plaid webhooks for item status and data updates."""
+    if not _verify_plaid_webhook(flask_request):
+        return jsonify({"error": "Invalid webhook signature"}), 401
 
-    Plaid signs webhooks with JWKs but for MVP we just process known types.
-    In production, verify the webhook signature.
-    """
     data = flask_request.get_json(silent=True) or {}
     webhook_type = data.get("webhook_type", "")
     webhook_code = data.get("webhook_code", "")

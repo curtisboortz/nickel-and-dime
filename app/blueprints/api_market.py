@@ -508,8 +508,10 @@ def refresh_prices():
         refresh_all_prices()
         snapshot_portfolio(current_user.id)
         return jsonify({"success": True})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    except Exception:
+        import logging
+        logging.getLogger(__name__).exception("Price refresh failed")
+        return jsonify({"error": "Price refresh failed"}), 500
 
 
 _FX_CACHE = {}
@@ -539,8 +541,8 @@ def fx_rate():
             _FX_CACHE[target] = {"rate": raw, "ts": time.time()}
             return jsonify({"rate": raw, "currency": target})
         return jsonify({"error": "rate unavailable"}), 502
-    except Exception as e:
-        return jsonify({"error": str(e)}), 502
+    except Exception:
+        return jsonify({"error": "rate unavailable"}), 502
 
 
 # ── Watchlist ──────────────────────────────────────────────────────────────

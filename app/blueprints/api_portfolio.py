@@ -13,7 +13,8 @@ from flask import (
 from flask_login import login_required, current_user
 
 from ..extensions import db, cache
-from ..utils.auth import requires_pro, is_pro
+from ..utils.audit import log_event
+from ..utils.auth import requires_pro, is_pro, requires_mfa_recent
 from ..models.portfolio import (
     Holding, CryptoHolding, PhysicalMetal, Account, BlendedAccount,
     InvestmentTransaction, TaxLot,
@@ -856,6 +857,7 @@ def quick_update():
 @api_portfolio_bp.route("/export")
 @login_required
 @requires_pro
+@requires_mfa_recent
 def export_data():
     """Export portfolio data as CSV."""
     import io
@@ -869,6 +871,7 @@ def export_data():
     for h in holdings:
         writer.writerow([h.account, h.ticker, h.shares, h.bucket, h.value_override, h.notes])
 
+    log_event("data_exported", detail={"format": "csv", "type": "portfolio"})
     return Response(
         output.getvalue(),
         mimetype="text/csv",
@@ -879,6 +882,7 @@ def export_data():
 @api_portfolio_bp.route("/tax-report")
 @login_required
 @requires_pro
+@requires_mfa_recent
 def tax_report():
     """Generate a tax-ready CSV with cost basis, market value, unrealized gains, and TLH flags."""
     import io
@@ -954,6 +958,7 @@ def tax_report():
         ])
 
     today = _date.today().isoformat()
+    log_event("data_exported", detail={"format": "csv", "type": "tax_report"})
     return Response(
         output.getvalue(),
         mimetype="text/csv",
@@ -1377,6 +1382,7 @@ def ai_portfolio_advice():
 @api_portfolio_bp.route("/report/pdf", methods=["GET"])
 @login_required
 @requires_pro
+@requires_mfa_recent
 def download_pdf_report():
     """Generate and return a branded PDF portfolio report."""
     from ..services.pdf_service import generate_pdf
@@ -1396,6 +1402,7 @@ def download_pdf_report():
     )
     ts = datetime.now(timezone.utc).strftime("%Y%m%d")
     fname = f"NickelAndDime_Report_{ts}.pdf"
+    log_event("data_exported", detail={"format": "pdf", "type": "report"})
     return Response(
         pdf_bytes,
         mimetype="application/pdf",

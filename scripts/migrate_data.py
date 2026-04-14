@@ -77,7 +77,6 @@ def _import_settings(user, config):
     api_keys = config.get("api_keys", {})
     settings.coinbase_key_name = api_keys.get("coinbase_key_name", "")
     settings.coinbase_private_key = api_keys.get("coinbase_private_key", "")
-    settings.goldapi_key = api_keys.get("goldapi_io", "")
 
     db.session.flush()
     print(f"  Settings: imported")

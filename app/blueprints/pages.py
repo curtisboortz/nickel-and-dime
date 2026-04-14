@@ -290,11 +290,11 @@ def save_dashboard_layout():
         us.dashboard_layout = layout
         db.session.commit()
         return jsonify({"ok": True})
-    except Exception as e:
+    except Exception:
         db.session.rollback()
-        import traceback
-        traceback.print_exc()
-        return jsonify({"ok": False, "error": str(e)}), 500
+        import logging
+        logging.getLogger(__name__).exception("Dashboard layout save failed")
+        return jsonify({"ok": False, "error": "Failed to save layout"}), 500
 
 
 @pages_bp.route("/api/tab-content/<tab_name>")

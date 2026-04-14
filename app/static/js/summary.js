@@ -136,7 +136,6 @@ function loadMonthlyInvestments(month) {
   var url = "/api/investments?" + _cb;
   if (month) url += "&month=" + encodeURIComponent(month);
 
-  console.log("[ND:invest] loadMonthlyInvestments fetching", url);
   var investPromise = fetch(url).then(function(r) { return r.json(); });
   var driftPromise = fetch("/api/drift-targets?" + _cb).then(function(r) { return r.json(); }).catch(function() { return { suggestions: [] }; });
 
@@ -145,7 +144,6 @@ function loadMonthlyInvestments(month) {
     var drift = results[1];
     var cats = d.categories || [];
     var budget = d.monthly_budget || 0;
-    console.log("[ND:invest] loaded", cats.length, "cats, budget=$" + budget, "urgency=" + (drift.urgency || 0), "rebal=" + (d.rebalance_months || "?"), "targets:", cats.map(function(c) { return c.category + "=$" + c.target; }).join(", "));
     _investCurrentMonth = d.month || "";
     _investAvailableMonths = d.available_months || [];
     _investIsCurrent = d.is_current !== false;
@@ -239,8 +237,7 @@ function loadMonthlyInvestments(month) {
     });
     tbody.innerHTML = html;
     _updateInvestFooter(totalTarget, totalContrib, budget);
-    console.log("[ND:invest] render complete, totalTarget=$" + totalTarget);
-  }).catch(function(err) { console.error("[ND:invest] loadMonthlyInvestments error:", err); });
+  }).catch(function() {});
 }
 
 function _updateInvestFooter(totalTarget, totalContrib, budget) {
@@ -329,7 +326,6 @@ function changeRebalanceMonths() {
   var sel = document.getElementById("rebalance-months-sel");
   if (!sel) return;
   var months = parseInt(sel.value) || 12;
-  console.log("[ND:recalc] changeRebalanceMonths to", months);
   sel.disabled = true;
   fetch("/api/rebalance-months", {
     method: "POST",
@@ -337,36 +333,28 @@ function changeRebalanceMonths() {
     body: JSON.stringify({ months: months })
   }).then(function(r) { return r.json(); }).then(function(d) {
     sel.disabled = false;
-    console.log("[ND:recalc] rebalance-months save result:", JSON.stringify(d));
     if (d && d.success) {
       _applyAndReload();
     } else {
-      console.log("[ND:recalc] save failed, just reloading");
       loadMonthlyInvestments(_investCurrentMonth);
     }
-  }).catch(function(err) { sel.disabled = false; console.error("[ND:recalc] changeRebalanceMonths error:", err); });
+  }).catch(function() { sel.disabled = false; });
 }
 
 function _applyAndReload() {
-  console.log("[ND:recalc] _applyAndReload starting, fetching /api/drift-targets");
   fetch("/api/drift-targets?_t=" + Date.now()).then(function(r) {
-    console.log("[ND:recalc] drift-targets response status:", r.status);
     return r.json();
   }).then(function(drift) {
-    console.log("[ND:recalc] drift-targets data:", JSON.stringify(drift).substring(0, 300));
     var sug = {};
     (drift.suggestions || []).forEach(function(s) { sug[s.bucket] = s; });
-    console.log("[ND:recalc] suggestion buckets:", Object.keys(sug));
 
     var bucketCounts = {};
     document.querySelectorAll(".invest-summary-row").forEach(function(row) {
       var b = row.dataset.bucket;
       if (b) bucketCounts[b] = (bucketCounts[b] || 0) + 1;
     });
-    console.log("[ND:recalc] bucketCounts from DOM:", JSON.stringify(bucketCounts));
 
     if (!Object.keys(bucketCounts).length) {
-      console.log("[ND:recalc] no buckets in DOM, just reloading");
       loadMonthlyInvestments(_investCurrentMonth);
       return;
     }
@@ -388,20 +376,16 @@ function _applyAndReload() {
     });
     var categories = rawCategories.map(function(rc) {
       var target = rawSum > 0 ? Math.round(budget * rc.rawTarget / rawSum) : 0;
-      console.log("[ND:recalc] id=" + rc.id + " bucket=" + rc.bucket + " -> target=$" + target);
       return { id: rc.id, contributed: rc.contributed, target: target };
     });
 
-    console.log("[ND:recalc] POSTing", categories.length, "categories to /api/investments");
     fetch("/api/investments", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ month: _investCurrentMonth, categories: categories })
     }).then(function(r) {
-      console.log("[ND:recalc] POST response status:", r.status);
       return r.json();
     }).then(function(d) {
-      console.log("[ND:recalc] POST result:", JSON.stringify(d));
       var ctrl = document.getElementById("invest-rebalance-ctrl");
       if (ctrl) {
         ctrl.style.transition = "box-shadow .3s";

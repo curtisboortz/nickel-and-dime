@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block title %}Two-Factor Authentication | Nickel&amp;Dime{% endblock %}
+
+{% block body %}
+<div class="auth-split">
+  <div class="auth-brand">
+    <div class="auth-brand-inner">
+      <a href="/" class="auth-logo">
+        <img src="/icon-192.png" alt="N&amp;D" style="width:40px;height:40px;border-radius:10px;">
+        <span>Nickel&amp;Dime</span>
+      </a>
+      <h2 class="auth-headline">Two-Factor<br><span class="auth-accent">Authentication</span></h2>
+      <p class="auth-subline">Enter the 6-digit code from your authenticator app to continue.</p>
+    </div>
+    <p class="auth-brand-footer">&copy; {{ now.year if now else 2026 }} Nickel&amp;Dime &middot; nickelanddime.io</p>
+  </div>
+
+  <div class="auth-form-panel">
+    <div class="auth-form-wrap">
+      <h1>Verify your identity</h1>
+      <p class="auth-form-sub">Open your authenticator app and enter the code</p>
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+      {% for category, message in messages %}
+      <div class="auth-alert {{ category }}">{{ message }}</div>
+      {% endfor %}
+      {% endif %}
+      {% endwith %}
+
+      <form method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <label class="auth-label" for="code">Authentication code</label>
+        <input type="text" id="code" name="code" class="auth-input"
+               required autofocus autocomplete="one-time-code" inputmode="numeric"
+               pattern="[0-9]{6}" maxlength="6" placeholder="000000"
+               style="text-align:center;font-size:1.5rem;letter-spacing:0.3em">
+
+        <button type="submit" class="auth-btn">Verify</button>
+      </form>
+
+      <p class="auth-switch">
+        <a href="{{ url_for('auth.logout') }}">Sign out</a>
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}

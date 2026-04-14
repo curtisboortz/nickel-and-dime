@@ -59,6 +59,11 @@
           <input type="text" id="promo_code" name="promo_code" class="auth-input" placeholder="Enter promo code" value="{{ request.args.get('promo','') }}" style="text-transform:uppercase">
         </div>
 
+        {% if hcaptcha_site_key %}
+        <div class="h-captcha" data-sitekey="{{ hcaptcha_site_key }}" data-theme="dark" style="margin:12px 0"></div>
+        <script src="https://js.hcaptcha.com/1/api.js" async defer></script>
+        {% endif %}
+
         <button type="submit" class="auth-btn">Start Free Trial</button>
       </form>
 

@@ -4,12 +4,17 @@ import secrets
 from datetime import datetime, timezone, timedelta
 from urllib.parse import urlparse
 
-from flask import Blueprint, render_template, redirect, url_for, flash, request
+from flask import Blueprint, render_template, redirect, url_for, flash, request, current_app
 from flask_login import login_user, logout_user, login_required, current_user
 
-from ..extensions import db, bcrypt, limiter
+from ..extensions import db, bcrypt, limiter, cache
 from ..models.user import User, Subscription, PromoCode
 from ..models.settings import UserSettings
+from ..utils.captcha import verify_captcha, captcha_enabled
+from ..utils.audit import log_event
+
+MAX_LOGIN_ATTEMPTS = 5
+LOGIN_LOCKOUT_TTL = 900  # 15 minutes
 
 auth_bp = Blueprint("auth", __name__)
 
@@ -31,6 +36,10 @@ def register():
 
         if len(password) < 8:
             flash("Password must be at least 8 characters.", "error")
+            return render_template("auth/register.html")
+
+        if not verify_captcha(request.form.get("h-captcha-response", "")):
+            flash("Please complete the CAPTCHA.", "error")
             return render_template("auth/register.html")
 
         if User.query.filter_by(email=email).first():
@@ -134,11 +143,31 @@ def login():
         password = request.form.get("password", "")
         remember = request.form.get("remember") == "on"
 
+        fail_key = f"login_fail:{email}"
+        fail_count = cache.get(fail_key) or 0
+        if fail_count >= MAX_LOGIN_ATTEMPTS:
+            flash("Too many failed attempts, try again later.", "error")
+            return render_template("auth/login.html")
+
         user = User.query.filter_by(email=email).first()
         if user and user.check_password(password):
+            cache.delete(fail_key)
             user.last_login = datetime.now(timezone.utc)
             db.session.commit()
             login_user(user, remember=remember)
+            log_event("login_success", user_id=user.id)
+
+            from flask import session as flask_session
+            old_data = dict(flask_session)
+            flask_session.clear()
+            flask_session.update(old_data)
+
+            if user.mfa_enabled and user.totp_secret:
+                flask_session["_mfa_verified"] = False
+                next_page = request.args.get("next", "")
+                return redirect(url_for("auth.mfa_challenge", next=next_page))
+
+            flask_session["_mfa_verified"] = True
 
             try:
                 from ..services.portfolio_service import backfill_snapshots
@@ -153,15 +182,56 @@ def login():
                     next_page = None
             return redirect(next_page or url_for("pages.dashboard_page"))
 
+        cache.set(fail_key, fail_count + 1, timeout=LOGIN_LOCKOUT_TTL)
+        log_event("login_failed", detail={"email": email})
         flash("Invalid email or password.", "error")
 
     return render_template("auth/login.html")
 
 
+@auth_bp.route("/mfa-challenge", methods=["GET", "POST"])
+@login_required
+def mfa_challenge():
+    """Prompt for TOTP code after password login when MFA is enabled."""
+    from flask import session as flask_session
+    import pyotp
+    from ..utils.encryption import decrypt
+
+    if not current_user.mfa_enabled:
+        return redirect(url_for("pages.dashboard_page"))
+
+    if flask_session.get("_mfa_verified"):
+        return redirect(url_for("pages.dashboard_page"))
+
+    if request.method == "POST":
+        code = request.form.get("code", "").strip()
+        secret = decrypt(current_user.totp_secret)
+        totp = pyotp.TOTP(secret)
+        if totp.verify(code, valid_window=1):
+            old_data = dict(flask_session)
+            flask_session.clear()
+            flask_session.update(old_data)
+            flask_session["_mfa_verified"] = True
+            log_event("mfa_challenge_success")
+            next_page = request.args.get("next")
+            if next_page:
+                parsed = urlparse(next_page)
+                if parsed.netloc or parsed.scheme:
+                    next_page = None
+            return redirect(next_page or url_for("pages.dashboard_page"))
+        log_event("mfa_challenge_failed")
+        flash("Invalid verification code.", "error")
+
+    return render_template("auth/mfa_challenge.html")
+
+
 @auth_bp.route("/logout")
 @login_required
 def logout():
+    from flask import session as flask_session
+    log_event("logout")
     logout_user()
+    flask_session.clear()
     return redirect(url_for("pages.landing"))
 
 
@@ -170,6 +240,10 @@ def logout():
 def forgot_password():
     import sys
     if request.method == "POST":
+        if not verify_captcha(request.form.get("h-captcha-response", "")):
+            flash("Please complete the CAPTCHA.", "error")
+            return render_template("auth/forgot_password.html")
+
         email = request.form.get("email", "").strip().lower()
         print(f"[ForgotPW] Lookup email: {email}", flush=True, file=sys.stderr)
         user = User.query.filter_by(email=email).first()
@@ -179,6 +253,7 @@ def forgot_password():
             user.reset_token = token
             user.reset_token_expiry = datetime.now(timezone.utc) + timedelta(hours=1)
             db.session.commit()
+            log_event("password_reset_requested", user_id=user.id)
 
             from ..services.email_service import send_password_reset_sync
             err = send_password_reset_sync(user, token)
@@ -211,6 +286,7 @@ def reset_password(token):
         user.reset_token = None
         user.reset_token_expiry = None
         db.session.commit()
+        log_event("password_reset_completed", user_id=user.id)
         flash("Password updated. Please log in.", "success")
         return redirect(url_for("auth.login"))
 

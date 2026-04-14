@@ -7,8 +7,9 @@ from flask import Blueprint, jsonify, request as flask_request
 from flask_login import login_required, current_user
 
 from ..extensions import db
-from ..utils.auth import requires_pro
+from ..utils.auth import requires_pro, requires_mfa_recent
 from ..models.settings import UserSettings
+from ..utils.audit import log_event
 
 api_settings_bp = Blueprint("api_settings", __name__)
 
@@ -40,6 +41,7 @@ def get_integrations():
 @api_settings_bp.route("/settings/coinbase-keys", methods=["POST"])
 @login_required
 @requires_pro
+@requires_mfa_recent
 def save_coinbase_keys():
     """Save Coinbase API key name and private key."""
     data = flask_request.get_json(silent=True) or {}
@@ -61,6 +63,7 @@ def save_coinbase_keys():
     settings.coinbase_key_name = encrypt(key_name)
     settings.coinbase_private_key = encrypt(private_key)
     db.session.commit()
+    log_event("coinbase_keys_saved")
 
     return jsonify({"success": True, "message": "Coinbase keys saved"})
 
@@ -68,6 +71,7 @@ def save_coinbase_keys():
 @api_settings_bp.route("/settings/coinbase-keys", methods=["DELETE"])
 @login_required
 @requires_pro
+@requires_mfa_recent
 def delete_coinbase_keys():
     """Remove stored Coinbase API keys."""
     settings = UserSettings.query.filter_by(user_id=current_user.id).first()
@@ -75,6 +79,7 @@ def delete_coinbase_keys():
         settings.coinbase_key_name = None
         settings.coinbase_private_key = None
         db.session.commit()
+        log_event("coinbase_keys_deleted")
     return jsonify({"success": True, "message": "Coinbase keys removed"})
 
 
@@ -276,3 +281,35 @@ def deactivate_promo_code(promo_id):
     promo.active = False
     db.session.commit()
     return jsonify({"ok": True})
+
+
+@api_settings_bp.route("/admin/audit-log", methods=["GET"])
+@login_required
+def admin_audit_log():
+    """Query recent audit log entries (admin only)."""
+    if not getattr(current_user, "is_admin", False):
+        return jsonify({"error": "forbidden"}), 403
+
+    from ..models.audit import AuditLog
+
+    limit = min(int(flask_request.args.get("limit", 50)), 200)
+    action_filter = flask_request.args.get("action")
+    user_filter = flask_request.args.get("user_id", type=int)
+
+    q = AuditLog.query.order_by(AuditLog.created_at.desc())
+    if action_filter:
+        q = q.filter_by(action=action_filter)
+    if user_filter:
+        q = q.filter_by(user_id=user_filter)
+
+    entries = q.limit(limit).all()
+    return jsonify({"entries": [
+        {
+            "id": e.id,
+            "user_id": e.user_id,
+            "action": e.action,
+            "detail": e.detail,
+            "ip_address": e.ip_address,
+            "created_at": e.created_at.isoformat() if e.created_at else None,
+        } for e in entries
+    ]})

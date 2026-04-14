@@ -23,6 +23,10 @@ class User(UserMixin, db.Model):
     reset_token_expiry = db.Column(db.DateTime, nullable=True)
     verify_token = db.Column(db.String(255), nullable=True)
 
+    # TOTP-based MFA
+    totp_secret = db.Column(db.String(255), nullable=True)
+    mfa_enabled = db.Column(db.Boolean, default=False)
+
     # Relationships
     subscription = db.relationship("Subscription", backref="user", uselist=False, lazy=True)
     settings = db.relationship("UserSettings", backref="user", uselist=False, lazy=True)

@@ -145,9 +145,9 @@ def ai_chat():
             conversation.updated_at = datetime.now(timezone.utc)
             db.session.commit()
 
-        except Exception as e:
+        except Exception:
             log.exception("AI chat stream error")
-            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+            yield f"data: {json.dumps({'error': 'An error occurred processing your request'})}\n\n"
 
         yield "data: [DONE]\n\n"
 

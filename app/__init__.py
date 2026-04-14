@@ -55,7 +55,7 @@ def _init_extensions(app):
     """Bind all Flask extensions to the app instance."""
     from .extensions import (
         db, migrate, login_manager, bcrypt, csrf, limiter, mail,
-        cache, sess,
+        cache, sess, talisman,
     )
 
     redis_url = app.config.get("REDIS_URL")
@@ -77,6 +77,60 @@ def _init_extensions(app):
     mail.init_app(app)
     cache.init_app(app)
     sess.init_app(app)
+
+    if app.config.get("TALISMAN_ENABLED", True):
+        csp = {
+            "default-src": "'self'",
+            "script-src": [
+                "'self'",
+                "'unsafe-inline'",
+                "https://js.stripe.com",
+                "https://cdn.jsdelivr.net",
+                "https://js.hcaptcha.com",
+                "https://newassets.hcaptcha.com",
+            ],
+            "style-src": [
+                "'self'",
+                "'unsafe-inline'",
+                "https://fonts.googleapis.com",
+                "https://newassets.hcaptcha.com",
+            ],
+            "font-src": [
+                "'self'",
+                "https://fonts.gstatic.com",
+            ],
+            "img-src": [
+                "'self'",
+                "data:",
+                "https:",
+            ],
+            "connect-src": [
+                "'self'",
+                "https://api.stripe.com",
+                "https://cdn.plaid.com",
+                "https://production.plaid.com",
+                "https://sandbox.plaid.com",
+                "https://api.hcaptcha.com",
+            ],
+            "frame-src": [
+                "'self'",
+                "https://js.stripe.com",
+                "https://cdn.plaid.com",
+                "https://newassets.hcaptcha.com",
+            ],
+            "object-src": "'none'",
+            "base-uri": "'self'",
+        }
+        talisman.init_app(
+            app,
+            force_https=not app.debug,
+            content_security_policy=csp,
+            content_security_policy_nonce_in=["script-src"],
+            session_cookie_secure=not app.debug,
+            strict_transport_security=not app.debug,
+            strict_transport_security_max_age=31536000,
+            referrer_policy="strict-origin-when-cross-origin",
+        )
 
     from .models.user import User
 
@@ -100,6 +154,7 @@ def _register_blueprints(app):
     from .blueprints.api_referral import api_referral_bp
     from .blueprints.blog import blog_bp
     from .blueprints.api_ai import api_ai_bp
+    from .blueprints.api_mfa import api_mfa_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(pages_bp)
@@ -114,6 +169,7 @@ def _register_blueprints(app):
     app.register_blueprint(api_plaid_bp, url_prefix="/api")
     app.register_blueprint(api_referral_bp, url_prefix="/api")
     app.register_blueprint(api_ai_bp, url_prefix="/api")
+    app.register_blueprint(api_mfa_bp, url_prefix="/api")
 
 
 def _register_error_handlers(app):
@@ -138,6 +194,12 @@ def _register_error_handlers(app):
         if request.path.startswith("/api/"):
             return jsonify({"error": "Not found"}), 404
         return render_template("errors/404.html"), 404
+
+    @app.errorhandler(413)
+    def request_too_large(e):
+        if request.path.startswith("/api/"):
+            return jsonify({"error": "Request too large"}), 413
+        return render_template("errors/500.html"), 413
 
     @app.errorhandler(429)
     def rate_limited(e):
@@ -172,7 +234,12 @@ def _register_template_globals(app):
 
     @app.context_processor
     def inject_globals():
-        ctx = {"now": datetime.now(timezone.utc), "trial_days_left": None, "v": _boot_ts}
+        ctx = {
+            "now": datetime.now(timezone.utc),
+            "trial_days_left": None,
+            "v": _boot_ts,
+            "hcaptcha_site_key": app.config.get("HCAPTCHA_SITE_KEY", ""),
+        }
 
         try:
             if current_user.is_authenticated and not getattr(current_user, "is_admin", False):
@@ -187,10 +254,13 @@ def _register_template_globals(app):
 
 
 def _register_domain_redirect(app):
-    """301 redirect Railway subdomain traffic to the canonical domain."""
-    from flask import request, redirect as flask_redirect
+    """301 redirect Railway subdomain traffic to the canonical domain + MFA gate."""
+    from flask import request, redirect as flask_redirect, session
+    from flask_login import current_user as _cu
 
     CANONICAL = "nickelanddime.io"
+
+    _MFA_EXEMPT = ("/mfa-challenge", "/logout", "/static", "/api/mfa/", "/health")
 
     @app.before_request
     def _redirect_old_domain():
@@ -199,6 +269,18 @@ def _register_domain_redirect(app):
             return flask_redirect(
                 f"https://{CANONICAL}{request.full_path}", code=301
             )
+
+    @app.before_request
+    def _enforce_mfa():
+        if not _cu.is_authenticated:
+            return
+        if not getattr(_cu, "mfa_enabled", False):
+            return
+        if session.get("_mfa_verified"):
+            return
+        if any(request.path.startswith(p) for p in _MFA_EXEMPT):
+            return
+        return flask_redirect("/mfa-challenge")
 
 
 def _register_shell_context(app):

@@ -155,10 +155,9 @@ def sentiment():
         resp = _build_sentiment_response()
         cache.set("sentiment", resp.get_json(), timeout=120)
         return resp
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        return jsonify({"_error": str(e)}), 500
+    except Exception:
+        log.exception("Sentiment endpoint error")
+        return jsonify({"_error": "Failed to load sentiment data"}), 500
 
 
 def _build_sentiment_response():

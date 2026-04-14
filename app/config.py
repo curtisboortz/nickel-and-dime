@@ -7,6 +7,7 @@ class Config:
     """Base configuration."""
     SECRET_KEY = os.environ.get("FLASK_SECRET", "dev-secret-change-me")
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    MAX_CONTENT_LENGTH = 10 * 1024 * 1024  # 10 MB
 
     # Stripe
     STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY", "")
@@ -19,6 +20,10 @@ class Config:
     FRED_API_KEY = os.environ.get("FRED_API_KEY", "")
     OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
     OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-5.4")
+
+    # hCaptcha (set both to enable CAPTCHA on auth forms)
+    HCAPTCHA_SITE_KEY = os.environ.get("HCAPTCHA_SITE_KEY", "")
+    HCAPTCHA_SECRET_KEY = os.environ.get("HCAPTCHA_SECRET_KEY", "")
 
     # Mail (for email verification / password reset)
     MAIL_SERVER = os.environ.get("MAIL_SERVER", "smtp.gmail.com")
@@ -93,6 +98,7 @@ class TestConfig(Config):
     RATELIMIT_ENABLED = False
     SESSION_TYPE = "cachelib"
     CACHE_TYPE = "SimpleCache"
+    TALISMAN_ENABLED = False
 
 
 config_by_name = {

@@ -1,8 +1,9 @@
 """Authentication and authorization helpers."""
 
+import time
 from functools import wraps
 from datetime import datetime, timezone
-from flask import jsonify, abort
+from flask import jsonify, abort, session
 from flask_login import current_user
 
 
@@ -55,3 +56,26 @@ def is_pro(user=None):
         return False
     _check_trial_expiry(u)
     return u.plan != PLAN_FREE
+
+
+MFA_STEP_UP_WINDOW = 300  # 5 minutes
+
+
+def requires_mfa_recent(f):
+    """Decorator: require recent MFA re-verification for sensitive actions.
+
+    No-op if the user doesn't have MFA enabled.
+    """
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not current_user.is_authenticated:
+            abort(401)
+        if current_user.mfa_enabled:
+            verified_at = session.get("_mfa_step_up_at")
+            if not verified_at or (time.time() - verified_at) > MFA_STEP_UP_WINDOW:
+                return jsonify({
+                    "error": "MFA verification required",
+                    "mfa_required": True,
+                }), 403
+        return f(*args, **kwargs)
+    return decorated

@@ -14,6 +14,7 @@ from flask_limiter.util import get_remote_address
 from flask_mail import Mail
 from flask_caching import Cache
 from flask_session import Session
+from flask_talisman import Talisman
 
 db = SQLAlchemy()
 migrate = Migrate()
@@ -24,6 +25,7 @@ limiter = Limiter(key_func=get_remote_address, default_limits=["200 per minute"]
 mail = Mail()
 cache = Cache()
 sess = Session()
+talisman = Talisman()
 
 login_manager.login_view = "auth.login"
 login_manager.login_message_category = "info"

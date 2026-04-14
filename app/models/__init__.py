@@ -16,3 +16,4 @@ from .plaid import PlaidItem, PlaidAccount  # noqa: F401
 from .referral import ReferralCode, ReferralRedemption  # noqa: F401
 from .blog import BlogPost  # noqa: F401
 from .ai import AIConversation, AIMessage, AIUsage  # noqa: F401
+from .audit import AuditLog  # noqa: F401

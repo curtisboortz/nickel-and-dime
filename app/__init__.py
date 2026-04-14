@@ -264,6 +264,8 @@ def _register_domain_redirect(app):
 
     @app.before_request
     def _redirect_old_domain():
+        if request.path == "/health":
+            return
         host = request.host.split(":")[0]
         if host.endswith(".up.railway.app"):
             return flask_redirect(

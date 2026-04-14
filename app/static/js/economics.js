@@ -68,6 +68,22 @@ function renderFredDebt(data) {
   var deficitPct = fredSeries(data, "FYFSGDA188S");
   var spendingPct = fredSeries(data, "FYONGDA188S");
   var interestPct = fredSeries(data, "FYOIGDA188S");
+  if (!spendingPct.length && outlays.length && gdp.length) {
+    var gdpMap = {};
+    gdp.forEach(function(p) { if (p.value != null) gdpMap[fredDateLabel(p.date)] = p.value; });
+    spendingPct = outlays.filter(function(p) { return p.value != null && gdpMap[fredDateLabel(p.date)]; }).map(function(p) {
+      var d = fredDateLabel(p.date);
+      return { date: p.date, value: (p.value / gdpMap[d]) * 100 };
+    });
+  }
+  if (!interestPct.length && interest.length && gdp.length) {
+    var gdpMap2 = {};
+    gdp.forEach(function(p) { if (p.value != null) gdpMap2[fredDateLabel(p.date)] = p.value; });
+    interestPct = interest.filter(function(p) { return p.value != null && gdpMap2[fredDateLabel(p.date)]; }).map(function(p) {
+      var d = fredDateLabel(p.date);
+      return { date: p.date, value: (p.value / gdpMap2[d]) * 100 };
+    });
+  }
   var latestDebt = fredLatest(debt);
   var latestGdp = fredLatest(gdp);
   var latestDeficit = fredLatest(deficit);
@@ -146,7 +162,7 @@ function renderFredMonetary(data) {
     fredCharts["fred-chart-yield-curve"] && fredCharts["fred-chart-yield-curve"].destroy();
     fredCharts["fred-chart-yield-curve"] = new Chart(ctx, {
       type: "line",
-      data: { labels: ycLabels, datasets: [{ label: "Current", data: currentRates, borderColor: "rgba(212,160,23,0.9)", backgroundColor: "rgba(212,160,23,0.1)", fill: true, tension: 0.2, pointRadius: 3 }, { label: "1Y ago", data: pastRates, borderColor: "rgba(100,116,139,0.7)", borderDash: [4,2], fill: false, pointRadius: 2 }] },
+      data: { labels: ycLabels, datasets: [{ label: "Current", data: currentRates, borderColor: "rgba(212,160,23,0.9)", backgroundColor: "rgba(212,160,23,0.1)", fill: true, tension: 0.2, pointRadius: 3, spanGaps: true }, { label: "1Y ago", data: pastRates, borderColor: "rgba(100,116,139,0.7)", borderDash: [4,2], fill: false, pointRadius: 2, spanGaps: true }] },
       options: { responsive: true, maintainAspectRatio: false, interaction: { mode: "index", intersect: false }, plugins: { legend: { labels: { color: "#94a3b8" } }, tooltip: fredTooltipOpts }, scales: { x: { ticks: { color: "#64748b" }, grid: { display: false } }, y: { ticks: { color: "#64748b", callback: function(v) { return v != null ? Number(v).toFixed(1) + "%" : ""; } }, grid: { color: "rgba(255,255,255,0.03)" } } } }
     });
   }
@@ -232,6 +248,19 @@ function renderFredLabor(data) {
 function renderFredGrowth(data) {
   var gdpGr = fredSeries(data, "A191RL1Q225SBEA");
   var sent = fredSeries(data, "UMCSENT");
+  if (!gdpGr.length) {
+    var gdpRaw = fredSeries(data, "GDP");
+    if (gdpRaw.length >= 2) {
+      gdpGr = [];
+      for (var i = 1; i < gdpRaw.length; i++) {
+        var prev = gdpRaw[i - 1].value;
+        var cur = gdpRaw[i].value;
+        if (prev != null && cur != null && prev > 0) {
+          gdpGr.push({ date: gdpRaw[i].date, value: (Math.pow(cur / prev, 4) - 1) * 100 });
+        }
+      }
+    }
+  }
   var el = document.getElementById("fred-growth-stats");
   if (el) el.innerHTML = (fredLatest(gdpGr) != null ? '<div class="pulse-item"><span class="pulse-label">Real GDP Growth</span><span class="pulse-price">' + fredLatest(gdpGr).toFixed(1) + '%</span></div>' : '') + (fredLatest(sent) != null ? '<div class="pulse-item"><span class="pulse-label">Consumer Sentiment</span><span class="pulse-price">' + fredLatest(sent).toFixed(1) + '</span></div>' : '');
   fredLineChart("fred-chart-gdp-growth", gdpGr, "Real GDP Growth %", "pct");

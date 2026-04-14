@@ -69,27 +69,35 @@ def refresh_fred_data(api_key=None):
         print(f"[FRED] Init error: {e}")
         return
 
+    import time as _time
+
     for group_name, series_ids in SERIES_GROUPS.items():
         group_data = {}
         for sid in series_ids:
-            try:
-                data = fred.get_series(sid)
-                if data is not None and len(data) > 0:
-                    # Convert to list of [date_str, value] pairs
-                    points = [
-                        [d.isoformat(), float(v)]
-                        for d, v in data.items()
-                        if v is not None and str(v) != "nan"
-                    ]
-                    group_data[sid] = points
-            except Exception as e:
-                print(f"[FRED] Error fetching {sid}: {e}")
-                continue
+            for attempt in range(2):
+                try:
+                    data = fred.get_series(sid)
+                    if data is not None and len(data) > 0:
+                        points = [
+                            [d.isoformat(), float(v)]
+                            for d, v in data.items()
+                            if v is not None and str(v) != "nan"
+                        ]
+                        group_data[sid] = points
+                    break
+                except Exception as e:
+                    if attempt == 0:
+                        _time.sleep(1)
+                        continue
+                    print(f"[FRED] Error fetching {sid}: {e}")
+                    break
 
         if group_data:
             existing = FredCache.query.get(group_name)
             if existing:
-                existing.data = group_data
+                merged = dict(existing.data) if isinstance(existing.data, dict) else {}
+                merged.update(group_data)
+                existing.data = merged
                 existing.updated_at = datetime.now(timezone.utc)
             else:
                 db.session.add(FredCache(

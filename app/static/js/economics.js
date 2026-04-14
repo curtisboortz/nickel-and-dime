@@ -145,6 +145,10 @@ function fredValueAt(arr, dateStr) { for (var i = (arr && arr.length) ? arr.leng
 function renderFredMonetary(data) {
   var fed = fredSeries(data, "FEDFUNDS");
   var m2 = fredSeries(data, "M2SL");
+  if (!fed.length) {
+    var dgs1mo = fredSeries(data, "DGS1MO");
+    if (dgs1mo.length) fed = dgs1mo;
+  }
   var el = document.getElementById("fred-monetary-stats");
   if (el) el.innerHTML = (fredLatest(fed) != null ? '<div class="pulse-item"><span class="pulse-label">Fed Funds</span><span class="pulse-price">' + fredLatest(fed).toFixed(2) + '%</span></div>' : '') + (fredLatest(m2) != null ? '<div class="pulse-item"><span class="pulse-label">M2</span><span class="pulse-price">$' + (fredLatest(m2)/1e3).toFixed(2) + 'T</span></div>' : '');
   fredLineChart("fred-chart-fedfunds", fed, "Fed Funds Rate", "pct");

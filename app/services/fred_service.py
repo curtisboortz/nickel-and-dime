@@ -83,7 +83,8 @@ def refresh_fred_data(api_key=None):
                             for d, v in data.items()
                             if v is not None and str(v) != "nan"
                         ]
-                        group_data[sid] = points
+                        if points:
+                            group_data[sid] = points
                     break
                 except Exception as e:
                     if attempt == 0:

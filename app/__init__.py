@@ -123,7 +123,7 @@ def _init_extensions(app):
         }
         talisman.init_app(
             app,
-            force_https=not app.debug,
+            force_https=False,
             content_security_policy=csp,
             content_security_policy_nonce_in=["script-src"],
             session_cookie_secure=not app.debug,

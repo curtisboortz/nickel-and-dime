@@ -983,10 +983,17 @@ function buildPerfAttribution() {
   if (!document.getElementById("perf-attr-chart")) { NDDiag.track("perf-attr", "warn", "no canvas element"); return; }
   if (!PERF_DATA.buckets) {
     fetch("/api/perf-attribution")
-      .then(function(r) { return r.json(); })
+      .then(function(r) {
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        return r.json();
+      })
       .then(function(d) {
-        PERF_DATA = d;
-        buildPerfAttribution();
+        if (d && d.buckets) {
+          PERF_DATA = d;
+          buildPerfAttribution();
+        } else {
+          NDDiag.track("perf-attr", "warn", "no buckets in response");
+        }
       })
       .catch(function(e) { NDDiag.track("perf-attr", "error", e.message || String(e)); });
     return;

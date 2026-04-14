@@ -21,6 +21,122 @@ function ndCheckProResponse(response) {
   return response;
 }
 
+/* ── MFA Step-Up ── */
+var _ndMfaResolve = null;
+var _ndMfaReject = null;
+var _ndMfaPendingUrl = null;
+var _ndMfaPendingOpts = null;
+
+function ndMfaFetch(url, opts) {
+  return fetch(url, opts).then(function(r) {
+    if (r.status === 403) {
+      return r.clone().json().then(function(d) {
+        if (d && d.mfa_required) {
+          return new Promise(function(resolve, reject) {
+            _ndMfaPendingUrl = url;
+            _ndMfaPendingOpts = opts;
+            _ndMfaResolve = resolve;
+            _ndMfaReject = reject;
+            _ndMfaShowModal();
+          });
+        }
+        return r;
+      }).catch(function() { return r; });
+    }
+    return r;
+  });
+}
+
+function ndMfaNavigate(url) {
+  fetch(url).then(function(r) {
+    if (r.status === 403) {
+      return r.json().then(function(d) {
+        if (d && d.mfa_required) {
+          _ndMfaPendingUrl = url;
+          _ndMfaPendingOpts = "__navigate__";
+          _ndMfaResolve = function() {};
+          _ndMfaReject = function() {};
+          _ndMfaShowModal();
+          return;
+        }
+        window.location.href = url;
+      }).catch(function() { window.location.href = url; });
+      return;
+    }
+    if (!r.ok) { window.location.href = url; return; }
+    r.blob().then(function(blob) {
+      var a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      var cd = r.headers.get("Content-Disposition") || "";
+      var match = cd.match(/filename=([^;]+)/);
+      a.download = match ? match[1] : "download";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(a.href);
+    });
+  }).catch(function() { window.location.href = url; });
+}
+
+function _ndMfaShowModal() {
+  var modal = document.getElementById("mfa-step-up-modal");
+  var input = document.getElementById("mfa-step-up-code");
+  var err = document.getElementById("mfa-step-up-error");
+  if (modal) modal.style.display = "flex";
+  if (input) {
+    input.value = "";
+    input.focus();
+    input.onkeydown = function(e) { if (e.key === "Enter") ndMfaStepUpSubmit(); };
+  }
+  if (err) err.textContent = "";
+}
+
+function ndMfaStepUpSubmit() {
+  var input = document.getElementById("mfa-step-up-code");
+  var err = document.getElementById("mfa-step-up-error");
+  var btn = document.getElementById("mfa-step-up-submit");
+  var code = input ? input.value.trim() : "";
+  if (!code || code.length < 6) {
+    if (err) err.textContent = "Enter your 6-digit code.";
+    return;
+  }
+  if (btn) { btn.disabled = true; btn.textContent = "Verifying..."; }
+  fetch("/api/mfa/step-up", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ code: code })
+  }).then(function(r) { return r.json(); }).then(function(d) {
+    if (btn) { btn.disabled = false; btn.textContent = "Verify"; }
+    if (d.error) {
+      if (err) err.textContent = d.error;
+      return;
+    }
+    var modal = document.getElementById("mfa-step-up-modal");
+    if (modal) modal.style.display = "none";
+    if (_ndMfaPendingOpts === "__navigate__") {
+      window.location.href = _ndMfaPendingUrl;
+      if (_ndMfaResolve) _ndMfaResolve();
+    } else if (_ndMfaPendingUrl && _ndMfaResolve) {
+      fetch(_ndMfaPendingUrl, _ndMfaPendingOpts).then(_ndMfaResolve).catch(_ndMfaReject);
+    }
+    _ndMfaPendingUrl = null;
+    _ndMfaPendingOpts = null;
+  }).catch(function() {
+    if (btn) { btn.disabled = false; btn.textContent = "Verify"; }
+    if (err) err.textContent = "Verification failed. Try again.";
+  });
+}
+
+function ndMfaStepUpCancel() {
+  var modal = document.getElementById("mfa-step-up-modal");
+  if (modal) modal.style.display = "none";
+  if (_ndMfaReject) _ndMfaReject({ cancelled: true });
+  _ndMfaPendingUrl = null;
+  _ndMfaPendingOpts = null;
+  _ndMfaResolve = null;
+  _ndMfaReject = null;
+}
+
 /* ── Diagnostic Logger ── */
 var NDDiag = (function() {
   var _log = [];

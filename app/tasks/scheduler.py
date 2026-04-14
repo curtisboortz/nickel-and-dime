@@ -97,6 +97,12 @@ def init_scheduler(app):
         id="portfolio_digest", max_instances=1, replace_existing=True,
     )
 
+    _scheduler.add_job(
+        _run_in_context(app, _prune_audit_log),
+        "cron", hour=4, minute=0, timezone="America/New_York",
+        id="prune_audit_log", max_instances=1, replace_existing=True,
+    )
+
     # Run initial refreshes shortly after startup to let gunicorn boot fully
     from datetime import datetime, timedelta
     _scheduler.add_job(
@@ -237,6 +243,21 @@ def _portfolio_digest():
         run_digest_job()
     except Exception as e:
         log.error("Portfolio digest error: %s", e)
+
+
+def _prune_audit_log():
+    from datetime import datetime, timezone, timedelta
+    from ..extensions import db
+    from ..models.audit import AuditLog
+    try:
+        cutoff = datetime.now(timezone.utc) - timedelta(days=90)
+        deleted = AuditLog.query.filter(AuditLog.created_at < cutoff).delete()
+        db.session.commit()
+        if deleted:
+            log.info("Audit log pruned: %d entries older than 90 days", deleted)
+    except Exception as e:
+        db.session.rollback()
+        log.error("Audit log prune error: %s", e)
 
 
 def _email_drip():

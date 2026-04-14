@@ -1375,8 +1375,8 @@ function obFinish() {
     <div class="card-title" style="margin-bottom:8px;">Reports</div>
     <p class="hint" style="margin-bottom:16px;">Download your portfolio report as a branded PDF or tax-ready CSV.</p>
     <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
-      <a href="/api/report/pdf" style="display:inline-block;padding:10px 24px;text-decoration:none;border-radius:var(--radius);font-weight:600;font-size:0.88rem;background:linear-gradient(135deg,var(--accent-primary),var(--accent-secondary));color:#09090b;">Portfolio Report (PDF)</a>
-      <a href="/api/tax-report" style="display:inline-block;padding:10px 24px;text-decoration:none;border-radius:var(--radius);font-weight:600;font-size:0.88rem;border:1px solid var(--border-subtle);">Tax Report (CSV)</a>
+      <a href="#" onclick="ndMfaNavigate('/api/report/pdf');return false;" style="display:inline-block;padding:10px 24px;text-decoration:none;border-radius:var(--radius);font-weight:600;font-size:0.88rem;background:linear-gradient(135deg,var(--accent-primary),var(--accent-secondary));color:#09090b;">Portfolio Report (PDF)</a>
+      <a href="#" onclick="ndMfaNavigate('/api/tax-report');return false;" style="display:inline-block;padding:10px 24px;text-decoration:none;border-radius:var(--radius);font-weight:600;font-size:0.88rem;border:1px solid var(--border-subtle);">Tax Report (CSV)</a>
     </div>
   </div>
 </div>
@@ -1548,6 +1548,20 @@ function obFinish() {
     <div style="display:flex;gap:10px;justify-content:center;">
       <button type="button" onclick="copyReferralFromPrompt()" style="flex:1;background:var(--accent-primary);color:#0f0f12;border:none;border-radius:8px;padding:10px 20px;font-weight:700;font-size:0.9rem;cursor:pointer;">Copy Code</button>
       <button type="button" onclick="dismissReferralPrompt()" style="flex:1;background:transparent;color:var(--text-muted);border:1px solid var(--border-accent);border-radius:8px;padding:10px 20px;font-size:0.9rem;cursor:pointer;">Maybe Later</button>
+    </div>
+  </div>
+</div>
+
+<!-- MFA Step-Up Modal -->
+<div id="mfa-step-up-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:1100;align-items:center;justify-content:center;" onclick="if(event.target===this)ndMfaStepUpCancel()">
+  <div style="background:var(--bg-card);border:1px solid var(--border-accent);border-radius:var(--radius);padding:28px;max-width:380px;width:90%;text-align:center;">
+    <h3 style="margin:0 0 8px;">Verify Your Identity</h3>
+    <p style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:18px;">Enter your authenticator code to continue.</p>
+    <input id="mfa-step-up-code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="6-digit code" style="width:100%;padding:10px;font-size:1.1rem;text-align:center;letter-spacing:0.3em;background:var(--bg-input);border:1px solid var(--border-subtle);border-radius:var(--radius);color:var(--text-primary);margin-bottom:8px;">
+    <p id="mfa-step-up-error" style="font-size:0.8rem;color:var(--danger);min-height:1.2em;margin:0 0 12px;"></p>
+    <div style="display:flex;gap:10px;justify-content:center;">
+      <button type="button" onclick="ndMfaStepUpCancel()" class="secondary" style="padding:8px 20px;">Cancel</button>
+      <button type="button" id="mfa-step-up-submit" onclick="ndMfaStepUpSubmit()" style="padding:8px 20px;background:linear-gradient(135deg,var(--accent-primary),var(--accent-secondary));color:#09090b;font-weight:600;border:none;border-radius:var(--radius);cursor:pointer;">Verify</button>
     </div>
   </div>
 </div>

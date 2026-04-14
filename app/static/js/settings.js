@@ -50,7 +50,7 @@ function saveCoinbaseKeys() {
     return;
   }
   if (btn) { btn.disabled = true; btn.textContent = "Connecting..."; }
-  fetch("/api/settings/coinbase-keys", {
+  ndMfaFetch("/api/settings/coinbase-keys", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -104,7 +104,7 @@ function syncCoinbaseNow(isInitial) {
 
 function disconnectCoinbase() {
   if (!confirm("Disconnect Coinbase? Your crypto holdings data will remain, but auto-sync will stop.")) return;
-  fetch("/api/settings/coinbase-keys", { method: "DELETE" }).then(function() {
+  ndMfaFetch("/api/settings/coinbase-keys", { method: "DELETE" }).then(function() {
     _loadIntegrationStatus();
     var status = document.getElementById("cb-sync-status");
     if (status) status.textContent = "";
@@ -151,7 +151,7 @@ function openPlaidLink() {
   if (btn) { btn.disabled = true; btn.textContent = "Connecting..."; }
   if (msg) { msg.textContent = ""; }
 
-  fetch("/api/plaid/link-token", { method: "POST" }).then(function(r) {
+  ndMfaFetch("/api/plaid/link-token", { method: "POST" }).then(function(r) {
     if (!r.ok) throw new Error("Server returned " + r.status);
     return r.json();
   }).then(function(d) {
@@ -169,7 +169,7 @@ function openPlaidLink() {
       token: d.link_token,
       onSuccess: function(publicToken, metadata) {
         if (msg) { msg.textContent = "Linking account..."; msg.style.color = "var(--text-secondary)"; }
-        fetch("/api/plaid/exchange-token", {
+        ndMfaFetch("/api/plaid/exchange-token", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ public_token: publicToken, metadata: metadata })

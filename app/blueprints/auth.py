@@ -237,11 +237,22 @@ def mfa_challenge():
 @auth_bp.route("/logout")
 @login_required
 def logout():
-    from flask import session as flask_session
+    from flask import session as flask_session, make_response
     log_event("logout")
-    logout_user()
+    # Wipe any user-specific session data first, THEN call logout_user.
+    # Order matters: logout_user() sets session["_remember"] = "clear" so
+    # Flask-Login can drop the persistent remember-me cookie at end of
+    # request. Calling flask_session.clear() afterward would remove that
+    # flag and the remember cookie would survive, silently re-authenticating
+    # the user on the next request.
     flask_session.clear()
-    return redirect(url_for("pages.landing"))
+    logout_user()
+    resp = make_response(redirect(url_for("pages.landing")))
+    # Belt-and-braces: explicitly delete the remember-me cookie too, in case
+    # logout_user couldn't (e.g. cookie name was customized in config).
+    remember_cookie = current_app.config.get("REMEMBER_COOKIE_NAME", "remember_token")
+    resp.delete_cookie(remember_cookie, path="/")
+    return resp
 
 
 @auth_bp.route("/forgot-password", methods=["GET", "POST"])

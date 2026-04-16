@@ -1,0 +1,491 @@
+/* Nickel&Dime - Onboarding Wizard
+ * Adapted from the FinalDraft v3.34 wizard design, themed with N&D tokens.
+ */
+
+.nd-wiz-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(9, 9, 11, 0.8);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: ndWizFadeIn 0.3s ease-out;
+}
+@keyframes ndWizFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.nd-wiz-modal {
+  position: relative;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 24px;
+  box-shadow:
+    0 25px 60px -12px rgba(0, 0, 0, 0.7),
+    0 0 0 1px rgba(212, 160, 23, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  max-width: 560px;
+  width: 100%;
+  max-height: 92vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: ndWizSlideIn 0.4s ease-out;
+}
+@keyframes ndWizSlideIn {
+  from { opacity: 0; transform: translateY(20px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ── Progress bar ── */
+.nd-wiz-progress {
+  height: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 24px 24px 0 0;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.nd-wiz-progress-bar {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--accent-primary) 0%, var(--accent-secondary) 100%);
+  transition: width 0.4s ease;
+}
+
+.nd-wiz-step-indicator {
+  text-align: center;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 10px 0 0;
+  flex-shrink: 0;
+}
+
+/* ── Step panel ── */
+.nd-wiz-step {
+  padding: 32px 36px 36px;
+  text-align: center;
+  overflow-y: auto;
+  flex: 1 1 auto;
+}
+.nd-wiz-step[hidden] { display: none; }
+
+.nd-wiz-logo {
+  margin-bottom: 18px;
+  display: flex;
+  justify-content: center;
+}
+.nd-wiz-logo svg {
+  width: 48px;
+  height: 48px;
+  stroke: var(--accent-primary);
+  fill: none;
+  stroke-width: 1.5;
+}
+
+.nd-wiz-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 8px;
+  letter-spacing: -0.01em;
+}
+.nd-wiz-subtitle {
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  margin: 0 0 24px;
+  line-height: 1.45;
+}
+
+/* ── Selection cards (single/multi-select) ── */
+.nd-wiz-cards {
+  display: grid;
+  gap: 12px;
+  margin: 0 0 24px;
+}
+.nd-wiz-cards.cols-2 { grid-template-columns: repeat(2, 1fr); }
+.nd-wiz-cards.cols-3 { grid-template-columns: repeat(3, 1fr); }
+.nd-wiz-cards.stacked { grid-template-columns: 1fr; }
+
+.nd-wiz-card {
+  position: relative;
+  background: rgba(255, 255, 255, 0.03);
+  border: 2px solid var(--border-subtle);
+  border-radius: 14px;
+  padding: 18px 14px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, transform 0.15s, box-shadow 0.15s;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-primary);
+}
+.nd-wiz-card:hover {
+  border-color: rgba(212, 160, 23, 0.4);
+  background: rgba(255, 255, 255, 0.05);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+.nd-wiz-card.selected {
+  border-color: var(--accent-primary);
+  background: rgba(212, 160, 23, 0.08);
+  box-shadow: 0 0 0 3px rgba(212, 160, 23, 0.18);
+}
+.nd-wiz-card .nd-wiz-card-icon {
+  font-size: 26px;
+  line-height: 1;
+}
+.nd-wiz-card h3 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin: 0;
+  color: var(--text-primary);
+}
+.nd-wiz-card p {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin: 0;
+  line-height: 1.35;
+}
+.nd-wiz-card.selected .nd-wiz-check {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--accent-primary);
+  color: #09090b;
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Stacked single-line card variant (for risk / experience) */
+.nd-wiz-card.inline {
+  flex-direction: row;
+  align-items: center;
+  text-align: left;
+  padding: 14px 16px;
+  gap: 12px;
+}
+.nd-wiz-card.inline .nd-wiz-card-body {
+  flex: 1;
+}
+.nd-wiz-card.inline h3 { font-size: 1rem; }
+.nd-wiz-card.inline .nd-wiz-card-icon { font-size: 22px; flex-shrink: 0; }
+
+/* ── Preset compare view ── */
+.nd-wiz-presets {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.nd-wiz-preset {
+  background: rgba(255, 255, 255, 0.03);
+  border: 2px solid var(--border-subtle);
+  border-radius: 14px;
+  padding: 14px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  text-align: left;
+}
+.nd-wiz-preset:hover { border-color: rgba(212, 160, 23, 0.4); }
+.nd-wiz-preset.selected {
+  border-color: var(--accent-primary);
+  background: rgba(212, 160, 23, 0.06);
+}
+.nd-wiz-preset h4 {
+  margin: 0 0 4px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.nd-wiz-preset .nd-wiz-preset-desc {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+  line-height: 1.4;
+  min-height: 2.6em;
+}
+.nd-wiz-preset-mini {
+  height: 6px;
+  border-radius: 3px;
+  overflow: hidden;
+  display: flex;
+  margin-bottom: 8px;
+  background: rgba(255, 255, 255, 0.05);
+}
+.nd-wiz-preset-mini span { height: 100%; display: block; }
+.nd-wiz-preset-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+}
+.nd-wiz-preset-rows div {
+  display: flex;
+  justify-content: space-between;
+}
+
+/* ── Donut preview ── */
+.nd-wiz-donut-wrap {
+  position: relative;
+  width: 220px;
+  height: 220px;
+  margin: 0 auto 16px;
+}
+.nd-wiz-donut-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.nd-wiz-donut-label {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+.nd-wiz-donut-value {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-top: 2px;
+}
+.nd-wiz-alloc-legend {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px 16px;
+  margin: 0 auto 22px;
+  max-width: 340px;
+  font-family: var(--mono);
+  font-size: 0.78rem;
+}
+.nd-wiz-alloc-legend .row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: space-between;
+  color: var(--text-secondary);
+}
+.nd-wiz-alloc-legend .row .label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-primary);
+}
+.nd-wiz-alloc-legend .swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+
+/* ── Form inputs (contribution step) ── */
+.nd-wiz-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 0 auto 20px;
+  max-width: 320px;
+  text-align: left;
+}
+.nd-wiz-form label {
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+  display: block;
+}
+.nd-wiz-input,
+.nd-wiz-select {
+  width: 100%;
+  padding: 10px 14px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 0.95rem;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.nd-wiz-input:focus,
+.nd-wiz-select:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px rgba(212, 160, 23, 0.15);
+}
+.nd-wiz-input-prefix {
+  position: relative;
+}
+.nd-wiz-input-prefix::before {
+  content: "$";
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  font-weight: 500;
+  pointer-events: none;
+}
+.nd-wiz-input-prefix .nd-wiz-input {
+  padding-left: 26px;
+}
+
+/* ── Nav buttons ── */
+.nd-wiz-nav {
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+  margin-top: 8px;
+}
+.nd-wiz-nav.stacked {
+  flex-direction: column;
+}
+.nd-wiz-nav.stacked .nd-wiz-btn-primary { order: 1; }
+.nd-wiz-nav.stacked .nd-wiz-btn-secondary { order: 2; }
+.nd-wiz-nav.stacked .nd-wiz-btn-link { order: 3; }
+
+.nd-wiz-btn {
+  padding: 11px 22px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s, background 0.15s, color 0.15s, border-color 0.15s;
+  font-family: var(--font-sans);
+}
+.nd-wiz-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.nd-wiz-btn-primary {
+  background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%);
+  color: #09090b;
+  box-shadow: 0 4px 14px rgba(212, 160, 23, 0.25);
+  flex: 1;
+}
+.nd-wiz-btn-primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, var(--accent-secondary) 0%, var(--accent-primary) 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(212, 160, 23, 0.4);
+}
+
+.nd-wiz-btn-secondary {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-subtle);
+}
+.nd-wiz-btn-secondary:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.15);
+  color: var(--text-primary);
+}
+
+.nd-wiz-btn-link {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  font-weight: 500;
+  padding: 8px 12px;
+  text-decoration: underline;
+  text-decoration-color: rgba(255, 255, 255, 0.15);
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.nd-wiz-btn-link:hover {
+  color: var(--accent-primary);
+  text-decoration-color: var(--accent-primary);
+}
+
+/* Top-right close (skip) button */
+.nd-wiz-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-muted);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s;
+  z-index: 2;
+}
+.nd-wiz-close:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+}
+
+/* ── Summary / Done step ── */
+.nd-wiz-summary {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 18px;
+  text-align: left;
+  font-size: 0.85rem;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+.nd-wiz-summary strong { color: var(--text-primary); font-weight: 600; }
+.nd-wiz-summary .nd-wiz-summary-hint {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border-subtle);
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.nd-wiz-complete-icon {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+  color: #09090b;
+  font-size: 26px;
+  font-weight: 700;
+}
+
+/* ── Responsive ── */
+@media (max-width: 520px) {
+  .nd-wiz-step { padding: 24px 20px 28px; }
+  .nd-wiz-cards.cols-2,
+  .nd-wiz-cards.cols-3 { grid-template-columns: 1fr; }
+  .nd-wiz-presets { grid-template-columns: 1fr; }
+  .nd-wiz-title { font-size: 1.3rem; }
+  .nd-wiz-donut-wrap { width: 180px; height: 180px; }
+}

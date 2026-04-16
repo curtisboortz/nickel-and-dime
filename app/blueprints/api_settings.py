@@ -217,6 +217,112 @@ def mark_onboarding_complete():
     return jsonify({"success": True})
 
 
+@api_settings_bp.route("/onboarding", methods=["POST"])
+@login_required
+def submit_onboarding_answers():
+    """Apply wizard answers (interests, risk, allocation, contribution)
+    to the current user's setup. Stores the raw answers and marks
+    onboarding complete.
+    """
+    from ..services.new_user_template import apply_wizard_answers
+
+    data = flask_request.get_json(silent=True) or {}
+
+    allowed_risk = {"conservative", "balanced", "aggressive", "custom"}
+    allowed_interests = {
+        "equities", "crypto", "metals", "real_estate",
+        "bonds", "commodities", "alternatives",
+    }
+    allowed_experience = {"beginner", "intermediate", "advanced"}
+
+    experience = (data.get("experience") or "").lower().strip()
+    if experience and experience not in allowed_experience:
+        experience = ""
+
+    interests_in = data.get("interests") or []
+    if not isinstance(interests_in, list):
+        interests_in = []
+    interests = [
+        str(i).lower().strip()
+        for i in interests_in
+        if str(i).lower().strip() in allowed_interests
+    ]
+
+    risk = (data.get("risk") or "").lower().strip()
+    if risk and risk not in allowed_risk:
+        risk = ""
+
+    preset = (data.get("allocation_preset") or "").lower().strip()
+
+    custom_alloc = data.get("custom_allocation") or None
+    if custom_alloc is not None and not isinstance(custom_alloc, dict):
+        custom_alloc = None
+
+    contribution = data.get("monthly_contribution")
+    try:
+        contribution = float(contribution) if contribution is not None else None
+    except (TypeError, ValueError):
+        contribution = None
+    if contribution is not None and (contribution < 0 or contribution > 1_000_000):
+        contribution = None
+
+    frequency = (data.get("frequency") or "").lower().strip()
+    if frequency not in ("monthly", "biweekly", "weekly"):
+        frequency = ""
+
+    answers = {
+        "experience": experience,
+        "interests": interests,
+        "risk": risk,
+        "allocation_preset": preset,
+        "custom_allocation": custom_alloc,
+        "monthly_contribution": contribution,
+        "frequency": frequency,
+    }
+
+    try:
+        apply_wizard_answers(current_user.id, answers)
+    except Exception:
+        db.session.rollback()
+        import logging
+        logging.getLogger(__name__).exception("Onboarding apply failed")
+        return jsonify({"ok": False, "error": "Failed to apply answers"}), 500
+
+    return jsonify({"ok": True})
+
+
+@api_settings_bp.route("/admin/snapshot-as-template", methods=["POST"])
+@login_required
+def admin_snapshot_template():
+    """Regenerate app/services/new_user_template.json from a user's live config.
+
+    Owner-only. Defaults to the current user; pass ?user_id= to snapshot a
+    different user. The written JSON becomes the baseline every new signup
+    will receive going forward.
+    """
+    if not getattr(current_user, "is_admin", False):
+        return jsonify({"error": "forbidden"}), 403
+
+    from ..services.new_user_template import snapshot_and_save
+
+    uid_raw = flask_request.args.get("user_id")
+    try:
+        uid = int(uid_raw) if uid_raw else current_user.id
+    except ValueError:
+        return jsonify({"error": "invalid user_id"}), 400
+
+    try:
+        data = snapshot_and_save(uid)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 404
+    except Exception:
+        import logging
+        logging.getLogger(__name__).exception("Template snapshot failed")
+        return jsonify({"error": "snapshot failed"}), 500
+
+    return jsonify({"ok": True, "template": data})
+
+
 # ── Admin: Promo Codes ──────────────────────────────────────────────
 
 @api_settings_bp.route("/admin/promo-codes", methods=["GET"])

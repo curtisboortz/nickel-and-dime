@@ -79,6 +79,15 @@ def register():
 
         db.session.commit()
 
+        try:
+            from ..services.new_user_template import apply_new_user_template
+            apply_new_user_template(user.id)
+        except Exception as e:
+            current_app.logger.warning(
+                "New-user template apply failed for %s: %s", user.email, e
+            )
+            db.session.rollback()
+
         from ..services.email_service import send_email_verification, send_welcome
         send_email_verification(user, verify_token)
         send_welcome(user)

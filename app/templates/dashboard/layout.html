@@ -120,109 +120,7 @@ function _skeletonRows(r,c){var h="";for(var i=0;i<(r||5);i++){h+="<tr>";for(var
 
 <!-- ═══ ONBOARDING WIZARD ═══ -->
 {% if show_onboarding %}
-<div id="onboarding-overlay" style="position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.95);backdrop-filter:blur(12px);display:flex;align-items:center;justify-content:center;padding:20px;">
-  <div style="background:#1a1a2e;border:1px solid rgba(255,255,255,0.1);border-radius:12px;max-width:520px;width:100%;padding:32px;position:relative;box-shadow:0 12px 48px rgba(0,0,0,0.8);">
-    <div id="ob-step-1" class="ob-step">
-      <div style="text-align:center;margin-bottom:20px;">
-        <svg viewBox="0 0 24 24" style="width:40px;height:40px;fill:none;stroke:var(--accent-primary);stroke-width:1.5;"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
-        <h2 style="font-size:1.3rem;margin:12px 0 4px;">Welcome to Nickel&amp;Dime</h2>
-        <p style="color:var(--text-muted);font-size:0.88rem;">Let&rsquo;s get your portfolio set up in 3 quick steps.</p>
-      </div>
-      <div style="display:flex;flex-direction:column;gap:10px;">
-        <div style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:var(--radius);background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);">
-          <svg viewBox="0 0 24 24" style="width:22px;height:22px;flex-shrink:0;fill:none;stroke:var(--accent-primary);stroke-width:2;"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-          <div><strong style="font-size:0.88rem;">Add your holdings</strong><br><span style="font-size:0.78rem;color:var(--text-muted);">Import a CSV, connect via Plaid, or add manually.</span></div>
-        </div>
-        <div style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:var(--radius);background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);">
-          <svg viewBox="0 0 24 24" style="width:22px;height:22px;flex-shrink:0;fill:none;stroke:var(--accent-primary);stroke-width:2;"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 10h20"/><path d="M6 16h4"/></svg>
-          <div><strong style="font-size:0.88rem;">Set up budgeting</strong><br><span style="font-size:0.78rem;color:var(--text-muted);">Track spending categories and set monthly targets.</span></div>
-        </div>
-        <div style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:var(--radius);background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);">
-          <svg viewBox="0 0 24 24" style="width:22px;height:22px;flex-shrink:0;fill:none;stroke:var(--accent-primary);stroke-width:2;"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
-          <div><strong style="font-size:0.88rem;">Explore insights</strong><br><span style="font-size:0.78rem;color:var(--text-muted);">AI risk analysis, macro data, and projections.</span></div>
-        </div>
-      </div>
-      <button onclick="obNext(2)" style="width:100%;margin-top:20px;padding:12px;font-weight:600;font-size:0.92rem;background:linear-gradient(135deg,var(--accent-primary),var(--accent-secondary));color:#09090b;border:none;border-radius:var(--radius);cursor:pointer;">Get Started</button>
-    </div>
-
-    <div id="ob-step-2" class="ob-step" style="display:none;">
-      <h2 style="font-size:1.1rem;margin-bottom:8px;">Step 1: Add Holdings</h2>
-      <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:16px;">Choose how you want to add your portfolio data:</p>
-      <div style="display:flex;flex-direction:column;gap:10px;">
-        <button onclick="obGo('import')" style="padding:12px;border-radius:var(--radius);border:1px solid rgba(255,255,255,0.18);background:rgba(255,255,255,0.06);cursor:pointer;text-align:left;color:var(--text-primary);transition:border-color 0.15s,background 0.15s;" onmouseover="this.style.borderColor='var(--accent-primary)';this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.18)';this.style.background='rgba(255,255,255,0.06)'">
-          <strong style="font-size:0.92rem;">Import CSV</strong><br><span style="font-size:0.78rem;color:var(--text-muted);">Upload from Fidelity, Schwab, Vanguard, and 8 more.</span>
-        </button>
-        {% if is_pro %}
-        <button onclick="obGo('plaid')" style="padding:12px;border-radius:var(--radius);border:1px solid rgba(255,255,255,0.18);background:rgba(255,255,255,0.06);cursor:pointer;text-align:left;color:var(--text-primary);transition:border-color 0.15s,background 0.15s;" onmouseover="this.style.borderColor='var(--accent-primary)';this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.18)';this.style.background='rgba(255,255,255,0.06)'">
-          <strong style="font-size:0.92rem;">Connect Brokerage (Plaid)</strong><br><span style="font-size:0.78rem;color:var(--text-muted);">Auto-sync holdings from your bank or brokerage.</span>
-        </button>
-        {% endif %}
-        <button onclick="obGo('manual')" style="padding:12px;border-radius:var(--radius);border:1px solid rgba(255,255,255,0.18);background:rgba(255,255,255,0.06);cursor:pointer;text-align:left;color:var(--text-primary);transition:border-color 0.15s,background 0.15s;" onmouseover="this.style.borderColor='var(--accent-primary)';this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.18)';this.style.background='rgba(255,255,255,0.06)'">
-          <strong style="font-size:0.92rem;">Add Manually</strong><br><span style="font-size:0.78rem;color:var(--text-muted);">Type in balances and holdings one by one.</span>
-        </button>
-      </div>
-      <div style="display:flex;justify-content:space-between;margin-top:16px;">
-        <button onclick="obNext(1)" style="padding:8px 16px;font-size:0.82rem;background:rgba(255,255,255,0.06);color:var(--text-secondary);border:1px solid rgba(255,255,255,0.18);border-radius:var(--radius);cursor:pointer;">Back</button>
-        <button onclick="obNext(3)" style="padding:8px 16px;font-size:0.82rem;background:rgba(255,255,255,0.06);color:var(--text-secondary);border:1px solid rgba(255,255,255,0.18);border-radius:var(--radius);cursor:pointer;">Skip &rarr;</button>
-      </div>
-    </div>
-
-    <div id="ob-step-3" class="ob-step" style="display:none;">
-      <h2 style="font-size:1.1rem;margin-bottom:8px;">Step 2: Quick Budget Setup</h2>
-      <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:16px;">Budgeting is free for everyone. Set it up now or later.</p>
-      <div style="display:flex;flex-direction:column;gap:10px;">
-        <button onclick="obGo('budget')" style="padding:12px;border-radius:var(--radius);border:1px solid rgba(255,255,255,0.18);background:rgba(255,255,255,0.06);cursor:pointer;text-align:left;color:var(--text-primary);transition:border-color 0.15s,background 0.15s;" onmouseover="this.style.borderColor='var(--accent-primary)';this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.18)';this.style.background='rgba(255,255,255,0.06)'">
-          <strong style="font-size:0.92rem;">Set Up Budget Now</strong><br><span style="font-size:0.78rem;color:var(--text-muted);">Configure categories and add your first transactions.</span>
-        </button>
-      </div>
-      <div style="display:flex;justify-content:space-between;margin-top:16px;">
-        <button onclick="obNext(2)" style="padding:8px 16px;font-size:0.82rem;background:rgba(255,255,255,0.06);color:var(--text-secondary);border:1px solid rgba(255,255,255,0.18);border-radius:var(--radius);cursor:pointer;">Back</button>
-        <button onclick="obNext(4)" style="padding:8px 16px;font-size:0.82rem;background:rgba(255,255,255,0.06);color:var(--text-secondary);border:1px solid rgba(255,255,255,0.18);border-radius:var(--radius);cursor:pointer;">Skip &rarr;</button>
-      </div>
-    </div>
-
-    <div id="ob-step-4" class="ob-step" style="display:none;">
-      <div style="text-align:center;">
-        <svg viewBox="0 0 24 24" style="width:40px;height:40px;margin-bottom:12px;fill:none;stroke:var(--accent-primary);stroke-width:1.5;"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-        <h2 style="font-size:1.2rem;margin-bottom:8px;">You&rsquo;re All Set!</h2>
-        <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:20px;">Explore the dashboard. Check out the Portfolio tab for AI insights, allocation templates, and projections.</p>
-        <button onclick="obFinish()" style="width:100%;padding:12px;font-weight:600;font-size:0.92rem;background:linear-gradient(135deg,var(--accent-primary),var(--accent-secondary));color:#09090b;border:none;border-radius:var(--radius);cursor:pointer;">Start Exploring</button>
-      </div>
-    </div>
-
-    <div style="display:flex;justify-content:center;gap:6px;margin-top:16px;">
-      <span class="ob-dot" id="ob-dot-1" style="width:8px;height:8px;border-radius:50%;background:var(--accent-primary);"></span>
-      <span class="ob-dot" id="ob-dot-2" style="width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,0.2);"></span>
-      <span class="ob-dot" id="ob-dot-3" style="width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,0.2);"></span>
-      <span class="ob-dot" id="ob-dot-4" style="width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,0.2);"></span>
-    </div>
-  </div>
-</div>
-<script>
-var _obStep = 1;
-function obNext(step) {
-  document.querySelectorAll(".ob-step").forEach(function(el) { el.style.display = "none"; });
-  var s = document.getElementById("ob-step-" + step);
-  if (s) s.style.display = "";
-  _obStep = step;
-  for (var i = 1; i <= 4; i++) {
-    var dot = document.getElementById("ob-dot-" + i);
-    if (dot) dot.style.background = i <= step ? "var(--accent-primary)" : "rgba(255,255,255,0.2)";
-  }
-}
-function obGo(target) {
-  obFinish();
-  if (target === "import") { document.querySelector('[data-tab="import"]').click(); }
-  else if (target === "budget") { document.querySelector('[data-tab="budget"]').click(); }
-  else if (target === "manual") { document.querySelector('[data-tab="balances"]').click(); }
-  else if (target === "plaid") { document.querySelector('[data-tab="holdings"]').click(); setTimeout(function() { if (typeof openPlaidLink === "function") openPlaidLink(); }, 500); }
-}
-function obFinish() {
-  var overlay = document.getElementById("onboarding-overlay");
-  if (overlay) overlay.remove();
-  fetch("/api/settings/onboarding-complete", { method: "POST" }).catch(function() {});
-}
-</script>
+  {% include 'dashboard/_onboarding_wizard.html' %}
 {% endif %}
 
 <!-- ═══ SUMMARY TAB ═══ -->
@@ -1829,6 +1727,18 @@ window.BUCKETS_DETAIL = {};
 window.BUCKETS_CHILDREN = {};
 window.PRICE_HISTORY_DATA = [];
 window.SAVED_PULSE_ORDER = {{ pulse_order | tojson }};
+{% set _tactical = (user_settings.targets.get('tactical', {}) if user_settings and user_settings.targets else {}) %}
+{% set _targets_flat = {} %}
+{% if _tactical %}
+  {% for _b, _v in _tactical.items() %}
+    {% if _v is mapping %}
+      {% set _ = _targets_flat.update({_b: _v.get('target', 0)}) %}
+    {% else %}
+      {% set _ = _targets_flat.update({_b: _v}) %}
+    {% endif %}
+  {% endfor %}
+{% endif %}
+window.USER_TARGETS = {{ _targets_flat | tojson }};
 
 (function() {
   var order = window.SAVED_PULSE_ORDER;

@@ -36,6 +36,7 @@ class UserSettings(db.Model):
     # Onboarding
     onboarding_completed = db.Column(
         db.Boolean, default=False)
+    onboarding_answers = db.Column(db.JSON, nullable=True)
 
     # External links
     links = db.Column(db.JSON, default=dict)

@@ -1,0 +1,235 @@
+{# Onboarding wizard - rendered when show_onboarding is truthy.
+   Styled by css/onboarding.css, driven by js/onboarding.js. #}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/onboarding.css') }}?v={{ v }}">
+
+<div id="nd-wiz-overlay" class="nd-wiz-overlay" role="dialog" aria-modal="true" aria-labelledby="nd-wiz-title">
+  <div class="nd-wiz-modal">
+
+    <button type="button" class="nd-wiz-close" id="nd-wiz-close" aria-label="Skip setup">&times;</button>
+
+    <div class="nd-wiz-progress">
+      <div class="nd-wiz-progress-bar" id="nd-wiz-progress-bar"></div>
+    </div>
+    <div class="nd-wiz-step-indicator" id="nd-wiz-step-indicator">Step 1 of 7</div>
+
+    {# ── Step 1: Welcome ─────────────────────────────────────── #}
+    <div class="nd-wiz-step" data-step="welcome">
+      <div class="nd-wiz-logo">
+        <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+      </div>
+      <h2 class="nd-wiz-title" id="nd-wiz-title">Welcome to Nickel&amp;Dime</h2>
+      <p class="nd-wiz-subtitle">
+        Let's tailor your dashboard in about 60 seconds.<br>
+        You can edit any of this later.
+      </p>
+      <div class="nd-wiz-nav stacked">
+        <button type="button" class="nd-wiz-btn nd-wiz-btn-primary" data-wiz-action="next">Let's go</button>
+        <button type="button" class="nd-wiz-btn-link" data-wiz-action="skip">Skip setup</button>
+      </div>
+    </div>
+
+    {# ── Step 2: Experience level ────────────────────────────── #}
+    <div class="nd-wiz-step" data-step="experience" hidden>
+      <h2 class="nd-wiz-title">What's your investing experience?</h2>
+      <p class="nd-wiz-subtitle">We'll tune the interface to match your comfort level.</p>
+      <div class="nd-wiz-cards stacked" data-wiz-select="single" data-wiz-field="experience">
+        <div class="nd-wiz-card inline" data-wiz-value="beginner">
+          <div class="nd-wiz-card-icon">&#127793;</div>
+          <div class="nd-wiz-card-body">
+            <h3>Beginner</h3>
+            <p>Just starting out. Show me the basics with clear explanations.</p>
+          </div>
+        </div>
+        <div class="nd-wiz-card inline" data-wiz-value="intermediate">
+          <div class="nd-wiz-card-icon">&#128200;</div>
+          <div class="nd-wiz-card-body">
+            <h3>Intermediate</h3>
+            <p>I've been investing for a while. Give me the full view.</p>
+          </div>
+        </div>
+        <div class="nd-wiz-card inline" data-wiz-value="advanced">
+          <div class="nd-wiz-card-icon">&#127919;</div>
+          <div class="nd-wiz-card-body">
+            <h3>Advanced</h3>
+            <p>I track macro, derivatives, and rebalance actively.</p>
+          </div>
+        </div>
+      </div>
+      <div class="nd-wiz-nav">
+        <button type="button" class="nd-wiz-btn nd-wiz-btn-secondary" data-wiz-action="back">Back</button>
+        <button type="button" class="nd-wiz-btn nd-wiz-btn-primary" data-wiz-action="next" disabled>Continue</button>
+      </div>
+    </div>
+
+    {# ── Step 3: Interests (multi-select) ─────────────────────── #}
+    <div class="nd-wiz-step" data-step="interests" hidden>
+      <h2 class="nd-wiz-title">What are you tracking?</h2>
+      <p class="nd-wiz-subtitle">Pick as many as you like. We'll surface the right data and charts.</p>
+      <div class="nd-wiz-cards cols-2" data-wiz-select="multi" data-wiz-field="interests">
+        <div class="nd-wiz-card" data-wiz-value="equities">
+          <div class="nd-wiz-card-icon">&#128202;</div>
+          <h3>Equities</h3>
+          <p>Stocks &amp; ETFs</p>
+          <span class="nd-wiz-check">&#10003;</span>
+        </div>
+        <div class="nd-wiz-card" data-wiz-value="crypto">
+          <div class="nd-wiz-card-icon">&#8383;</div>
+          <h3>Crypto</h3>
+          <p>BTC, ETH, and beyond</p>
+          <span class="nd-wiz-check">&#10003;</span>
+        </div>
+        <div class="nd-wiz-card" data-wiz-value="metals">
+          <div class="nd-wiz-card-icon">&#129521;</div>
+          <h3>Precious Metals</h3>
+          <p>Gold &amp; silver</p>
+          <span class="nd-wiz-check">&#10003;</span>
+        </div>
+        <div class="nd-wiz-card" data-wiz-value="real_estate">
+          <div class="nd-wiz-card-icon">&#127968;</div>
+          <h3>Real Estate</h3>
+          <p>REITs, direct, Fundrise</p>
+          <span class="nd-wiz-check">&#10003;</span>
+        </div>
+        <div class="nd-wiz-card" data-wiz-value="bonds">
+          <div class="nd-wiz-card-icon">&#128181;</div>
+          <h3>Bonds</h3>
+          <p>Treasuries &amp; fixed income</p>
+          <span class="nd-wiz-check">&#10003;</span>
+        </div>
+        <div class="nd-wiz-card" data-wiz-value="commodities">
+          <div class="nd-wiz-card-icon">&#9981;</div>
+          <h3>Commodities</h3>
+          <p>Oil, copper, grains</p>
+          <span class="nd-wiz-check">&#10003;</span>
+        </div>
+        <div class="nd-wiz-card" data-wiz-value="alternatives">
+          <div class="nd-wiz-card-icon">&#127912;</div>
+          <h3>Alternatives</h3>
+          <p>Art, collectibles, VC</p>
+          <span class="nd-wiz-check">&#10003;</span>
+        </div>
+      </div>
+      <div class="nd-wiz-nav">
+        <button type="button" class="nd-wiz-btn nd-wiz-btn-secondary" data-wiz-action="back">Back</button>
+        <button type="button" class="nd-wiz-btn nd-wiz-btn-primary" data-wiz-action="next" disabled>Continue</button>
+      </div>
+    </div>
+
+    {# ── Step 4: Risk tolerance ───────────────────────────────── #}
+    <div class="nd-wiz-step" data-step="risk" hidden>
+      <h2 class="nd-wiz-title">Pick a comfort level</h2>
+      <p class="nd-wiz-subtitle">How much volatility are you okay with?</p>
+      <div class="nd-wiz-cards stacked" data-wiz-select="single" data-wiz-field="risk">
+        <div class="nd-wiz-card inline" data-wiz-value="conservative">
+          <div class="nd-wiz-card-icon">&#128737;&#65039;</div>
+          <div class="nd-wiz-card-body">
+            <h3>Conservative</h3>
+            <p>Capital preservation first. Low drawdowns.</p>
+          </div>
+        </div>
+        <div class="nd-wiz-card inline" data-wiz-value="balanced">
+          <div class="nd-wiz-card-icon">&#9878;&#65039;</div>
+          <div class="nd-wiz-card-body">
+            <h3>Balanced</h3>
+            <p>A steady mix of growth and safety.</p>
+          </div>
+        </div>
+        <div class="nd-wiz-card inline" data-wiz-value="aggressive">
+          <div class="nd-wiz-card-icon">&#128293;</div>
+          <div class="nd-wiz-card-body">
+            <h3>Aggressive</h3>
+            <p>Maximize long-term growth. Can stomach big swings.</p>
+          </div>
+        </div>
+        <div class="nd-wiz-card inline" data-wiz-value="custom">
+          <div class="nd-wiz-card-icon">&#9881;&#65039;</div>
+          <div class="nd-wiz-card-body">
+            <h3>I'll set my own</h3>
+            <p>Skip the recommendation and configure later.</p>
+          </div>
+        </div>
+      </div>
+      <div class="nd-wiz-nav">
+        <button type="button" class="nd-wiz-btn nd-wiz-btn-secondary" data-wiz-action="back">Back</button>
+        <button type="button" class="nd-wiz-btn nd-wiz-btn-primary" data-wiz-action="next" disabled>Continue</button>
+      </div>
+    </div>
+
+    {# ── Step 5: Recommended allocation ──────────────────────── #}
+    <div class="nd-wiz-step" data-step="allocation" hidden>
+      <h2 class="nd-wiz-title" id="nd-wiz-alloc-title">Your recommended mix</h2>
+      <p class="nd-wiz-subtitle" id="nd-wiz-alloc-sub">Based on your answers. You can tweak anytime.</p>
+
+      <div id="nd-wiz-alloc-single">
+        <div class="nd-wiz-donut-wrap">
+          <canvas id="nd-wiz-donut"></canvas>
+          <div class="nd-wiz-donut-center">
+            <div class="nd-wiz-donut-label" id="nd-wiz-donut-label">Recommended</div>
+            <div class="nd-wiz-donut-value" id="nd-wiz-donut-name">Balanced</div>
+          </div>
+        </div>
+        <div class="nd-wiz-alloc-legend" id="nd-wiz-alloc-legend"></div>
+      </div>
+
+      <div id="nd-wiz-alloc-compare" hidden>
+        <div class="nd-wiz-presets" id="nd-wiz-preset-grid"></div>
+      </div>
+
+      <div class="nd-wiz-nav">
+        <button type="button" class="nd-wiz-btn nd-wiz-btn-secondary" data-wiz-action="back">Back</button>
+        <button type="button" class="nd-wiz-btn nd-wiz-btn-primary" data-wiz-action="next" id="nd-wiz-alloc-accept">Accept</button>
+      </div>
+      <div style="text-align:center;margin-top:10px;">
+        <button type="button" class="nd-wiz-btn-link" id="nd-wiz-alloc-toggle">See other templates</button>
+        <span style="color:var(--text-muted);margin:0 6px;">&middot;</span>
+        <button type="button" class="nd-wiz-btn-link" id="nd-wiz-alloc-skip">I'll set my own</button>
+      </div>
+    </div>
+
+    {# ── Step 6: Monthly contribution (optional) ─────────────── #}
+    <div class="nd-wiz-step" data-step="contribution" hidden>
+      <h2 class="nd-wiz-title">How much do you invest each month?</h2>
+      <p class="nd-wiz-subtitle">Optional. We'll pre-fill your monthly investment targets per bucket.</p>
+      <div class="nd-wiz-form">
+        <div>
+          <label for="nd-wiz-contrib">Monthly amount</label>
+          <div class="nd-wiz-input-prefix">
+            <input type="number" id="nd-wiz-contrib" class="nd-wiz-input" placeholder="0" min="0" step="50">
+          </div>
+        </div>
+        <div>
+          <label for="nd-wiz-frequency">Contribution cadence</label>
+          <select id="nd-wiz-frequency" class="nd-wiz-select">
+            <option value="monthly">Monthly</option>
+            <option value="biweekly">Biweekly (every 2 weeks)</option>
+            <option value="weekly">Weekly</option>
+          </select>
+        </div>
+      </div>
+      <div class="nd-wiz-nav">
+        <button type="button" class="nd-wiz-btn nd-wiz-btn-secondary" data-wiz-action="back">Back</button>
+        <button type="button" class="nd-wiz-btn nd-wiz-btn-primary" data-wiz-action="next">Continue</button>
+      </div>
+      <div style="text-align:center;margin-top:8px;">
+        <button type="button" class="nd-wiz-btn-link" data-wiz-action="next">Skip this step</button>
+      </div>
+    </div>
+
+    {# ── Step 7: Done ────────────────────────────────────────── #}
+    <div class="nd-wiz-step" data-step="done" hidden>
+      <div class="nd-wiz-complete-icon">&#10003;</div>
+      <h2 class="nd-wiz-title">You're all set</h2>
+      <p class="nd-wiz-subtitle">Here's what we set up for you:</p>
+      <div class="nd-wiz-summary" id="nd-wiz-summary"></div>
+      <p class="nd-wiz-subtitle" style="font-size:0.82rem;margin-bottom:18px;color:var(--text-muted);">
+        Pulse cards are drag-and-drop &mdash; click the <strong style="color:var(--accent-primary);">+</strong> button on the pulse bar to add more, or open Settings to fine-tune everything.
+      </p>
+      <div class="nd-wiz-nav stacked">
+        <button type="button" class="nd-wiz-btn nd-wiz-btn-primary" id="nd-wiz-finish">Go to my dashboard</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/onboarding.js') }}?v={{ v }}"></script>

@@ -712,18 +712,127 @@ function _buildDonutLegend(parentData, detailData, total) {
 }
 
 var _lastDonutHash = "";
+/* ── Empty-state helpers ─────────────────────────────────────────
+ * For brand-new users (no holdings yet), render a placeholder donut
+ * so the dashboard looks alive. If the user set allocation targets
+ * (e.g. from the onboarding wizard), render target percentages in a
+ * muted style. Otherwise render 5 equal $0 slices for the standard
+ * buckets.
+ */
+function _defaultEmptyBuckets() {
+  return {
+    "Equities":     1,
+    "Real Assets":  1,
+    "Alternatives": 1,
+    "Cash":         1,
+    "Fixed Income": 1
+  };
+}
+
+function _emptyDonutConfig() {
+  var targets = window.USER_TARGETS && typeof window.USER_TARGETS === "object"
+    ? window.USER_TARGETS : null;
+  if (targets && Object.keys(targets).length > 0) {
+    var buckets = {};
+    Object.keys(targets).forEach(function(b) {
+      var v = Number(targets[b]);
+      if (isFinite(v) && v > 0) buckets[b] = v;
+    });
+    if (Object.keys(buckets).length > 0) {
+      return { buckets: buckets, mode: "targets" };
+    }
+  }
+  return { buckets: _defaultEmptyBuckets(), mode: "placeholder" };
+}
+
+function _renderEmptyDonut(ctx) {
+  if (!ctx || typeof Chart === "undefined") return;
+  var cfg = _emptyDonutConfig();
+  var labels = Object.keys(cfg.buckets);
+  var values = labels.map(function(l) { return cfg.buckets[l]; });
+  var colors = labels.map(function(l) {
+    var c = _donutColor(l);
+    // Muted translucent variant for the empty state
+    return c + "55";
+  });
+
+  var centerVal = document.getElementById("donut-center-value");
+  if (centerVal) {
+    centerVal.textContent = "$0";
+    centerVal.dataset.ndCurrent = 0;
+  }
+
+  var tipLabel = cfg.mode === "targets"
+    ? function(c) { return " Target: " + c.raw + "%"; }
+    : function(c) { return " Add holdings to fill this in"; };
+
+  if (_donutChart) {
+    _donutChart.data.labels = labels;
+    _donutChart.data.datasets[0].data = values;
+    _donutChart.data.datasets[0].backgroundColor = colors;
+    _donutChart.options.plugins.tooltip.callbacks.label = tipLabel;
+    _donutChart.update("none");
+  } else {
+    var _t = typeof ndChartTheme === "function" ? ndChartTheme() : { donutBorder: "rgba(9,9,11,0.6)" };
+    _donutChart = new Chart(ctx, {
+      type: "doughnut",
+      data: { labels: labels, datasets: [{
+        data: values, backgroundColor: colors,
+        borderWidth: 2.5, borderColor: _t.donutBorder,
+        hoverBorderWidth: 0, hoverOffset: 4, spacing: 1
+      }] },
+      options: {
+        responsive: true, maintainAspectRatio: false, cutout: "70%",
+        layout: { padding: 6 },
+        animation: { duration: 400 },
+        plugins: {
+          legend: { display: false },
+          tooltip: Object.assign(
+            typeof ndTooltipOpts === "function" ? ndTooltipOpts(_t) : {},
+            { callbacks: { title: function(items) { return items[0].label; }, label: tipLabel } }
+          )
+        }
+      }
+    });
+  }
+
+  var legend = document.getElementById("donut-legend");
+  if (legend) {
+    var hint = cfg.mode === "targets"
+      ? "Targets from your setup. Add holdings to see progress."
+      : "No holdings yet. Your allocation will appear once you add some.";
+    var rows = labels.map(function(l) {
+      var pct = cfg.mode === "targets" ? cfg.buckets[l] : 100 / labels.length;
+      return '<div style="display:flex;align-items:center;gap:8px;padding:3px 0;opacity:0.7;">' +
+        '<span style="width:8px;height:8px;border-radius:50%;background:' + _donutColor(l) + ';flex-shrink:0;"></span>' +
+        '<span style="flex:1;color:var(--text-secondary);font-size:0.78rem;">' + l + '</span>' +
+        '<span style="font-family:var(--mono);color:var(--text-muted);font-size:0.74rem;min-width:40px;text-align:right;">' +
+          (cfg.mode === "targets" ? pct.toFixed(0) + "%" : "$0") +
+        '</span></div>';
+    }).join("");
+    legend.innerHTML =
+      '<div style="padding:10px 6px 4px;text-align:center;color:var(--text-muted);font-size:0.72rem;">' + hint + '</div>' +
+      rows;
+  }
+  NDDiag.track("donut", "ok", "empty-state (" + cfg.mode + ")");
+}
+
 function buildDonut() {
   NDDiag.track("donut", "loading");
   var parentData = window.BUCKETS_DATA;
   var detailData = window.BUCKETS_DETAIL || parentData;
-  if (!parentData || typeof parentData !== "object") { NDDiag.track("donut", "warn", "no BUCKETS_DATA"); return; }
+  if (!parentData || typeof parentData !== "object") parentData = {};
 
   var labels = Object.keys(parentData).filter(function(k) { return parentData[k] > 0; });
   var values = labels.map(function(k) { return parentData[k]; });
   var colors = labels.map(function(l) { return _donutColor(l); });
   var total = values.reduce(function(a, b) { return a + b; }, 0);
 
-  if (labels.length === 0) { NDDiag.track("donut", "warn", "empty buckets"); return; }
+  if (labels.length === 0 || total <= 0) {
+    var emptyCtx = document.getElementById("allocation-donut");
+    _renderEmptyDonut(emptyCtx);
+    return;
+  }
 
   var newHash = labels.join("|") + ":" + values.map(function(v) { return Math.round(v); }).join(",");
   var dataChanged = (newHash !== _lastDonutHash);

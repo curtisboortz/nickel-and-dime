@@ -1,0 +1,28 @@
+{
+  "bucket_rollup": {},
+  "custom_pulse_cards": [],
+  "dashboard_layout": [
+    "allocation-donut",
+    "allocation-table",
+    "monthly-investments",
+    "watchlist",
+    "financial-goals"
+  ],
+  "monthly_investment_categories": [],
+  "pulse_order": [
+    "spy",
+    "btc",
+    "gold",
+    "silver",
+    "tnx_10y",
+    "tnx_2y",
+    "dxy",
+    "vix",
+    "oil"
+  ],
+  "rebalance_months": 6,
+  "widget_order": {
+    "hidden_pulse": [],
+    "pulse_size": "compact"
+  }
+}

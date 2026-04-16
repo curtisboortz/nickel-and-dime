@@ -224,7 +224,9 @@ def submit_onboarding_answers():
     to the current user's setup. Stores the raw answers and marks
     onboarding complete.
     """
-    from ..services.new_user_template import apply_wizard_answers
+    import re as _re
+    from ..services.new_user_template import apply_wizard_answers, ALLOCATION_PRESETS
+    from ..services.templates_service import TEMPLATE_MAP
 
     data = flask_request.get_json(silent=True) or {}
 
@@ -234,10 +236,23 @@ def submit_onboarding_answers():
         "bonds", "commodities", "alternatives",
     }
     allowed_experience = {"beginner", "intermediate", "advanced"}
+    allowed_horizon = {"short", "medium", "long", "retired"}
+    allowed_philosophy = {
+        "passive", "active", "defensive", "income", "unsure",
+    }
+    classic_re = _re.compile(r"^classic:[a-z0-9\-]+$")
 
     experience = (data.get("experience") or "").lower().strip()
     if experience and experience not in allowed_experience:
         experience = ""
+
+    time_horizon = (data.get("time_horizon") or "").lower().strip()
+    if time_horizon and time_horizon not in allowed_horizon:
+        time_horizon = ""
+
+    philosophy = (data.get("philosophy") or "").lower().strip()
+    if philosophy and philosophy not in allowed_philosophy:
+        philosophy = ""
 
     interests_in = data.get("interests") or []
     if not isinstance(interests_in, list):
@@ -253,6 +268,13 @@ def submit_onboarding_answers():
         risk = ""
 
     preset = (data.get("allocation_preset") or "").lower().strip()
+    if preset and preset != "skip" and preset not in ALLOCATION_PRESETS:
+        if classic_re.match(preset):
+            classic_id = preset.split(":", 1)[1]
+            if classic_id not in TEMPLATE_MAP:
+                preset = ""
+        else:
+            preset = ""
 
     custom_alloc = data.get("custom_allocation") or None
     if custom_alloc is not None and not isinstance(custom_alloc, dict):
@@ -272,7 +294,9 @@ def submit_onboarding_answers():
 
     answers = {
         "experience": experience,
+        "time_horizon": time_horizon,
         "interests": interests,
+        "philosophy": philosophy,
         "risk": risk,
         "allocation_preset": preset,
         "custom_allocation": custom_alloc,

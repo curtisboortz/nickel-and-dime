@@ -1,36 +1,77 @@
 /* Nickel&Dime - Onboarding wizard state machine.
  *
- * Drives the wizard modal rendered by _onboarding_wizard.html.
- * Collects answers across 7 steps, previews the recommended allocation
- * with a live Chart.js donut, and POSTs final answers to /api/onboarding.
+ * Drives the 10-step wizard rendered by _onboarding_wizard.html.
+ * Collects answers, previews the recommended allocation with a live
+ * Chart.js donut, fetches classic portfolio templates from the server,
+ * and POSTs final answers to /api/onboarding.
  */
 (function() {
   "use strict";
 
-  var STEPS = ["welcome", "experience", "interests", "risk", "allocation", "contribution", "done"];
-  var PRESETS = {
-    conservative: { label: "Conservative", desc: "Capital preservation, low drawdowns.",
-      alloc: { "Equities": 30, "Real Assets": 10, "Alternatives": 5, "Cash": 15, "Fixed Income": 40 } },
-    balanced:     { label: "Balanced",     desc: "Steady mix of growth and safety.",
-      alloc: { "Equities": 55, "Real Assets": 15, "Alternatives": 5, "Cash": 5,  "Fixed Income": 20 } },
-    aggressive:   { label: "Aggressive",   desc: "Growth-first, tolerates big swings.",
-      alloc: { "Equities": 75, "Real Assets": 15, "Alternatives": 5, "Cash": 0,  "Fixed Income": 5 } },
-    metals_heavy: { label: "Metals-Heavy", desc: "N&D-signature hard-asset tilt.",
-      alloc: { "Equities": 50, "Real Assets": 30, "Alternatives": 5, "Cash": 10, "Fixed Income": 5 } }
+  var STEPS = [
+    "welcome",
+    "experience",
+    "time_horizon",
+    "interests",
+    "philosophy",
+    "risk",
+    "allocation",
+    "contribution",
+    "populate",
+    "done"
+  ];
+
+  // N&D-native presets (simple 5-bucket rollup)
+  var ND_PRESETS = {
+    conservative: {
+      label: "Conservative",
+      author: "Nickel&Dime",
+      desc: "Capital preservation, low drawdowns.",
+      alloc: { "Equities": 30, "Real Assets": 10, "Alternatives": 5, "Cash": 15, "Fixed Income": 40 }
+    },
+    balanced: {
+      label: "Balanced",
+      author: "Nickel&Dime",
+      desc: "Steady mix of growth and safety.",
+      alloc: { "Equities": 55, "Real Assets": 15, "Alternatives": 5, "Cash": 5, "Fixed Income": 20 }
+    },
+    aggressive: {
+      label: "Aggressive",
+      author: "Nickel&Dime",
+      desc: "Growth-first, tolerates big swings.",
+      alloc: { "Equities": 75, "Real Assets": 15, "Alternatives": 5, "Cash": 0, "Fixed Income": 5 }
+    }
   };
+
+  // Classic templates -- populated at runtime via /api/templates
+  var CLASSIC_TEMPLATES = {};
+
+  // Full palette, covers both N&D and classic buckets
   var BUCKET_COLORS = {
-    "Equities":     "#f5c842",
-    "Real Assets":  "#34d399",
-    "Alternatives": "#a78bfa",
-    "Cash":         "#60a5fa",
-    "Fixed Income": "#94a3b8"
+    "Equities":      "#f5c842",
+    "International": "#fbbf24",
+    "Real Assets":   "#34d399",
+    "Real Estate":   "#10b981",
+    "Gold":          "#eab308",
+    "Silver":        "#d1d5db",
+    "Alternatives":  "#a78bfa",
+    "Crypto":        "#f97316",
+    "Cash":          "#60a5fa",
+    "Fixed Income":  "#94a3b8",
+    "Commodities":   "#fb923c",
+    "Art":           "#ec4899"
   };
+  function colorFor(bucket) {
+    return BUCKET_COLORS[bucket] || "#9ca3af";
+  }
 
   var state = {
     stepIdx: 0,
     answers: {
       experience: "",
+      time_horizon: "",
       interests: [],
+      philosophy: "",
       risk: "",
       allocation_preset: "",
       custom_allocation: null,
@@ -38,13 +79,47 @@
       frequency: "monthly"
     },
     allocMode: "single",
-    donutChart: null
+    donutChart: null,
+    templatesLoaded: false
   };
 
   var overlay = document.getElementById("nd-wiz-overlay");
   if (!overlay) return;
   var progressBar = document.getElementById("nd-wiz-progress-bar");
   var stepIndicator = document.getElementById("nd-wiz-step-indicator");
+
+  /* ── Preset helpers ── */
+  function getPreset(key) {
+    if (!key) return null;
+    if (ND_PRESETS[key]) return ND_PRESETS[key];
+    if (key.indexOf("classic:") === 0) {
+      var id = key.slice("classic:".length);
+      return CLASSIC_TEMPLATES[id] || null;
+    }
+    return null;
+  }
+
+  /* ── Recommendation logic (mirrors Python side) ── */
+  function recommendPreset() {
+    var r = (state.answers.risk || "").toLowerCase();
+    var philo = (state.answers.philosophy || "").toLowerCase();
+    var horizon = (state.answers.time_horizon || "").toLowerCase();
+    var interests = state.answers.interests || [];
+
+    if (r === "custom") return "custom";
+
+    if (philo === "income" || horizon === "retired") return "classic:income-focus";
+    if (philo === "defensive" && r === "conservative") return "classic:permanent";
+    if (philo === "defensive") return "classic:all-weather";
+    if (philo === "active") return "classic:macro-investor";
+    if (philo === "passive" && r === "aggressive" && horizon === "long") return "classic:boglehead-3";
+    if (philo === "passive" && r === "balanced") return "classic:60-40";
+    if (interests.indexOf("metals") !== -1 && (r === "balanced" || r === "aggressive")) {
+      return "classic:golden-butterfly";
+    }
+    if (ND_PRESETS[r]) return r;
+    return "balanced";
+  }
 
   /* ── Step navigation ── */
   function showStep(idx) {
@@ -61,6 +136,8 @@
 
     if (name === "allocation") renderAllocationStep();
     if (name === "done") renderSummary();
+
+    updateStepValidity();
   }
 
   function nextStep()  { showStep(state.stepIdx + 1); }
@@ -96,7 +173,9 @@
     if (!nextBtn) return;
     var valid = true;
     if (name === "experience") valid = !!state.answers.experience;
+    else if (name === "time_horizon") valid = !!state.answers.time_horizon;
     else if (name === "interests") valid = (state.answers.interests || []).length > 0;
+    else if (name === "philosophy") valid = !!state.answers.philosophy;
     else if (name === "risk") valid = !!state.answers.risk;
     nextBtn.disabled = !valid;
   }
@@ -126,28 +205,64 @@
     if (confirm("Skip setup? You can configure everything from Settings later.")) skipWizard();
   });
 
-  /* ── Allocation step rendering ── */
-  function recommendPreset() {
-    var r = (state.answers.risk || "").toLowerCase();
-    var interests = state.answers.interests || [];
-    if (r === "custom") return "custom";
-    if (interests.indexOf("metals") !== -1 && (r === "balanced" || r === "aggressive")) return "metals_heavy";
-    if (PRESETS[r]) return r;
-    return "balanced";
+  /* ── Templates fetch ── */
+  function ensureTemplatesLoaded() {
+    if (state.templatesLoaded) return Promise.resolve();
+    return fetch("/api/templates", { credentials: "same-origin" })
+      .then(function(r) { return r.ok ? r.json() : { templates: [] }; })
+      .then(function(data) {
+        var list = (data && data.templates) || [];
+        // list view omits allocations; fetch each one to get the full payload
+        return Promise.all(list.map(function(t) {
+          return fetch("/api/templates/" + encodeURIComponent(t.id), { credentials: "same-origin" })
+            .then(function(r) { return r.ok ? r.json() : null; })
+            .catch(function() { return null; });
+        }));
+      })
+      .then(function(detailed) {
+        (detailed || []).forEach(function(entry) {
+          if (!entry) return;
+          var tpl = entry.template || entry;
+          if (!tpl || !tpl.id) return;
+          CLASSIC_TEMPLATES[tpl.id] = {
+            id: tpl.id,
+            label: tpl.name,
+            author: tpl.author,
+            desc: tpl.description,
+            alloc: tpl.allocations || {}
+          };
+        });
+        state.templatesLoaded = true;
+      })
+      .catch(function() {
+        state.templatesLoaded = true;
+      });
   }
 
+  /* ── Allocation step rendering ── */
   function renderAllocationStep() {
-    var recommended = recommendPreset();
-    if (recommended === "custom") {
-      state.answers.allocation_preset = "skip";
-      setAllocMode("skip");
-      return;
-    }
-    if (!state.answers.allocation_preset || state.answers.allocation_preset === "skip") {
-      state.answers.allocation_preset = recommended;
-    }
-    setAllocMode(state.allocMode);
-    drawRecommendedDonut(state.answers.allocation_preset);
+    ensureTemplatesLoaded().then(function() {
+      var recommended = recommendPreset();
+      if (recommended === "custom") {
+        state.answers.allocation_preset = "skip";
+        setAllocMode("skip");
+        return;
+      }
+      // If recommendation is a classic template that failed to load, fall back.
+      if (recommended.indexOf("classic:") === 0 && !getPreset(recommended)) {
+        recommended = mapRiskToNDPreset();
+      }
+      if (!state.answers.allocation_preset || state.answers.allocation_preset === "skip") {
+        state.answers.allocation_preset = recommended;
+      }
+      setAllocMode(state.allocMode);
+      drawRecommendedDonut(state.answers.allocation_preset);
+    });
+  }
+
+  function mapRiskToNDPreset() {
+    var r = (state.answers.risk || "").toLowerCase();
+    return ND_PRESETS[r] ? r : "balanced";
   }
 
   function setAllocMode(mode) {
@@ -160,7 +275,6 @@
     var acceptBtn = document.getElementById("nd-wiz-alloc-accept");
 
     if (mode === "skip") {
-      // User chose custom risk -> skip donut, just let them continue
       single.hidden = true;
       compare.hidden = true;
       toggleBtn.hidden = true;
@@ -201,49 +315,80 @@
   });
 
   function renderPresetGrid() {
-    var grid = document.getElementById("nd-wiz-preset-grid");
-    if (!grid) return;
-    grid.innerHTML = "";
-    Object.keys(PRESETS).forEach(function(key) {
-      var p = PRESETS[key];
-      var card = document.createElement("div");
-      card.className = "nd-wiz-preset" + (state.answers.allocation_preset === key ? " selected" : "");
-      card.dataset.preset = key;
-
-      var miniBars = Object.keys(p.alloc).map(function(b) {
-        return '<span style="flex:' + p.alloc[b] + ';background:' + BUCKET_COLORS[b] + ';"></span>';
-      }).join("");
-
-      var rows = Object.keys(p.alloc).map(function(b) {
-        return '<div><span>' + b + '</span><span>' + p.alloc[b] + '%</span></div>';
-      }).join("");
-
-      card.innerHTML =
-        '<h4>' + p.label + '</h4>' +
-        '<div class="nd-wiz-preset-desc">' + p.desc + '</div>' +
-        '<div class="nd-wiz-preset-mini">' + miniBars + '</div>' +
-        '<div class="nd-wiz-preset-rows">' + rows + '</div>';
-
-      card.addEventListener("click", function() {
-        state.answers.allocation_preset = key;
-        grid.querySelectorAll(".nd-wiz-preset").forEach(function(el) { el.classList.remove("selected"); });
-        card.classList.add("selected");
+    var ndGrid = document.getElementById("nd-wiz-preset-grid-nd");
+    var classicGrid = document.getElementById("nd-wiz-preset-grid-classic");
+    if (ndGrid) {
+      ndGrid.innerHTML = "";
+      Object.keys(ND_PRESETS).forEach(function(key) {
+        ndGrid.appendChild(buildPresetCard(key, ND_PRESETS[key]));
       });
-      grid.appendChild(card);
+    }
+    if (classicGrid) {
+      classicGrid.innerHTML = "";
+      Object.keys(CLASSIC_TEMPLATES).forEach(function(id) {
+        var key = "classic:" + id;
+        classicGrid.appendChild(buildPresetCard(key, CLASSIC_TEMPLATES[id]));
+      });
+      if (!Object.keys(CLASSIC_TEMPLATES).length) {
+        classicGrid.innerHTML = '<div style="grid-column:1/-1;color:var(--text-muted);font-size:0.8rem;">Classic templates couldn\'t load.</div>';
+      }
+    }
+  }
+
+  function buildPresetCard(key, p) {
+    var card = document.createElement("div");
+    card.className = "nd-wiz-preset" + (state.answers.allocation_preset === key ? " selected" : "");
+    card.dataset.preset = key;
+
+    var total = Object.keys(p.alloc).reduce(function(s, b) { return s + (p.alloc[b] || 0); }, 0) || 1;
+    var miniBars = Object.keys(p.alloc).map(function(b) {
+      return '<span style="flex:' + (p.alloc[b] / total) + ';background:' + colorFor(b) + ';"></span>';
+    }).join("");
+
+    var rows = Object.keys(p.alloc).map(function(b) {
+      return '<div><span>' + escapeHtml(b) + '</span><span>' + p.alloc[b] + '%</span></div>';
+    }).join("");
+
+    var author = p.author ? '<div class="nd-wiz-preset-author">' + escapeHtml(p.author) + '</div>' : "";
+
+    card.innerHTML =
+      '<h4>' + escapeHtml(p.label) + '</h4>' +
+      author +
+      (p.desc ? '<div class="nd-wiz-preset-desc">' + escapeHtml(p.desc) + '</div>' : '<div class="nd-wiz-preset-desc"></div>') +
+      '<div class="nd-wiz-preset-mini">' + miniBars + '</div>' +
+      '<div class="nd-wiz-preset-rows">' + rows + '</div>';
+
+    card.addEventListener("click", function() {
+      state.answers.allocation_preset = key;
+      document.querySelectorAll("#nd-wiz-alloc-compare .nd-wiz-preset").forEach(function(el) {
+        el.classList.remove("selected");
+      });
+      card.classList.add("selected");
     });
+    return card;
+  }
+
+  function escapeHtml(s) {
+    return String(s == null ? "" : s)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
   }
 
   function drawRecommendedDonut(presetKey) {
-    var preset = PRESETS[presetKey];
+    var preset = getPreset(presetKey);
     if (!preset) return;
     var nameEl = document.getElementById("nd-wiz-donut-name");
     if (nameEl) nameEl.textContent = preset.label;
+    var authorEl = document.getElementById("nd-wiz-alloc-author");
+    if (authorEl) authorEl.textContent = preset.author ? "By " + preset.author : "";
 
     var legend = document.getElementById("nd-wiz-alloc-legend");
     if (legend) {
       legend.innerHTML = Object.keys(preset.alloc).map(function(b) {
         return '<div class="row">' +
-          '<span class="label"><span class="swatch" style="background:' + BUCKET_COLORS[b] + ';"></span>' + b + '</span>' +
+          '<span class="label"><span class="swatch" style="background:' + colorFor(b) + ';"></span>' + escapeHtml(b) + '</span>' +
           '<span>' + preset.alloc[b] + '%</span>' +
           '</div>';
       }).join("");
@@ -253,7 +398,7 @@
     if (!canvas || typeof Chart === "undefined") return;
     var labels = Object.keys(preset.alloc);
     var data = labels.map(function(b) { return preset.alloc[b]; });
-    var colors = labels.map(function(b) { return BUCKET_COLORS[b]; });
+    var colors = labels.map(function(b) { return colorFor(b); });
 
     if (state.donutChart) {
       state.donutChart.data.labels = labels;
@@ -295,16 +440,40 @@
     state.answers.frequency = freqSelect.value;
   });
 
+  /* ── Populate step: persist + navigate to relevant tab ── */
+  overlay.addEventListener("click", function(e) {
+    var btn = e.target.closest("[data-populate-go]");
+    if (!btn) return;
+    var dest = btn.dataset.populateGo;
+    btn.disabled = true;
+    var orig = btn.textContent;
+    btn.textContent = "Saving...";
+    submitAnswers().finally(function() {
+      var target = "/dashboard";
+      if (dest === "import") target = "/dashboard/import";
+      else if (dest === "balances") target = "/dashboard/balances";
+      else if (dest === "plaid") target = "/dashboard?open=plaid";
+      else if (dest === "upgrade") target = "/billing/pricing";
+      window.location.href = target;
+      // safety fallback
+      setTimeout(function() { btn.disabled = false; btn.textContent = orig; }, 2000);
+    });
+  });
+
   /* ── Summary + finish ── */
   function renderSummary() {
     var parts = [];
     var ans = state.answers;
     if (ans.experience) parts.push("<div><strong>Experience:</strong> " + cap(ans.experience) + "</div>");
+    if (ans.time_horizon) parts.push("<div><strong>Time horizon:</strong> " + horizonLabel(ans.time_horizon) + "</div>");
     if ((ans.interests || []).length) {
       parts.push("<div><strong>Tracking:</strong> " + ans.interests.map(interestLabel).join(", ") + "</div>");
     }
-    if (ans.allocation_preset && ans.allocation_preset !== "skip" && PRESETS[ans.allocation_preset]) {
-      parts.push("<div><strong>Allocation:</strong> " + PRESETS[ans.allocation_preset].label + "</div>");
+    if (ans.philosophy) parts.push("<div><strong>Style:</strong> " + philoLabel(ans.philosophy) + "</div>");
+
+    var preset = getPreset(ans.allocation_preset);
+    if (preset && ans.allocation_preset !== "skip") {
+      parts.push("<div><strong>Allocation:</strong> " + escapeHtml(preset.label) + "</div>");
     } else if (ans.allocation_preset === "skip") {
       parts.push("<div><strong>Allocation:</strong> you'll set this later</div>");
     }
@@ -337,21 +506,37 @@
       commodities: "Commodities", alternatives: "Alternatives"
     })[i] || i;
   }
+  function horizonLabel(h) {
+    return ({
+      short: "Under 5 years", medium: "5 to 15 years",
+      long: "15+ years", retired: "Retired / drawing"
+    })[h] || h;
+  }
+  function philoLabel(p) {
+    return ({
+      passive: "Simple & passive", active: "Active & macro-aware",
+      defensive: "Defensive & all-weather", income: "Income-focused",
+      unsure: "Exploring"
+    })[p] || p;
+  }
 
-  var finishBtn = document.getElementById("nd-wiz-finish");
-  if (finishBtn) finishBtn.addEventListener("click", function() {
-    finishBtn.disabled = true;
-    finishBtn.textContent = "Setting up...";
+  function submitAnswers() {
     var csrf = document.querySelector('meta[name="csrf-token"]');
-    fetch("/api/onboarding", {
+    return fetch("/api/onboarding", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "X-CSRFToken": csrf ? csrf.content : ""
       },
       body: JSON.stringify(state.answers)
-    })
-      .then(function(r) { return r.json().catch(function() { return {}; }); })
+    }).then(function(r) { return r.json().catch(function() { return {}; }); });
+  }
+
+  var finishBtn = document.getElementById("nd-wiz-finish");
+  if (finishBtn) finishBtn.addEventListener("click", function() {
+    finishBtn.disabled = true;
+    finishBtn.textContent = "Setting up...";
+    submitAnswers()
       .then(function(d) {
         if (d && d.ok) {
           window.location.reload();

@@ -1,5 +1,37 @@
 /* Nickel&Dime - Settings modal, integrations, category grouping */
 
+/* Auto-open the Settings modal and scroll to the Plaid block when the
+   URL includes ?open=plaid (used by the onboarding wizard's populate step). */
+(function() {
+  function maybeOpenPlaidFromQuery() {
+    try {
+      var params = new URLSearchParams(window.location.search);
+      if (params.get("open") !== "plaid") return;
+      if (typeof openSettingsModal !== "function") return;
+      openSettingsModal();
+      setTimeout(function() {
+        var plaidSection = document.getElementById("plaid-connect-btn")
+          || document.querySelector('[data-settings-section="plaid"]');
+        if (plaidSection && plaidSection.scrollIntoView) {
+          plaidSection.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      }, 200);
+      // clean the url so refreshes don't re-open
+      if (window.history && window.history.replaceState) {
+        params.delete("open");
+        var q = params.toString();
+        window.history.replaceState({}, "", window.location.pathname + (q ? "?" + q : ""));
+      }
+    } catch (e) { /* noop */ }
+  }
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", maybeOpenPlaidFromQuery);
+  } else {
+    maybeOpenPlaidFromQuery();
+  }
+})();
+
+
 /* ═══════════════════════════════════════════════
    Settings & Integrations (Coinbase)
    ═══════════════════════════════════════════════ */

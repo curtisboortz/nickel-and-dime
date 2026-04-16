@@ -143,6 +143,32 @@
 .nd-wiz-card .nd-wiz-card-icon {
   font-size: 26px;
   line-height: 1;
+  color: var(--accent-primary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Stroked SVG helper - lives on every wizard icon */
+.nd-wiz-svg {
+  width: 28px;
+  height: 28px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex-shrink: 0;
+}
+.nd-wiz-card.inline .nd-wiz-card-icon .nd-wiz-svg {
+  width: 26px;
+  height: 26px;
+}
+.nd-wiz-card.selected .nd-wiz-card-icon { color: var(--accent-primary); }
+.nd-wiz-check .nd-wiz-svg {
+  width: 12px;
+  height: 12px;
+  stroke-width: 2.5;
 }
 .nd-wiz-card h3 {
   font-size: 0.95rem;
@@ -155,6 +181,9 @@
   color: var(--text-muted);
   margin: 0;
   line-height: 1.35;
+}
+.nd-wiz-check {
+  display: none;
 }
 .nd-wiz-card.selected .nd-wiz-check {
   position: absolute;
@@ -185,13 +214,25 @@
 }
 .nd-wiz-card.inline h3 { font-size: 1rem; }
 .nd-wiz-card.inline .nd-wiz-card-icon { font-size: 22px; flex-shrink: 0; }
+.nd-wiz-card.inline .nd-wiz-card-body p { margin-top: 2px; }
 
 /* ── Preset compare view ── */
+.nd-wiz-preset-group-label {
+  text-align: left;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin: 14px 0 8px;
+}
+.nd-wiz-preset-group-label:first-child { margin-top: 0; }
+
 .nd-wiz-presets {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 12px;
-  margin-bottom: 20px;
+  margin-bottom: 8px;
 }
 .nd-wiz-preset {
   background: rgba(255, 255, 255, 0.03);
@@ -212,6 +253,21 @@
   font-size: 0.9rem;
   font-weight: 600;
   color: var(--text-primary);
+}
+.nd-wiz-preset .nd-wiz-preset-author {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+.nd-wiz-alloc-author {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin: -8px 0 16px;
+  min-height: 1em;
 }
 .nd-wiz-preset .nd-wiz-preset-desc {
   font-size: 0.72rem;
@@ -478,6 +534,100 @@
   color: #09090b;
   font-size: 26px;
   font-weight: 700;
+}
+
+/* ── Populate step: stacked info+CTA cards ── */
+.nd-wiz-populate {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 20px;
+  text-align: left;
+}
+.nd-wiz-populate-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  padding: 16px 18px;
+  transition: border-color 0.15s, background 0.15s;
+}
+.nd-wiz-populate-card:hover {
+  border-color: rgba(212, 160, 23, 0.4);
+}
+.nd-wiz-populate-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  margin-bottom: 10px;
+}
+.nd-wiz-populate-head .nd-wiz-card-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: rgba(212, 160, 23, 0.1);
+  color: var(--accent-primary);
+  flex-shrink: 0;
+}
+.nd-wiz-populate-head .nd-wiz-svg {
+  width: 22px;
+  height: 22px;
+}
+.nd-wiz-populate-head h3 {
+  margin: 0 0 2px;
+  font-size: 0.98rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.nd-wiz-populate-head p {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+.nd-wiz-populate-bullets {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+.nd-wiz-populate-bullets li {
+  position: relative;
+  padding-left: 16px;
+  margin-bottom: 4px;
+}
+.nd-wiz-populate-bullets li::before {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 8px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--accent-primary);
+  opacity: 0.7;
+}
+.nd-wiz-populate-btn {
+  width: 100%;
+  padding: 9px 14px;
+  font-size: 0.85rem;
+}
+.nd-wiz-pro-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+  color: #09090b;
+  border-radius: 6px;
+  line-height: 1.2;
 }
 
 /* ── Responsive ── */

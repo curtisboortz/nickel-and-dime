@@ -44,12 +44,14 @@ FIXED_PULSE_CARDS = ["spy", "btc", "gold", "vix", "oil", "tnx_10y", "dxy"]
 
 
 # ── Allocation presets ─────────────────────────────────────────────────
-# Values are percentages per top-level bucket; sum to 100.
+# N&D-native presets only. Classic portfolios (All Weather, Bogle, Macro,
+# etc.) are sourced from templates_service at apply time via a
+# "classic:<id>" marker. The old "metals_heavy" preset was dropped -- the
+# Macro Investor + Golden Butterfly classics cover that thesis better.
 ALLOCATION_PRESETS = {
     "conservative": {"Equities": 30, "Real Assets": 10, "Alternatives": 5, "Cash": 15, "Fixed Income": 40},
     "balanced":     {"Equities": 55, "Real Assets": 15, "Alternatives": 5, "Cash": 5,  "Fixed Income": 20},
     "aggressive":   {"Equities": 75, "Real Assets": 15, "Alternatives": 5, "Cash": 0,  "Fixed Income": 5},
-    "metals_heavy": {"Equities": 50, "Real Assets": 30, "Alternatives": 5, "Cash": 10, "Fixed Income": 5},
 }
 
 
@@ -234,26 +236,93 @@ def _seed_monthly_investments(
 # Wizard personalization
 # ─────────────────────────────────────────────────────────────────────
 
-def recommend_preset(interests: list[str], risk: str) -> str:
-    """Pick an allocation preset from the user's answers."""
-    r = (risk or "").lower().strip()
-    ints = [i.lower() for i in (interests or [])]
-    if "metals" in ints and r in ("balanced", "aggressive"):
-        return "metals_heavy"
-    if r in ALLOCATION_PRESETS:
-        return r
+def recommend_template(answers: dict[str, Any]) -> str:
+    """Pick a recommended allocation from the full wizard answers.
+
+    Returns either a N&D preset name (``conservative`` | ``balanced`` |
+    ``aggressive``) or a classic template marker ``"classic:<id>"``.
+    """
+    risk = (answers.get("risk") or "").lower().strip()
+    philo = (answers.get("philosophy") or "").lower().strip()
+    horizon = (answers.get("time_horizon") or "").lower().strip()
+    interests = [str(i).lower() for i in (answers.get("interests") or [])]
+
+    if philo == "income" or horizon == "retired":
+        return "classic:income-focus"
+    if philo == "defensive" and risk == "conservative":
+        return "classic:permanent"
+    if philo == "defensive":
+        return "classic:all-weather"
+    if philo == "active":
+        return "classic:macro-investor"
+    if philo == "passive" and risk == "aggressive" and horizon == "long":
+        return "classic:boglehead-3"
+    if philo == "passive" and risk == "balanced":
+        return "classic:60-40"
+    if "metals" in interests and risk in ("balanced", "aggressive"):
+        return "classic:golden-butterfly"
+    if risk in ALLOCATION_PRESETS:
+        return risk
     return "balanced"
+
+
+# Backwards-compatible shim: older callers passed (interests, risk).
+def recommend_preset(interests: list[str], risk: str) -> str:
+    """Legacy wrapper kept so imports don't break. Prefer recommend_template."""
+    return recommend_template({"interests": interests, "risk": risk})
+
+
+def _resolve_allocation(preset_name: str,
+                        answers: dict[str, Any]) -> dict[str, float] | None:
+    """Return the bucket -> percentage mapping for the chosen preset.
+
+    Supports N&D presets, ``"classic:<id>"`` template ids, a user-supplied
+    custom allocation, or ``"skip"`` / ``""`` (returns None).
+    """
+    if preset_name == "custom":
+        custom = answers.get("custom_allocation") or None
+        if not isinstance(custom, dict):
+            return None
+        return {str(k): float(v) for k, v in custom.items() if v}
+    if preset_name in ALLOCATION_PRESETS:
+        return dict(ALLOCATION_PRESETS[preset_name])
+    if preset_name == "skip":
+        return None
+    if preset_name.startswith("classic:"):
+        from .templates_service import get_template
+        tpl = get_template(preset_name.split(":", 1)[1])
+        if not tpl:
+            return None
+        return {k: float(v) for k, v in tpl.get("allocations", {}).items()}
+    return None
+
+
+def _child_buckets_in(alloc: dict[str, float]) -> list[str]:
+    """Return buckets in the allocation that are normally rolled up into a
+    parent per BUCKET_PARENTS (e.g. Gold -> Real Assets). These should stay
+    standalone so the user sees them as distinct slices in the donut.
+    """
+    from ..utils.buckets import BUCKET_PARENTS, normalize_bucket
+    out = []
+    for bucket in alloc.keys():
+        normed = normalize_bucket(bucket)
+        if normed in BUCKET_PARENTS:
+            out.append(normed)
+    return out
 
 
 def apply_wizard_answers(user_id: int, answers: dict[str, Any]) -> None:
     """Personalize the user's setup based on wizard survey answers.
 
     Expected answers keys:
-        experience: "beginner" | "intermediate" | "advanced"
-        interests:  list of {"equities","crypto","metals","real_estate",
-                             "bonds","commodities","alternatives"}
-        risk:       "conservative" | "balanced" | "aggressive" | "custom"
-        allocation_preset: name from ALLOCATION_PRESETS OR "custom"
+        experience:   "beginner" | "intermediate" | "advanced"
+        time_horizon: "short" | "medium" | "long" | "retired"
+        interests:    list of {"equities","crypto","metals","real_estate",
+                               "bonds","commodities","alternatives"}
+        philosophy:   "passive" | "active" | "defensive" | "income" | "unsure"
+        risk:         "conservative" | "balanced" | "aggressive" | "custom"
+        allocation_preset: name from ALLOCATION_PRESETS, "classic:<id>",
+                           "custom", "skip", or empty
         custom_allocation: {bucket: pct, ...} if preset == "custom"
         monthly_contribution: float (optional)
         frequency: "monthly" | "biweekly" | "weekly" (optional)
@@ -265,20 +334,13 @@ def apply_wizard_answers(user_id: int, answers: dict[str, Any]) -> None:
         db.session.flush()
 
     interests = list(answers.get("interests") or [])
-    risk = answers.get("risk") or ""
 
     # ── Allocation targets ─────────────────────────────────────────
     preset_name = answers.get("allocation_preset") or ""
-    alloc = None
-    if preset_name == "custom":
-        alloc = answers.get("custom_allocation") or None
-    elif preset_name in ALLOCATION_PRESETS:
-        alloc = ALLOCATION_PRESETS[preset_name]
-    elif preset_name == "skip":
-        alloc = None  # explicit skip -- don't write targets
-    else:
-        # If no explicit preset, recommend one from risk + interests
-        alloc = ALLOCATION_PRESETS[recommend_preset(interests, risk)]
+    alloc = _resolve_allocation(preset_name, answers)
+    if alloc is None and preset_name not in ("skip", "custom"):
+        # No explicit preset provided -- fall back to our recommender.
+        alloc = _resolve_allocation(recommend_template(answers), answers)
 
     if alloc:
         tactical = {
@@ -291,6 +353,22 @@ def apply_wizard_answers(user_id: int, answers: dict[str, Any]) -> None:
         settings.targets = cur_targets
         from sqlalchemy.orm.attributes import flag_modified
         flag_modified(settings, "targets")
+
+        # ── Bucket rollup safety ───────────────────────────────────
+        # Classic templates may target child buckets (Gold, International,
+        # Real Estate, Crypto). Mark them standalone so the user's donut
+        # shows them as distinct slices rather than rolling them into
+        # Real Assets / Equities / Alternatives.
+        children_in_alloc = _child_buckets_in(alloc)
+        if children_in_alloc:
+            cur_rollup = settings.bucket_rollup if isinstance(settings.bucket_rollup, dict) else {}
+            new_rollup = dict(cur_rollup)
+            for child in children_in_alloc:
+                # Only set if user hasn't explicitly overridden it.
+                if child not in new_rollup:
+                    new_rollup[child] = None
+            settings.bucket_rollup = new_rollup
+            flag_modified(settings, "bucket_rollup")
 
     # ── Interest-driven pulse cards ───────────────────────────────
     existing_tickers = {
@@ -380,12 +458,20 @@ def _seed_wizard_monthly_investments(
 
     rows: list[tuple[str, str, float]] = []
 
+    # If the allocation already distinguishes Gold / Crypto as their own
+    # buckets (classic templates do), don't also split the Real Assets /
+    # Alternatives parents into metals / crypto sub-categories -- that would
+    # double-count them.
+    alloc_buckets = {b for b in allocation.keys()}
+    gold_already_split = "Gold" in alloc_buckets or "Silver" in alloc_buckets
+    crypto_already_split = "Crypto" in alloc_buckets
+
     for bucket, pct in allocation.items():
         if not pct or pct <= 0:
             continue
         bucket_target = round(monthly_contribution * (pct / 100.0), 2)
 
-        if bucket == "Real Assets" and "metals" in interests:
+        if bucket == "Real Assets" and "metals" in interests and not gold_already_split:
             per = round(bucket_target / 4.0, 2)
             rows.extend([
                 ("Silver ETF",     "Real Assets", per),
@@ -393,12 +479,18 @@ def _seed_wizard_monthly_investments(
                 ("Gold ETF",       "Real Assets", per),
                 ("Gold Savings",   "Real Assets", per),
             ])
-        elif bucket == "Alternatives" and "crypto" in interests:
+        elif bucket == "Alternatives" and "crypto" in interests and not crypto_already_split:
             rows.append(("Crypto", "Alternatives", bucket_target))
         elif bucket == "Cash":
             rows.append(("Cash Reserve", "Cash", bucket_target))
         elif bucket == "Fixed Income":
             rows.append(("Bonds", "Fixed Income", bucket_target))
+        elif bucket == "Gold" and "metals" in interests:
+            per = round(bucket_target / 2.0, 2)
+            rows.extend([
+                ("Gold ETF",     "Gold", per),
+                ("Gold Savings", "Gold", per),
+            ])
         else:
             rows.append((bucket, bucket, bucket_target))
 

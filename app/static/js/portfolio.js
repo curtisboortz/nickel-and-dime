@@ -346,25 +346,8 @@ if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("/sw.js").catch(function(){});
 }
 
-/* ── Phase 4: Onboarding detection ── */
-(function() {
-  if (!localStorage.getItem("wos-onboarded") && (window.NUM_HOLDINGS || 0) === 0) {
-    var overlay = document.createElement("div");
-    overlay.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:400;display:flex;align-items:center;justify-content:center;";
-    overlay.innerHTML = '<div style="background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:16px;padding:36px;max-width:460px;width:90%;text-align:center;">' +
-      '<h2 style="color:var(--accent-primary);margin-bottom:12px;">Welcome to Nickel&amp;Dime</h2>' +
-      '<p style="color:var(--text-secondary);margin-bottom:20px;font-size:0.9rem;">Get started in 3 easy steps:</p>' +
-      '<div style="text-align:left;color:var(--text-secondary);font-size:0.88rem;line-height:1.8;">' +
-      '<div style="margin-bottom:8px;"><span style="color:var(--accent-primary);font-weight:700;">1.</span> Set up your <b>Budget</b> (income &amp; expenses)</div>' +
-      '<div style="margin-bottom:8px;"><span style="color:var(--accent-primary);font-weight:700;">2.</span> <b>Import</b> a CSV from your brokerage or add holdings manually</div>' +
-      '<div style="margin-bottom:8px;"><span style="color:var(--accent-primary);font-weight:700;">3.</span> Update <b>Balances</b> for blended accounts</div>' +
-      '</div>' +
-      '<button id="wos-onboard-btn" style="margin-top:20px;padding:10px 28px;background:var(--accent-primary);color:#09090b;border:none;border-radius:8px;font-weight:600;cursor:pointer;">Get Started</button>' +
-      '</div>';
-    document.body.appendChild(overlay);
-    document.getElementById("wos-onboard-btn").onclick = function() { overlay.remove(); localStorage.setItem("wos-onboarded","1"); };
-  }
-})();
+/* Legacy onboarding overlay was removed in favor of the new wizard
+   rendered by _onboarding_wizard.html. See onboarding.js. */
 
 /* ── Phase 4: Multi-currency stub ── */
 var WOS_CURRENCY = localStorage.getItem("wos-currency") || "USD";

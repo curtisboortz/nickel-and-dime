@@ -179,18 +179,43 @@ def sparklines():
             yf_sym = _normalize_ticker(card.ticker)
         else:
             yf_sym = SPARK_SYMBOL_MAP.get(lkey, key)
-        for period, interval in _SPARK_FALLBACKS:
+
+        # Yahoo's DX=F futures feed is unreliable; prefer DX-Y.NYB (spot index)
+        sym_alts = ["DX-Y.NYB", "DX=F"] if yf_sym == "DX=F" else [yf_sym]
+
+        closes = _spark_fetch(sym_alts, _SPARK_FALLBACKS)
+
+        # ETF proxy fallback (e.g. UUP for DXY) if primary symbols have no data
+        if not closes:
+            etf_alts = _SYMBOL_ETF_FALLBACKS.get(yf_sym, [])
+            if etf_alts:
+                etf_closes = _spark_fetch(etf_alts, _SPARK_FALLBACKS)
+                if etf_closes:
+                    spot = PriceCache.query.get(yf_sym)
+                    if spot and spot.price and spot.price > 0 and etf_closes[-1] > 0:
+                        scale = spot.price / etf_closes[-1]
+                        etf_closes = [round(v * scale, 4) for v in etf_closes]
+                    closes = etf_closes
+
+        if closes:
+            result[key] = closes
+
+    return jsonify(result)
+
+
+def _spark_fetch(symbols, fallbacks):
+    """Try each (period, interval) pair against each symbol, return first non-empty close series."""
+    for sym in symbols:
+        for period, interval in fallbacks:
             try:
-                hist = yf.Ticker(yf_sym).history(period=period, interval=interval)
+                hist = yf.Ticker(sym).history(period=period, interval=interval)
                 if not hist.empty:
                     closes = [round(row["Close"], 4) for _, row in hist.iterrows()]
                     if len(closes) > 1:
-                        result[key] = closes
-                        break
+                        return closes
             except Exception:
                 continue
-
-    return jsonify(result)
+    return []
 
 
 def _spark_ratio(result, key, ratio_ticker):

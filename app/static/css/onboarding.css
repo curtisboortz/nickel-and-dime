@@ -629,6 +629,59 @@
   border-radius: 6px;
   line-height: 1.2;
 }
+.nd-wiz-pro-badge.nd-wiz-pro-badge-soft {
+  background: rgba(212, 160, 23, 0.14);
+  color: var(--accent-primary);
+  border: 1px solid rgba(212, 160, 23, 0.35);
+}
+
+/* ── Trial / Pro notice banner above populate cards ── */
+.nd-wiz-trial-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  margin: 0 0 16px;
+  background: rgba(212, 160, 23, 0.06);
+  border: 1px solid rgba(212, 160, 23, 0.28);
+  border-radius: 12px;
+  text-align: left;
+}
+.nd-wiz-trial-note-icon {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: rgba(212, 160, 23, 0.15);
+  color: var(--accent-primary);
+  flex-shrink: 0;
+}
+.nd-wiz-trial-note-icon .nd-wiz-svg {
+  width: 16px;
+  height: 16px;
+}
+.nd-wiz-trial-note-body {
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+.nd-wiz-trial-note-body strong {
+  color: var(--text-primary);
+  display: block;
+  margin-bottom: 2px;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+.nd-wiz-trial-note-body a {
+  color: var(--accent-primary);
+  text-decoration: none;
+  border-bottom: 1px dotted rgba(212, 160, 23, 0.5);
+}
+.nd-wiz-trial-note-body a:hover {
+  border-bottom-style: solid;
+}
 
 /* ── Responsive ── */
 @media (max-width: 520px) {

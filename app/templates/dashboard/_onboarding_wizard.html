@@ -61,6 +61,8 @@
   <path d="M5 12l4.5 4.5L19 7"/>
 {%- elif name == "logo" -%}
   <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
+{%- elif name == "sparkle" -%}
+  <path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M19 15l0.8 1.8L21.5 17.5l-1.7 0.8L19 20l-0.8-1.7L16.5 17.5l1.7-0.8z"/>
 {%- endif -%}
 </svg>
 {%- endmacro %}
@@ -130,28 +132,28 @@
         <div class="nd-wiz-card inline" data-wiz-value="short">
           <div class="nd-wiz-card-icon">{{ ndicon('hourglass') }}</div>
           <div class="nd-wiz-card-body">
-            <h3>Short &mdash; under 5 years</h3>
+            <h3>Short: under 5 years</h3>
             <p>Near-term goals. Stability matters more than growth.</p>
           </div>
         </div>
         <div class="nd-wiz-card inline" data-wiz-value="medium">
           <div class="nd-wiz-card-icon">{{ ndicon('calendar') }}</div>
           <div class="nd-wiz-card-body">
-            <h3>Medium &mdash; 5 to 15 years</h3>
+            <h3>Medium: 5 to 15 years</h3>
             <p>Mid-career saving. Some risk is ok, but don't go wild.</p>
           </div>
         </div>
         <div class="nd-wiz-card inline" data-wiz-value="long">
           <div class="nd-wiz-card-icon">{{ ndicon('tree') }}</div>
           <div class="nd-wiz-card-body">
-            <h3>Long &mdash; 15+ years</h3>
+            <h3>Long: 15+ years</h3>
             <p>Plenty of time to ride out drawdowns and compound.</p>
           </div>
         </div>
         <div class="nd-wiz-card inline" data-wiz-value="retired">
           <div class="nd-wiz-card-icon">{{ ndicon('armchair') }}</div>
           <div class="nd-wiz-card-body">
-            <h3>Retired &mdash; drawing now</h3>
+            <h3>Retired: drawing now</h3>
             <p>Already taking distributions. Income and preservation first.</p>
           </div>
         </div>
@@ -246,7 +248,7 @@
           <div class="nd-wiz-card-icon">{{ ndicon('coin-stack') }}</div>
           <div class="nd-wiz-card-body">
             <h3>Income-focused</h3>
-            <p>Dividends, bonds, REITs &mdash; steady cash flow matters.</p>
+            <p>Dividends, bonds, REITs. Steady cash flow matters.</p>
           </div>
         </div>
         <div class="nd-wiz-card inline" data-wiz-value="unsure">
@@ -370,14 +372,35 @@
     {# ── Step 9: Set up your portfolio ───────────────────────── #}
     <div class="nd-wiz-step" data-step="populate" hidden>
       <h2 class="nd-wiz-title">Now let's populate your portfolio</h2>
-      <p class="nd-wiz-subtitle">Three ways to add holdings. Jump into one now or handle it later &mdash; these are always in the app.</p>
+      <p class="nd-wiz-subtitle">Three ways to add holdings. Jump into one now or handle it later. These are always in the app.</p>
+
+      {# Pro/trial notice - all three options below require Pro #}
+      <div class="nd-wiz-trial-note" role="note">
+        <div class="nd-wiz-trial-note-icon">{{ ndicon('sparkle') }}</div>
+        <div class="nd-wiz-trial-note-body">
+          {% if is_pro and trial_days_left is not none %}
+            <strong>You're on a Pro free trial with {{ trial_days_left }} day{{ '' if trial_days_left == 1 else 's' }} left.</strong>
+            CSV import, brokerage linking, and holdings management are Pro features. Use them all you want during your trial. After it ends, you'll need an active Pro plan to keep adding or syncing holdings.
+          {% elif is_pro %}
+            <strong>You're on the Pro plan.</strong>
+            CSV import, brokerage linking, and holdings management are all included.
+          {% else %}
+            <strong>These tools require Pro.</strong>
+            CSV import, brokerage linking, and adding holdings manually are part of the Pro plan. <a href="/billing/pricing" target="_blank" rel="noopener">See pricing</a> &middot; you can still browse the dashboard, pulse cards, and budgeting tools on the free tier.
+          {% endif %}
+        </div>
+      </div>
+
       <div class="nd-wiz-populate">
 
         <div class="nd-wiz-populate-card">
           <div class="nd-wiz-populate-head">
             <div class="nd-wiz-card-icon">{{ ndicon('doc-upload') }}</div>
             <div>
-              <h3>Import a CSV</h3>
+              <h3>
+                Import a CSV
+                <span class="nd-wiz-pro-badge nd-wiz-pro-badge-soft">Pro</span>
+              </h3>
               <p>Bulk-upload positions from your brokerage.</p>
             </div>
           </div>
@@ -386,9 +409,15 @@
             <li>Preview the parsed positions before committing.</li>
             <li>Best for a one-time import of your current portfolio.</li>
           </ul>
+          {% if is_pro %}
           <button type="button" class="nd-wiz-btn nd-wiz-btn-secondary nd-wiz-populate-btn" data-populate-go="import">
             Take me to Import
           </button>
+          {% else %}
+          <button type="button" class="nd-wiz-btn nd-wiz-btn-secondary nd-wiz-populate-btn" data-populate-go="upgrade">
+            Upgrade to use Import
+          </button>
+          {% endif %}
         </div>
 
         <div class="nd-wiz-populate-card">
@@ -397,19 +426,15 @@
             <div>
               <h3>
                 Connect a brokerage
-                {% if not is_pro %}<span class="nd-wiz-pro-badge">Pro</span>{% endif %}
+                <span class="nd-wiz-pro-badge nd-wiz-pro-badge-soft">Pro</span>
               </h3>
               <p>Auto-sync balances &amp; positions on a schedule via Plaid.</p>
             </div>
           </div>
           <ul class="nd-wiz-populate-bullets">
             <li>Link bank &amp; brokerage accounts once, then sync whenever you want.</li>
-            <li>Read-only &mdash; Plaid never has trading access.</li>
-            {% if is_pro %}
+            <li>Read-only. Plaid never has trading access.</li>
             <li>Set it and forget it: holdings update automatically.</li>
-            {% else %}
-            <li>Included with the Pro plan.</li>
-            {% endif %}
           </ul>
           {% if is_pro %}
           <button type="button" class="nd-wiz-btn nd-wiz-btn-secondary nd-wiz-populate-btn" data-populate-go="plaid">
@@ -417,7 +442,7 @@
           </button>
           {% else %}
           <button type="button" class="nd-wiz-btn nd-wiz-btn-secondary nd-wiz-populate-btn" data-populate-go="upgrade">
-            See Pro plans
+            Upgrade to connect
           </button>
           {% endif %}
         </div>
@@ -426,18 +451,27 @@
           <div class="nd-wiz-populate-head">
             <div class="nd-wiz-card-icon">{{ ndicon('pencil') }}</div>
             <div>
-              <h3>Add holdings manually</h3>
+              <h3>
+                Add holdings manually
+                <span class="nd-wiz-pro-badge nd-wiz-pro-badge-soft">Pro</span>
+              </h3>
               <p>Type in accounts, balances, or individual positions.</p>
             </div>
           </div>
           <ul class="nd-wiz-populate-bullets">
             <li>Best for accounts the import/Plaid flow doesn't cover.</li>
             <li>Or just to try things out with a hypothetical portfolio.</li>
-            <li>Take as long as you want &mdash; everything saves as you edit.</li>
+            <li>Take as long as you want. Everything saves as you edit.</li>
           </ul>
+          {% if is_pro %}
           <button type="button" class="nd-wiz-btn nd-wiz-btn-secondary nd-wiz-populate-btn" data-populate-go="balances">
             Take me to Balances
           </button>
+          {% else %}
+          <button type="button" class="nd-wiz-btn nd-wiz-btn-secondary nd-wiz-populate-btn" data-populate-go="upgrade">
+            Upgrade to add holdings
+          </button>
+          {% endif %}
         </div>
 
       </div>
